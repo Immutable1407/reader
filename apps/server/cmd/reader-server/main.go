@@ -31,6 +31,7 @@ func main() {
 	web := flag.String("web", "", "built web directory")
 	connector := flag.Bool("connector", true, "enable Reader Connector listener")
 	citeCredential := flag.String("cite-credential", "", "credential file for the Word and WPS plugins")
+	citePlugins := flag.String("cite-plugins", "", "directory with the Word and WPS add-in files")
 	probeNetwork := flag.Bool("probe-network", false, "check ChatGPT reachability and exit without opening a library")
 	logs := flag.String("logs", "", "diagnostic log directory")
 	session := flag.String("session", "", "diagnostic session ID")
@@ -89,6 +90,7 @@ func main() {
 			log.Printf("Reader Connector unavailable: %v", connectorError)
 		} else {
 			server.SetConnectorAvailable(true)
+			server.SetCitePlugins(*citePlugins)
 			if *citeCredential == "" {
 				if config, configErr := os.UserConfigDir(); configErr == nil {
 					*citeCredential = filepath.Join(config, "Reader", "cite-credential")

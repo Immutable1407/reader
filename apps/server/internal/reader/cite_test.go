@@ -277,3 +277,49 @@ func TestCiteCredentialIsPrivateAndRotates(t *testing.T) {
 		t.Fatalf("credential did not rotate")
 	}
 }
+
+func TestCiteServesWPSAddinWithCredential(t *testing.T) {
+	h := newCiteHarness(t)
+	dir := t.TempDir()
+	if err := os.MkdirAll(filepath.Join(dir, "wps", "js"), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	_ = os.WriteFile(filepath.Join(dir, "wps", "index.html"), []byte(`<meta name="reader-cite" content="{{READER_CITE_CREDENTIAL}}">`), 0o644)
+	_ = os.WriteFile(filepath.Join(dir, "wps", "js", "main.js"), []byte("ok"), 0o644)
+	_ = os.WriteFile(filepath.Join(dir, "secret.txt"), []byte("outside"), 0o644)
+	h.server.SetCitePlugins(dir)
+	get := func(path string) (int, string, string) {
+		r, _ := http.NewRequest("GET", h.connector.URL+path, nil)
+		r.Host = "127.0.0.1:" + ConnectorPort
+		response, err := http.DefaultClient.Do(r)
+		if err != nil {
+			t.Fatal(err)
+		}
+		defer response.Body.Close()
+		data, _ := io.ReadAll(response.Body)
+		return response.StatusCode, response.Header.Get("Content-Type"), string(data)
+	}
+	status, kind, body := get("/wps/")
+	if status != 200 || !strings.HasPrefix(kind, "text/html") || !strings.Contains(body, h.secret) {
+		t.Fatalf("index: %d %s %s", status, kind, body)
+	}
+	if status, kind, _ := get("/wps/js/main.js"); status != 200 || !strings.HasPrefix(kind, "text/javascript") {
+		t.Fatalf("script: %d %s", status, kind)
+	}
+	for _, path := range []string{"/wps/../secret.txt", "/wps/%2e%2e/secret.txt", "/wps/missing.js"} {
+		if status, _, body := get(path); status == 200 || strings.Contains(body, "outside") {
+			t.Fatalf("%s served: %d", path, status)
+		}
+	}
+	// The page calls the citation endpoints from its own origin, never others.
+	for origin, want := range map[string]int{"http://127.0.0.1:" + ConnectorPort: 503, "https://example.com": 403} {
+		r, _ := http.NewRequest("POST", h.connector.URL+"/v1/cite/execCommand", strings.NewReader(`{"command":"refresh","documentId":"d","client":"wps"}`))
+		r.Host = "127.0.0.1:" + ConnectorPort
+		r.Header.Set("Origin", origin)
+		r.Header.Set("Authorization", "Bearer "+h.secret)
+		status, _ := h.do(r)
+		if status != want {
+			t.Fatalf("origin %s: %d", origin, status)
+		}
+	}
+}
