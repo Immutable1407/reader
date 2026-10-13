@@ -61,6 +61,7 @@ interface Window {
     openDocumentFile: (id: string, type: "pdf" | "epub") => Promise<void>;
     openExternal: (url: string) => Promise<void>;
     openCodexThread?: (threadId: string) => Promise<void>;
+    focusWindow?: () => Promise<void>;
     onOpenLink?: (
       callback: (target: import("@neoread/core").NeoReadLinkTarget) => void,
     ) => () => void;

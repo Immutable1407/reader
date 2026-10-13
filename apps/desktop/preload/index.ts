@@ -84,6 +84,7 @@ contextBridge.exposeInMainWorld("neoreadDesktop", {
     ipcRenderer.invoke("neoread:document-file", id, type, "show"),
   openDocumentFile: (id: string, type: "pdf" | "epub") =>
     ipcRenderer.invoke("neoread:document-file", id, type, "open"),
+  focusWindow: () => ipcRenderer.invoke("neoread:focus-window"),
   openExternal: (url: string) =>
     ipcRenderer.invoke("neoread:open-external", url),
   openCodexThread: (threadId: string) =>
