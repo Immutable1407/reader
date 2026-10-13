@@ -59,6 +59,7 @@ contextBridge.exposeInMainWorld("readerDesktop", {
     ipcRenderer.invoke("reader:document-file", id, type, "show"),
   openDocumentFile: (id: string, type: "pdf" | "epub") =>
     ipcRenderer.invoke("reader:document-file", id, type, "open"),
+  focusWindow: () => ipcRenderer.invoke("reader:focus-window"),
   openExternal: (url: string) =>
     ipcRenderer.invoke("reader:open-external", url),
   onOpenLink: (callback: (target: unknown) => void) => {

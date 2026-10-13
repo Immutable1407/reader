@@ -38,6 +38,7 @@ interface Window {
     showDocumentFile: (id: string, type: "pdf" | "epub") => Promise<void>;
     openDocumentFile: (id: string, type: "pdf" | "epub") => Promise<void>;
     openExternal: (url: string) => Promise<void>;
+    focusWindow?: () => Promise<void>;
     onOpenLink?: (
       callback: (target: import("@reader/core").ReaderLinkTarget) => void,
     ) => () => void;

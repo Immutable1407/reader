@@ -34,6 +34,7 @@ import {
   DialogDescription,
 } from "@reader/ui/components/dialog";
 import { Toaster, toast } from "sonner";
+import { CiteHost } from "./cite/CiteHost";
 import {
   useReaderStore,
   refreshLibrary,
@@ -785,6 +786,7 @@ export function App() {
           onChoose={(library) => void importLargePapers(library)}
           onCancel={() => setLargePapers([])}
         />
+        <CiteHost />
         <Toaster
           richColors
           position="bottom-right"

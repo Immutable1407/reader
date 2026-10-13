@@ -510,6 +510,24 @@ app
       linksClaimed = true;
       return pendingLinks.splice(0);
     });
+    // A Word or WPS command opens a citation dialog here. Both systems keep a
+    // background app from taking focus, so this has to insist.
+    ipcMain.handle("reader:focus-window", (event) => {
+      if (
+        event.sender !== window?.webContents ||
+        event.senderFrame !== window.webContents.mainFrame
+      )
+        throw new Error("Invalid sender");
+      if (window.isMinimized()) window.restore();
+      window.show();
+      if (process.platform === "darwin") app.focus({ steal: true });
+      else {
+        window.setAlwaysOnTop(true);
+        window.focus();
+        window.setAlwaysOnTop(false);
+      }
+      window.focus();
+    });
     ipcMain.handle("reader:open-external", async (event, url: unknown) => {
       if (
         event.sender !== window?.webContents ||
