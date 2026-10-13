@@ -1,0 +1,33 @@
+# Citation plugins
+
+Word and WPS clients for the Reader citation plugin. They only execute the
+document operations Reader sends; formatting, dialogs and the library stay in
+Reader. Design and protocol: `docs/research/word-plugin.md`.
+
+- `wps/` — WPS 文字 JS add-in. Reader serves it from
+  `http://127.0.0.1:17841/wps/` and inserts the local credential into
+  `index.html`. `js/word-document.js` implements the operations on the Word
+  object model and is tested against a fake model in `js/wps-client.test.mjs`.
+- `word/` — Word template for Windows and macOS.
+  - `ReaderCite.bas`: the VBA module. Keep it ASCII; write Chinese messages as
+    `T("\u....")` escapes, because Word reads modules in the system code page.
+  - `customUI14.xml`: the ribbon.
+  - `ReaderCite.applescript`: the macOS transport (Word's VBA is sandboxed),
+    installed as `~/Library/Application Scripts/com.microsoft.Word/ReaderCite.scpt`.
+  - `Reader.dotm`: the built template that Reader installs. It is a binary
+    built with Word, not in CI.
+
+## Building Reader.dotm
+
+VBA must be compiled by Word, so the template is built on a computer with Word
+after every change to `ReaderCite.bas` or `customUI14.xml`, then committed.
+
+- **Windows**: allow "Trust access to the VBA project object model" in Word's
+  Trust Center, then run `powershell -File apps/cite-plugins/word/build-template.ps1`.
+- **macOS**: in Word, open a blank document, Tools > Macro > Visual Basic
+  Editor, File > Import File… `ReaderCite.bas`, then save the document as a
+  Word Macro-Enabled Template (`.dotm`). Run
+  `node apps/cite-plugins/word/add-ribbon.mjs <saved.dotm>` to add the ribbon
+  and write `apps/cite-plugins/word/Reader.dotm`.
+
+The ribbon icons in `wps/images` are from Lucide (ISC license).

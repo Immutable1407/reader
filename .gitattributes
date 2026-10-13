@@ -1,1 +1,5 @@
 patches/*.patch whitespace=-blank-at-eol
+# Word imports VBA modules with Windows line endings.
+apps/cite-plugins/word/*.bas text eol=crlf
+apps/cite-plugins/word/*.ps1 text eol=crlf
+apps/cite-plugins/word/*.dotm binary
