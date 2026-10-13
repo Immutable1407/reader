@@ -88,6 +88,14 @@ function fakeWord() {
       selection.Start = s;
       selection.End = e;
     },
+    Collapse() {
+      selection.Start = selection.End;
+    },
+  };
+  // Selecting puts the selection on the main-text range of a field or reference.
+  const select = (start, end) => () => {
+    selection.StoryType = MAIN;
+    selection.SetRange(start(), end());
   };
   const doc = {
     FullName: "/tmp/paper.docx",
@@ -100,6 +108,10 @@ function fakeWord() {
             ? mainFields
             : footnotes.find((n) => n.Range === target).Range.Fields.items;
         const f = field(target.StoryType, target.Start, text, fields);
+        f.Select = select(
+          () => f.Code.Start,
+          () => f.Result.End + 1,
+        );
         fields.push(f);
         fields.sort((a, b) => a.Code.Start - b.Code.Start);
         return f;
@@ -114,6 +126,10 @@ function fakeWord() {
         };
         nextPosition += 100;
         note.Range.Fields = collection([]);
+        note.Reference.Select = select(
+          () => note.Reference.Start,
+          () => note.Reference.End,
+        );
         footnotes.push(note);
         return note;
       },
