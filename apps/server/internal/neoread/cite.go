@@ -6,6 +6,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"html"
 	"io"
 	"net/http"
 	"os"
@@ -62,6 +63,8 @@ type citeTransaction struct {
 func (t *citeTransaction) close() { t.once.Do(func() { close(t.done) }) }
 
 type citeBroker struct {
+	// plugins is the directory with the add-in files (`wps/`).
+	plugins     string
 	mu          sync.Mutex
 	subscribers map[chan citeEvent]struct{}
 	current     *citeTransaction
@@ -349,4 +352,48 @@ func (s *Server) citeComplete(w http.ResponseWriter, r *http.Request) {
 	s.cite.mu.Unlock()
 	t.close()
 	w.WriteHeader(204)
+}
+
+const citeCredentialSlot = "{{READER_CITE_CREDENTIAL}}"
+
+// SetCitePlugins sets the directory that holds the word processor add-ins.
+func (s *Server) SetCitePlugins(dir string) { s.cite.plugins = dir }
+
+// citeWPSFile serves the WPS add-in. WPS loads it from this port at startup,
+// so the page shares an origin with the citation endpoints and needs no proxy.
+func (s *Server) citeWPSFile(w http.ResponseWriter, r *http.Request) {
+	name := r.PathValue("file")
+	if name == "" {
+		name = "index.html"
+	}
+	if s.cite.plugins == "" || !filepath.IsLocal(name) {
+		fail(w, 404, "文件不存在")
+		return
+	}
+	path := filepath.Join(s.cite.plugins, "wps", filepath.FromSlash(name))
+	data, err := os.ReadFile(path)
+	if err != nil {
+		fail(w, 404, "文件不存在")
+		return
+	}
+	contentType := webContentType(name)
+	switch strings.ToLower(filepath.Ext(name)) {
+	case ".xml":
+		contentType = "application/xml; charset=utf-8"
+	case ".svg":
+		contentType = "image/svg+xml"
+	}
+	if contentType == "" {
+		contentType = "application/octet-stream"
+	}
+	if name == "index.html" {
+		s.cite.mu.Lock()
+		secret := s.cite.secret
+		s.cite.mu.Unlock()
+		data = bytes.ReplaceAll(data, []byte(citeCredentialSlot), []byte(html.EscapeString(secret)))
+	}
+	w.Header().Set("Content-Type", contentType)
+	w.Header().Set("Cache-Control", "no-store")
+	w.Header().Set("X-Frame-Options", "DENY")
+	_, _ = w.Write(data)
 }
