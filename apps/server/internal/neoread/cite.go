@@ -27,6 +27,9 @@ const (
 	citeCallTimeout = 5 * time.Minute
 )
 
+// citeWaitInterval is a variable so tests can shorten it.
+var citeWaitInterval = 20 * time.Second
+
 var citeCommands = map[string]bool{
 	"addEditCitation":     true,
 	"addEditBibliography": true,
@@ -143,11 +146,24 @@ func readCiteBody(w http.ResponseWriter, r *http.Request) ([]byte, bool) {
 }
 
 // awaitCiteOperation answers the word processor with the next operation.
+func writeCiteOperation(w http.ResponseWriter, op []byte) {
+	w.Header().Set("Content-Type", "application/json; charset=utf-8")
+	_, _ = w.Write(op)
+}
+
+// awaitCiteOperation answers the word processor with the next operation. A
+// dialog in Reader can stay open for minutes, longer than the word processors'
+// HTTP clients wait, so an idle request is answered with Document.wait and the
+// client asks again at /v1/cite/next.
 func (s *Server) awaitCiteOperation(w http.ResponseWriter, r *http.Request, t *citeTransaction) {
+	timer := time.NewTimer(citeWaitInterval)
+	defer timer.Stop()
 	select {
 	case op := <-t.ops:
-		w.Header().Set("Content-Type", "application/json")
-		_, _ = w.Write(op)
+		writeCiteOperation(w, op)
+		return
+	case <-timer.C:
+		respond(w, 200, map[string]string{"op": "Document.wait", "transaction": t.id})
 		return
 	case <-r.Context().Done():
 		s.abortCite(t)
@@ -157,11 +173,26 @@ func (s *Server) awaitCiteOperation(w http.ResponseWriter, r *http.Request, t *c
 	// Completion closes the transaction right after queuing its last operation.
 	select {
 	case op := <-t.ops:
-		w.Header().Set("Content-Type", "application/json")
-		_, _ = w.Write(op)
+		writeCiteOperation(w, op)
 	default:
 		respond(w, 200, map[string]any{"op": "Document.complete", "transaction": t.id, "error": "Reader 已取消本次操作"})
 	}
+}
+
+// citeNext resumes waiting after Document.wait.
+func (s *Server) citeNext(w http.ResponseWriter, r *http.Request) {
+	var v struct {
+		Transaction string `json:"transaction"`
+	}
+	if !decode(w, r, &v) {
+		return
+	}
+	t := s.citeTransaction(v.Transaction)
+	if t == nil {
+		respond(w, 200, map[string]any{"op": "Document.complete", "transaction": v.Transaction, "error": "Reader 已取消本次操作"})
+		return
+	}
+	s.awaitCiteOperation(w, r, t)
 }
 
 func (s *Server) citeExecCommand(w http.ResponseWriter, r *http.Request) {
@@ -314,8 +345,7 @@ func (s *Server) citeCall(w http.ResponseWriter, r *http.Request) {
 			respond(w, 422, map[string]string{"error": result.err})
 			return
 		}
-		w.Header().Set("Content-Type", "application/json")
-		_, _ = w.Write(result.value)
+		writeCiteOperation(w, result.value)
 	case <-t.done:
 		fail(w, 410, errCiteClosed.Error())
 	case <-timer.C:

@@ -323,3 +323,39 @@ func TestCiteServesWPSAddinWithCredential(t *testing.T) {
 		}
 	}
 }
+
+func TestCiteAsksIdleClientsToPollAgain(t *testing.T) {
+	previous := citeWaitInterval
+	citeWaitInterval = 50 * time.Millisecond
+	t.Cleanup(func() { citeWaitInterval = previous })
+	h := newCiteHarness(t)
+	events, cancel := h.subscribe()
+	defer cancel()
+	command := h.async(func() (int, string) {
+		return h.client("/v1/cite/execCommand", `{"command":"addEditCitation","documentId":"d","client":"word-windows"}`, h.secret)
+	})
+	event := next(t, events)
+	r := wait(t, command)
+	if r.status != 200 || !strings.Contains(r.body, `"op":"Document.wait"`) || !strings.Contains(r.body, event.Transaction) {
+		t.Fatalf("idle reply %+v", r)
+	}
+	// The transaction survives the idle reply; the next poll gets the operation.
+	poll := h.async(func() (int, string) {
+		return h.client("/v1/cite/next", `{"transaction":"`+event.Transaction+`"}`, h.secret)
+	})
+	call := h.async(func() (int, string) {
+		return h.reader("POST", "/api/cite/transactions/"+event.Transaction+"/call", `{"op":"Document.getState"}`)
+	})
+	if r := wait(t, poll); !strings.Contains(r.body, "Document.getState") {
+		t.Fatalf("poll reply %+v", r)
+	}
+	h.async(func() (int, string) {
+		return h.client("/v1/cite/respond", `{"transaction":"`+event.Transaction+`","result":{}}`, h.secret)
+	})
+	if r := wait(t, call); r.status != 200 {
+		t.Fatalf("call reply %+v", r)
+	}
+	if status, body := h.client("/v1/cite/next", `{"transaction":"gone"}`, h.secret); status != 200 || !strings.Contains(body, "Document.complete") {
+		t.Fatalf("ended transaction: %d %s", status, body)
+	}
+}

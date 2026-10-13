@@ -86,6 +86,7 @@ func (s *Server) ConnectorHandler() http.Handler {
 	mux.HandleFunc("POST /v1/import", s.connectorImport)
 	mux.HandleFunc("POST /v1/cite/execCommand", s.citeExecCommand)
 	mux.HandleFunc("POST /v1/cite/respond", s.citeRespond)
+	mux.HandleFunc("POST /v1/cite/next", s.citeNext)
 	mux.HandleFunc("GET /wps/{file...}", s.citeWPSFile)
 	return s.diagnosticHTTP(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		host, port, err := net.SplitHostPort(r.Host)
