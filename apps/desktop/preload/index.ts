@@ -85,6 +85,11 @@ contextBridge.exposeInMainWorld("neoreadDesktop", {
   openDocumentFile: (id: string, type: "pdf" | "epub") =>
     ipcRenderer.invoke("neoread:document-file", id, type, "open"),
   focusWindow: () => ipcRenderer.invoke("neoread:focus-window"),
+  citePlugins: () => proxyRequest("neoread:cite-plugins"),
+  installCitePlugin: (kind: "word" | "wps") =>
+    proxyRequest("neoread:cite-plugin-install", kind),
+  uninstallCitePlugin: (kind: "word" | "wps") =>
+    proxyRequest("neoread:cite-plugin-uninstall", kind),
   openExternal: (url: string) =>
     ipcRenderer.invoke("neoread:open-external", url),
   openCodexThread: (threadId: string) =>
