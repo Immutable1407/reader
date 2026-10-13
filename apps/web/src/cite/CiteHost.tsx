@@ -17,7 +17,7 @@ import type { Citation, DocumentPrefs } from "./codes";
 import { DocumentPrefsDialog } from "./DocumentPrefsDialog";
 import { librarySource } from "./items";
 import type { CiteCommand, DocumentPort } from "./protocol";
-import { CiteSession, type CiteUI } from "./session";
+import type { CiteUI } from "./session";
 import { encodeForVBA } from "./vba";
 
 type Request =
@@ -131,6 +131,8 @@ export function CiteHost() {
       try {
         if (!commands.includes(event.command as CiteCommand))
           throw new Error("Reader 版本过旧，不支持这个命令");
+        // citeproc loads with the first command, not with the app.
+        const { CiteSession } = await import("./session");
         await new CiteSession(
           port,
           ui,
