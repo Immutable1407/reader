@@ -1,0 +1,279 @@
+package reader
+
+import (
+	"bufio"
+	"context"
+	"encoding/json"
+	"io"
+	"net/http"
+	"net/http/httptest"
+	"os"
+	"path/filepath"
+	"strings"
+	"testing"
+	"time"
+)
+
+type citeHarness struct {
+	t         *testing.T
+	server    *Server
+	api       *httptest.Server
+	connector *httptest.Server
+	secret    string
+}
+
+func newCiteHarness(t *testing.T) *citeHarness {
+	t.Helper()
+	s := testServer(t)
+	path := filepath.Join(t.TempDir(), "Reader", "cite-credential")
+	if err := s.SetCiteCredential(path); err != nil {
+		t.Fatal(err)
+	}
+	secret, err := os.ReadFile(path)
+	if err != nil {
+		t.Fatal(err)
+	}
+	h := &citeHarness{t: t, server: s, api: httptest.NewServer(s.Handler()), connector: httptest.NewServer(s.ConnectorHandler()), secret: string(secret)}
+	t.Cleanup(h.api.Close)
+	t.Cleanup(h.connector.Close)
+	return h
+}
+
+func (h *citeHarness) client(path, body, secret string) (int, string) {
+	h.t.Helper()
+	r, _ := http.NewRequest("POST", h.connector.URL+path, strings.NewReader(body))
+	r.Host = "127.0.0.1:" + ConnectorPort
+	r.Header.Set("Content-Type", "application/json")
+	r.Header.Set("Authorization", "Bearer "+secret)
+	return h.do(r)
+}
+
+func (h *citeHarness) reader(method, path, body string) (int, string) {
+	h.t.Helper()
+	r, _ := http.NewRequest(method, h.api.URL+path, strings.NewReader(body))
+	r.Host = "127.0.0.1:17840"
+	r.Header.Set("Authorization", "Bearer test-secret")
+	return h.do(r)
+}
+
+func (h *citeHarness) do(r *http.Request) (int, string) {
+	h.t.Helper()
+	response, err := http.DefaultClient.Do(r)
+	if err != nil {
+		h.t.Fatal(err)
+	}
+	defer response.Body.Close()
+	data, _ := io.ReadAll(response.Body)
+	return response.StatusCode, string(data)
+}
+
+// subscribe opens the Reader window's event stream and returns its events.
+func (h *citeHarness) subscribe() (<-chan citeEvent, context.CancelFunc) {
+	h.t.Helper()
+	ctx, cancel := context.WithCancel(context.Background())
+	r, _ := http.NewRequestWithContext(ctx, "GET", h.api.URL+"/api/cite/events", nil)
+	r.Host = "127.0.0.1:17840"
+	r.Header.Set("Authorization", "Bearer test-secret")
+	response, err := http.DefaultClient.Do(r)
+	if err != nil {
+		h.t.Fatal(err)
+	}
+	events := make(chan citeEvent, 8)
+	go func() {
+		defer response.Body.Close()
+		scanner := bufio.NewScanner(response.Body)
+		for scanner.Scan() {
+			line := scanner.Text()
+			if data, ok := strings.CutPrefix(line, "data: "); ok {
+				var event citeEvent
+				_ = json.Unmarshal([]byte(data), &event)
+				events <- event
+			}
+		}
+	}()
+	h.waitFor(func() bool {
+		h.server.cite.mu.Lock()
+		defer h.server.cite.mu.Unlock()
+		return len(h.server.cite.subscribers) > 0
+	})
+	return events, cancel
+}
+
+func (h *citeHarness) waitFor(ready func() bool) {
+	h.t.Helper()
+	deadline := time.Now().Add(2 * time.Second)
+	for !ready() {
+		if time.Now().After(deadline) {
+			h.t.Fatal("timed out")
+		}
+		time.Sleep(5 * time.Millisecond)
+	}
+}
+
+func next(t *testing.T, events <-chan citeEvent) citeEvent {
+	t.Helper()
+	select {
+	case event := <-events:
+		return event
+	case <-time.After(2 * time.Second):
+		t.Fatal("no event")
+		return citeEvent{}
+	}
+}
+
+type reply struct {
+	status int
+	body   string
+}
+
+func (h *citeHarness) async(call func() (int, string)) <-chan reply {
+	done := make(chan reply, 1)
+	go func() {
+		status, body := call()
+		done <- reply{status, body}
+	}()
+	return done
+}
+
+func wait(t *testing.T, done <-chan reply) reply {
+	t.Helper()
+	select {
+	case r := <-done:
+		return r
+	case <-time.After(2 * time.Second):
+		t.Fatal("request did not finish")
+		return reply{}
+	}
+}
+
+func TestCiteTransactionRelaysOperationsInOrder(t *testing.T) {
+	h := newCiteHarness(t)
+	events, cancel := h.subscribe()
+	defer cancel()
+
+	command := h.async(func() (int, string) {
+		return h.client("/v1/cite/execCommand", `{"command":"addEditCitation","documentId":"doc-1","client":"word-mac"}`, h.secret)
+	})
+	event := next(t, events)
+	if event.Type != "command" || event.Command != "addEditCitation" || event.DocumentID != "doc-1" || event.Client != "word-mac" {
+		t.Fatalf("event %+v", event)
+	}
+	call := h.async(func() (int, string) {
+		return h.reader("POST", "/api/cite/transactions/"+event.Transaction+"/call", `{"op":"Document.getState","transaction":"`+event.Transaction+`"}`)
+	})
+	if r := wait(t, command); r.status != 200 || !strings.Contains(r.body, "Document.getState") {
+		t.Fatalf("command reply %+v", r)
+	}
+	respond := h.async(func() (int, string) {
+		return h.client("/v1/cite/respond", `{"transaction":"`+event.Transaction+`","result":{"fields":[]}}`, h.secret)
+	})
+	if r := wait(t, call); r.status != 200 || r.body != `{"fields":[]}` {
+		t.Fatalf("call reply %+v", r)
+	}
+	if status, body := h.reader("POST", "/api/cite/transactions/"+event.Transaction+"/complete", `{"activate":true}`); status != 204 {
+		t.Fatalf("complete %d %s", status, body)
+	}
+	r := wait(t, respond)
+	if r.status != 200 || !strings.Contains(r.body, `"op":"Document.complete"`) || !strings.Contains(r.body, `"activate":true`) {
+		t.Fatalf("final reply %+v", r)
+	}
+	// The slot is free again.
+	second := h.async(func() (int, string) {
+		return h.client("/v1/cite/execCommand", `{"command":"refresh","documentId":"doc-1","client":"wps"}`, h.secret)
+	})
+	if event := next(t, events); event.Type != "command" || event.Command != "refresh" {
+		t.Fatalf("second event %+v", event)
+	}
+	h.server.cite.mu.Lock()
+	current := h.server.cite.current
+	h.server.cite.mu.Unlock()
+	h.server.abortCite(current)
+	if r := wait(t, second); !strings.Contains(r.body, "Document.complete") {
+		t.Fatalf("aborted reply %+v", r)
+	}
+}
+
+func TestCiteClientErrorReachesReader(t *testing.T) {
+	h := newCiteHarness(t)
+	events, cancel := h.subscribe()
+	defer cancel()
+	command := h.async(func() (int, string) {
+		return h.client("/v1/cite/execCommand", `{"command":"refresh","documentId":"d","client":"word-windows"}`, h.secret)
+	})
+	event := next(t, events)
+	call := h.async(func() (int, string) {
+		return h.reader("POST", "/api/cite/transactions/"+event.Transaction+"/call", `{"op":"Document.updateFields"}`)
+	})
+	wait(t, command)
+	h.async(func() (int, string) {
+		return h.client("/v1/cite/respond", `{"transaction":"`+event.Transaction+`","error":"文档处于只读状态"}`, h.secret)
+	})
+	if r := wait(t, call); r.status != 422 || !strings.Contains(r.body, "只读") {
+		t.Fatalf("call reply %+v", r)
+	}
+}
+
+func TestCiteRejectsConcurrentCommandsAndMissingWindow(t *testing.T) {
+	h := newCiteHarness(t)
+	body := `{"command":"refresh","documentId":"d","client":"word-windows"}`
+	if status, _ := h.client("/v1/cite/execCommand", body, h.secret); status != 503 {
+		t.Fatalf("without window: %d", status)
+	}
+	events, cancel := h.subscribe()
+	defer cancel()
+	first := h.async(func() (int, string) { return h.client("/v1/cite/execCommand", body, h.secret) })
+	next(t, events)
+	if status, _ := h.client("/v1/cite/execCommand", body, h.secret); status != 409 {
+		t.Fatalf("concurrent: %d", status)
+	}
+	if event := next(t, events); event.Type != "focus" {
+		t.Fatalf("expected focus event, got %+v", event)
+	}
+	// Closing the Reader window ends the open transaction.
+	cancel()
+	if r := wait(t, first); r.status != 200 || !strings.Contains(r.body, "Document.complete") {
+		t.Fatalf("orphaned reply %+v", r)
+	}
+}
+
+func TestCiteRequiresCredential(t *testing.T) {
+	h := newCiteHarness(t)
+	body := `{"command":"refresh","documentId":"d","client":"word-windows"}`
+	for _, secret := range []string{"", "wrong", "test-secret"} {
+		if status, _ := h.client("/v1/cite/execCommand", body, secret); status != 401 {
+			t.Fatalf("secret %q: %d", secret, status)
+		}
+	}
+	if status, _ := h.client("/v1/cite/execCommand", `{"command":"format","documentId":"d","client":"word-windows"}`, h.secret); status != 400 {
+		t.Fatalf("unknown command: %d", status)
+	}
+	if status, _ := h.client("/v1/cite/respond", `{"transaction":"missing","result":1}`, h.secret); status != 410 {
+		t.Fatalf("missing transaction: %d", status)
+	}
+	if status, _ := h.reader("POST", "/api/cite/transactions/missing/call", `{"op":"x"}`); status != 410 {
+		t.Fatalf("missing transaction call: %d", status)
+	}
+}
+
+func TestCiteCredentialIsPrivateAndRotates(t *testing.T) {
+	s := testServer(t)
+	path := filepath.Join(t.TempDir(), "Reader", "cite-credential")
+	if err := s.SetCiteCredential(path); err != nil {
+		t.Fatal(err)
+	}
+	first, _ := os.ReadFile(path)
+	info, err := os.Stat(path)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if info.Mode().Perm() != 0o600 && os.PathSeparator == '/' {
+		t.Fatalf("mode %v", info.Mode().Perm())
+	}
+	if err := s.SetCiteCredential(path); err != nil {
+		t.Fatal(err)
+	}
+	second, _ := os.ReadFile(path)
+	if len(first) != 64 || string(first) == string(second) {
+		t.Fatalf("credential did not rotate")
+	}
+}

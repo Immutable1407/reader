@@ -77,6 +77,8 @@ func (s *Server) ConnectorHandler() http.Handler {
 	mux.HandleFunc("GET /v1/folders", s.connectorFolders)
 	mux.HandleFunc("GET /v1/labels", s.connectorLabels)
 	mux.HandleFunc("POST /v1/import", s.connectorImport)
+	mux.HandleFunc("POST /v1/cite/execCommand", s.citeExecCommand)
+	mux.HandleFunc("POST /v1/cite/respond", s.citeRespond)
 	return s.diagnosticHTTP(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		host, port, err := net.SplitHostPort(r.Host)
 		if err != nil || host != "127.0.0.1" || port != ConnectorPort {
@@ -103,7 +105,13 @@ func (s *Server) ConnectorHandler() http.Handler {
 			w.WriteHeader(204)
 			return
 		}
-		if r.URL.Path != "/v1/session" && r.URL.Path != "/v1/status" {
+		if strings.HasPrefix(r.URL.Path, "/v1/cite/") {
+			// Word macros send no Origin; the plugins read a separate credential.
+			if !s.citeAuthorized(r) {
+				fail(w, 401, "本机访问凭据已失效，请重启 Reader")
+				return
+			}
+		} else if r.URL.Path != "/v1/session" && r.URL.Path != "/v1/status" {
 			savedHash := connectorSetting(s.Store.DB, "secret")
 			provided := strings.TrimPrefix(r.Header.Get("Authorization"), "Bearer ")
 			actualHash := connectorHash(provided)

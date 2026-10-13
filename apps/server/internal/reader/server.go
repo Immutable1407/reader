@@ -34,6 +34,7 @@ type Server struct {
 	connectorAvailable     bool
 	connectorReason        string
 	connectorRevision      atomic.Int64
+	cite                   citeBroker
 	zoteroMu               sync.Mutex
 	zoteroScans            map[string]*zoteroScan
 	annotationMu           sync.Mutex
@@ -111,6 +112,9 @@ func (s *Server) Handler() http.Handler {
 	mux.HandleFunc("PUT /api/journal-ranks/config", s.putJournalRankConfig)
 	mux.HandleFunc("GET /api/documents/{id}/journal-rank", s.documentJournalRank)
 	mux.HandleFunc("GET /api/connector/revision", s.connectorRevisionStatus)
+	mux.HandleFunc("GET /api/cite/events", s.citeEvents)
+	mux.HandleFunc("POST /api/cite/transactions/{id}/call", s.citeCall)
+	mux.HandleFunc("POST /api/cite/transactions/{id}/complete", s.citeComplete)
 	mux.HandleFunc("GET /api/documents/{id}/snapshot", s.connectorSnapshotStatus)
 	mux.HandleFunc("POST /api/import/zotero/scan", s.scanZotero)
 	mux.HandleFunc("POST /api/import/zotero", s.importZotero)
