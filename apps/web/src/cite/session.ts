@@ -185,8 +185,9 @@ export class CiteSession {
         if (code !== field.code.trim()) update.code = code;
         if (update.code || update.text) updates.push(update);
       } else if (field.parsed.kind === "bibliography") {
+        // Word mishandles an empty field result, so an empty list keeps a placeholder.
         const result = formatted.bibliography || {
-          entries: [],
+          entries: [[{ text: "{Bibliography}" }]],
           format: {
             hangingIndent: false,
             secondFieldAlign: false as const,

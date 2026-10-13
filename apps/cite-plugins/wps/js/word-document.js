@@ -141,11 +141,9 @@
       );
       field.Result.Text = PLACEHOLDER[op.kind] || PLACEHOLDER.citation;
       // Continue typing after the citation (or its note reference).
-      const after = note ? note.Reference : field.Result;
-      app.Selection.SetRange(
-        after.End + (note ? 0 : 1),
-        after.End + (note ? 0 : 1),
-      );
+      if (note) note.Reference.Select();
+      else field.Select();
+      app.Selection.Collapse(wdCollapseEnd);
       const index = collect().findIndex(
         (entry) => entry.code === "READER_TEMP",
       );
@@ -235,11 +233,8 @@
           entry.field.Code.Text = " ADDIN " + update.code + " ";
         if (update.text) writeRuns(entry.field, [update.text]);
         if (update.bibliography) {
-          const entries = update.bibliography.entries.length
-            ? update.bibliography.entries
-            : [[{ text: "" }]];
           formatBibliography(
-            writeRuns(entry.field, entries),
+            writeRuns(entry.field, update.bibliography.entries),
             update.bibliography.format,
           );
         }
