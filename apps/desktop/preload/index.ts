@@ -60,6 +60,11 @@ contextBridge.exposeInMainWorld("readerDesktop", {
   openDocumentFile: (id: string, type: "pdf" | "epub") =>
     ipcRenderer.invoke("reader:document-file", id, type, "open"),
   focusWindow: () => ipcRenderer.invoke("reader:focus-window"),
+  citePlugins: () => proxyRequest("reader:cite-plugins"),
+  installCitePlugin: (kind: "word" | "wps") =>
+    proxyRequest("reader:cite-plugin-install", kind),
+  uninstallCitePlugin: (kind: "word" | "wps") =>
+    proxyRequest("reader:cite-plugin-uninstall", kind),
   openExternal: (url: string) =>
     ipcRenderer.invoke("reader:open-external", url),
   onOpenLink: (callback: (target: unknown) => void) => {

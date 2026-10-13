@@ -56,6 +56,7 @@ import {
   TabsList,
   TabsTrigger,
 } from "@reader/ui/components/tabs";
+import { CitePluginSettings } from "./cite/CitePluginSettings";
 import { HighlightColorsEditor } from "./HighlightColorsEditor";
 import { ProxySettings } from "./ProxySettings";
 import {
@@ -711,6 +712,7 @@ export function Settings({
                   </p>
                 )}
               </div>
+              <CitePluginSettings open={open} />
               <label className="flex items-start gap-2 text-sm">
                 <Checkbox
                   className="mt-0.5"
