@@ -68,21 +68,25 @@ WPS (JS 加载项)        ─┘                                       │ SSE
 与 Zotero 的 HTTP 协议同构，便于对照，但字段名和端点是 Reader 自己的：
 
 ```
-POST /v1/cite/execCommand {command, docId, client}    → {op: "Document.getFields", args}
-POST /v1/cite/respond     {result} | {error, message} → {op: ...} … → {op: "Document.complete"}
+POST /v1/cite/execCommand {command, documentId, client} → {op: "Document.getState", transaction}
+POST /v1/cite/respond     {transaction, result | error} → {op: ...} … → {op: "Document.complete"}
+POST /v1/cite/next        {transaction}                 → 收到 Document.wait 后继续等待
 ```
 
-- 命令：`addEditCitation`、`addEditBibliography`、`setDocPrefs`、`refresh`、`removeCodes`、`addNote`。
+- 命令（M1）：`addEditCitation`、`addEditBibliography`、`setDocPrefs`、`refresh`、`removeCodes`。
+- 操作（M1）：`Document.getState`（全部 Reader 域的代码、文字、注释序号，光标所在域，光标前的域数，文档数据，能否插入）、`Document.insertField`、`Document.updateFields`（批量）、`Document.removeFields`、`Document.setData`。粒度比 Zotero 粗，减少 VBA/AppleScript 的往返次数。实现见 `apps/web/src/cite/protocol.ts`。
+- Reader 窗口一侧：`GET /api/cite/events`（SSE）收到命令，`POST /api/cite/transactions/{id}/call` 发出一项操作并等待结果，`…/complete` 结束。
 - 文本写入不传 RTF/HTML，传格式片段 `[{text, i, b, sup, sub, sc}]`，由宏或 JS 逐段设置字体。Word 宏插入富文本在两个平台上行为不一致，片段方式更可控。
-- 打开对话框期间请求保持挂起（与 Zotero 一致，Word 在此期间不可编辑）。客户端不设请求超时，Reader 端在用户取消或窗口关闭时返回 `Document.complete`。
+- Word 的 VBA 没有 JSON 解析（macOS 上也没有 Dictionary），发给 Word 的操作另附一份按行、制表符分隔的编码（`vba` 字段，`apps/web/src/cite/vba.ts`）；WPS 端直接读 JSON。VBA 回复时自己拼 JSON。
+- 对话框可能开很久，而 Windows 的 XMLHTTP、macOS 的 curl 都有超时，所以请求不长时间挂起：20 秒内没有下一项操作时返回 `Document.wait`，客户端再请求 `/v1/cite/next`。Windows 上等待期间执行 `DoEvents`，Word 仍可响应；macOS 的 `AppleScriptTask` 是同步的，Word 会等待。Reader 窗口关闭或客户端断开时结束事务。
 - 一个事务进行中时，新的 `execCommand` 返回 409 并把对话框置前。
 
 ### 文档数据
 
 - 引注域：`ADDIN READER_CITATION {json}`。JSON 结构沿用 csl-citation schema，`uris` 为 `reader://paper/<文档ID>`，另存 DOI、arXiv 编号用于匹配，始终内嵌完整 `itemData`。
-- 参考文献表域：`ADDIN READER_BIBLIOGRAPHY {"uncited":[],"omitted":[],"custom":[]}`。
+- 参考文献表域：`ADDIN READER_BIBLIOGRAPHY {"uncited":[],"omitted":[]}`。
 - 文档首选项：自定义属性 `READER_PREF_1…n`，单个属性值有长度上限，按块切分；JSON，带 `dataVersion`。
-- 条目解析顺序：文档 ID → 合并重复论文后的保留版本 → DOI/arXiv → 内嵌 `itemData`（孤立条目，只能排版，不能编辑题录）。
+- 条目解析顺序：文档 ID → DOI → 内嵌 `itemData`（孤立条目，只能排版，不能编辑题录）。合并重复论文后的映射尚未接入。
 - 生成 `itemData` 时补 `language`：用户未设置时按标题与作者是否含汉字推断 `zh-CN` / `en-US`。双语 GB/T 7714 样式依赖它选择“等”或“et al.”。
 - 手动修改检测：记录 `plainCitation`，刷新时发现文本不同则询问是否保留，保留后写入 `dontUpdate`。
 - 只使用域，不提供书签模式。书签模式在 Zotero 中只为 LibreOffice 协作存在，不在本次范围内。
@@ -93,7 +97,7 @@ POST /v1/cite/respond     {result} | {error, message} → {op: ...} … → {op:
 
 分阶段：
 
-1. **S1 正文引注样式。** GB/T 7714-2015 顺序编码制与著者-出版年制、APA 7、IEEE、Chicago 著者-日期、MLA、Harvard、Vancouver、Nature；locale 至少 zh-CN、zh-TW、en-US、en-GB。
+1. **S1 正文引注样式（已完成）。** GB/T 7714—2015、—2025 的顺序编码制、著者-出版年制和注释（zotero-chinese 双语版），APA 7、IEEE、Chicago 著者-日期与注释、MLA、Harvard、Vancouver（NLM 的 `nlm-citation-sequence`）、Nature；locale 为 zh-CN、zh-TW、en-US、en-GB。官方仓库的 GB/T 7714 样式不按条目语言切换“等/et al.”，在 Word 中整篇排版时英文条目也会变成“等”，所以改用双语版。
 2. **S2 注释样式。** GB/T 7714 注释版、Chicago 注释版；脚注/尾注由客户端创建，`getNoteIndex` 返回注释序号；支持“同上”。
 3. **S3 自定义样式。** 导入 `.csl` 文件，包括依赖样式（`independent-parent` 指向已安装或可下载的父样式）和 zotero-chinese 的 CSL-M 样式。导入时用 citeproc-js 试排一条示例，失败则拒绝。
 4. **S4 全量样式库。** 随应用附带官方 CSL 样式库的索引（标题、ID、领域、格式），选中时下载并缓存样式文件；联网只在用户选择样式时发生，遵守现有的公开地址限制。附带样式继续离线可用。
@@ -114,7 +118,7 @@ POST /v1/cite/respond     {result} | {error, message} → {op: ...} … → {op:
 
 - 设置页提供“安装 Word 插件”“安装 WPS 插件”，安装、卸载、升级由 Reader 完成，并检测 Word/WPS 是否正在运行。
 - 位置：Word Windows `%APPDATA%\Microsoft\Word\STARTUP`；Word macOS `~/Library/Group Containers/UBF8T346G9.Office/User Content/Startup/Word/`，另放 AppleScript 到 `~/Library/Application Scripts/com.microsoft.Word/`；WPS 写入 `jsaddons` 的注册 XML，入口为 `http://127.0.0.1:17841/wps/`。
-- 鉴权：VBA 请求不带 Origin，不能沿用扩展的来源校验。安装时生成凭据写入客户端可读的位置，Go 只保存哈希；所有请求带 `Authorization: Bearer`。WPS 页面由 Reader 提供，页面内取得凭据，只接受同源请求。
+- 鉴权：VBA 请求不带 Origin，不能沿用扩展的来源校验。占用 17841 端口的 Reader 进程每次启动生成新凭据，写入固定位置 `<用户配置目录>/Reader/cite-credential`（0600），Word 端每次请求时读取（Windows 由 VBA 读，macOS 由 AppleScript 读）。开发版和正式版共用这个位置，因为只有占用端口的进程会写。WPS 页面由 Reader 提供，提供时把凭据写进页面；`/v1/cite/*` 只额外接受 `http://127.0.0.1:17841` 同源请求。
 - 文档内容（引注文本、域代码）只在本机传递，不联网。
 - 不复制 Zotero（AGPL）和 WPS-Zotero（GPL-3.0）的代码，只参考公开协议与文档格式独立实现。
 
