@@ -493,9 +493,19 @@ it("focuses the paragraph containing a saved annotation like clicking it", async
   expect(adapter.goTo).not.toHaveBeenCalled();
 });
 
-it("always follows scrolling in either pane without an unlink control", async () => {
+it("can disable automatic original centering while reading the translation", async () => {
   await click("原文译文");
-  expect(host.querySelector('[aria-label="同步滚动"]')).toBeNull();
+  vi.mocked(adapter.focusBlock!).mockClear();
+  const centerButton = host.querySelector<HTMLButtonElement>(
+    '[aria-label="关闭原文自动锚点居中"]',
+  )!;
+  expect(centerButton.getAttribute("aria-pressed")).toBe("true");
+  await act(async () => centerButton.click());
+  expect(
+    host.querySelector('[aria-label="开启原文自动锚点居中"]')?.getAttribute(
+      "aria-pressed",
+    ),
+  ).toBe("false");
   const pane = host.querySelector<HTMLElement>(".translation-document")!;
   const block = pane.querySelector<HTMLElement>("[data-translation-block]")!;
   pane.getBoundingClientRect = () => new DOMRect(0, 0, 600, 600);
@@ -510,10 +520,35 @@ it("always follows scrolling in either pane without an unlink control", async ()
     pane.dispatchEvent(new Event("scroll", { bubbles: true }));
     await new Promise(requestAnimationFrame);
   });
+  expect(adapter.followBlock).not.toHaveBeenCalled();
+  await act(async () => {
+    host.querySelector<HTMLButtonElement>(
+      '[aria-label="开启原文自动锚点居中"]',
+    )!.click();
+  });
+  await act(async () => {
+    pane.dispatchEvent(new WheelEvent("wheel", { bubbles: true, deltaY: 20 }));
+    pane.dispatchEvent(new Event("scroll", { bubbles: true }));
+    await new Promise(requestAnimationFrame);
+  });
   expect(adapter.followBlock).toHaveBeenLastCalledWith({
     blockId: "p1-b1",
     fraction: 0.55,
   });
+  await act(async () => {
+    host.querySelector<HTMLButtonElement>(
+      '[aria-label="关闭原文自动锚点居中"]',
+    )!.click();
+  });
+  const translatedBlock = host.querySelector<HTMLElement>(
+    "[data-translation-block]",
+  )!;
+  await act(async () => {
+    translatedBlock.dispatchEvent(
+      new KeyboardEvent("keydown", { key: "Enter", bubbles: true }),
+    );
+  });
+  expect(adapter.focusBlock).not.toHaveBeenCalled();
 });
 
 function translationGeometry(height = 200) {

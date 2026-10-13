@@ -7,6 +7,7 @@ import {
   useRef,
   useState,
   useSyncExternalStore,
+  type CSSProperties,
 } from "react";
 import {
   ChartColumn,
@@ -115,7 +116,7 @@ import { EPUBReadingView } from "./translation/EPUBReadingView";
 import { PDFReadingView } from "./translation/PDFReadingView";
 import { useReaderStore } from "./store";
 import { scheduleProgress, flushProgress } from "./progress";
-import { stepTranslationSize } from "./appearance";
+import { stepReadingTextSize, stepTranslationSize } from "./appearance";
 import { TranslationFontControls } from "./TranslationFontControls";
 function IconButton({
   label,
@@ -217,6 +218,7 @@ export function Workspace({
 }) {
   const { setTheme, aiConfig, setAIConfig, aiModelSaving } = useReaderStore();
   const translationSize = theme.translationFontSize ?? 1;
+  const assistantSize = theme.assistantFontScale ?? 1;
   const linkTarget = useReaderStore((s) => s.linkTarget);
   const [annotationsLoaded, setAnnotationsLoaded] = useState(false);
   const [blocks, setBlocks] = useState<PDFBlock[]>([]);
@@ -224,6 +226,8 @@ export function Workspace({
   const [readingToolbar, setReadingToolbar] = useState<HTMLDivElement | null>(
     null,
   );
+  const [sourceAutoCenterToolbar, setSourceAutoCenterToolbar] =
+    useState<HTMLDivElement | null>(null);
   const renderBlockImage = useMemo(
     () => adapter?.renderBlockImage?.bind(adapter),
     [adapter],
@@ -919,6 +923,7 @@ export function Workspace({
           )}
           <div ref={setReadingToolbar} />
           <span className="toolbar-divider" />
+          <div ref={setSourceAutoCenterToolbar} />
           <IconButton
             label="添加书签"
             onClick={() => void annotate("bookmark")}
@@ -936,17 +941,43 @@ export function Workspace({
             <PopoverContent className="w-72">
               <h3 className="mb-4 text-sm font-medium">阅读外观</h3>
               <div className="space-y-4">
-                <div className="flex gap-2">
-                  {(["light", "sepia", "dark"] as const).map((mode, i) => (
-                    <Button
-                      key={mode}
-                      size="sm"
-                      variant={theme.mode === mode ? "default" : "outline"}
-                      onClick={() => setTheme({ mode, appearance: mode })}
-                    >
-                      {["浅色", "纸张", "深色"][i]}
-                    </Button>
-                  ))}
+                <div className="grid grid-cols-2 gap-2">
+                  {[
+                    { label: "浅色", mode: "light" as const },
+                    { label: "纸张", mode: "sepia" as const },
+                    {
+                      label: "深色",
+                      mode: "dark" as const,
+                      contrast: "high" as const,
+                    },
+                    {
+                      label: "深色柔和",
+                      mode: "dark" as const,
+                      contrast: "soft" as const,
+                    },
+                  ].map(({ label, mode, contrast }) => {
+                    const active =
+                      theme.mode === mode &&
+                      (mode !== "dark" ||
+                        (theme.pdfDarkContrast ?? "soft") === contrast);
+                    return (
+                      <Button
+                        key={label}
+                        size="sm"
+                        variant={active ? "default" : "outline"}
+                        aria-pressed={active}
+                        onClick={() =>
+                          setTheme({
+                            mode,
+                            appearance: mode,
+                            ...(contrast ? { pdfDarkContrast: contrast } : {}),
+                          })
+                        }
+                      >
+                        {label}
+                      </Button>
+                    );
+                  })}
                 </div>
                 {doc.type === "epub" ? (
                   <>
@@ -1076,6 +1107,42 @@ export function Workspace({
                   </Button>
                 </div>
                 <TranslationFontControls theme={theme} setTheme={setTheme} />
+                <div className="setting-row">
+                  <span>AI 助读字号</span>
+                  <Button
+                    size="icon-xs"
+                    variant="outline"
+                    aria-label="减小 AI 助读字号"
+                    disabled={assistantSize <= 0.8}
+                    onClick={() =>
+                      setTheme({
+                        assistantFontScale: stepReadingTextSize(
+                          assistantSize,
+                          -1,
+                        ),
+                      })
+                    }
+                  >
+                    −
+                  </Button>
+                  <span>{Math.round(assistantSize * 100)}%</span>
+                  <Button
+                    size="icon-xs"
+                    variant="outline"
+                    aria-label="增大 AI 助读字号"
+                    disabled={assistantSize >= 1.6}
+                    onClick={() =>
+                      setTheme({
+                        assistantFontScale: stepReadingTextSize(
+                          assistantSize,
+                          1,
+                        ),
+                      })
+                    }
+                  >
+                    +
+                  </Button>
+                </div>
               </div>
             </PopoverContent>
           </Popover>
@@ -1219,6 +1286,7 @@ export function Workspace({
                   blocks={blocks}
                   processing={processing}
                   toolbarHost={readingToolbar}
+                  autoCenterHost={sourceAutoCenterToolbar}
                   pageNavigation={pageNavigation}
                   searchResults={results}
                   searchQuery={searchedQuery}
@@ -1361,7 +1429,13 @@ export function Workspace({
                   <ChartColumn />
                 </Button>
               </TabsList>
-              <TabsContent value="ai" className="ai-panel">
+              <TabsContent
+                value="ai"
+                className="ai-panel"
+                style={
+                  { "--assistant-font-scale": assistantSize } as CSSProperties
+                }
+              >
                 <AssistantPanel
                   key={doc.id}
                   session={session}
