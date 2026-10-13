@@ -18,6 +18,7 @@ import { DocumentPrefsDialog } from "./DocumentPrefsDialog";
 import { librarySource } from "./items";
 import type { CiteCommand, DocumentPort } from "./protocol";
 import { CiteSession, type CiteUI } from "./session";
+import { encodeForVBA } from "./vba";
 
 type Request =
   | {
@@ -119,7 +120,11 @@ export function CiteHost() {
       const port: DocumentPort = {
         call: async (operation) => {
           if (cancelled) throw new Error("文字处理软件已断开");
-          return (await api.citeCall(transaction, operation)) as never;
+          const word = event.client.startsWith("word-");
+          return (await api.citeCall(
+            transaction,
+            word ? { ...operation, vba: encodeForVBA(operation) } : operation,
+          )) as never;
         },
       };
       let error = "";
