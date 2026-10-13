@@ -41,6 +41,13 @@
       client: options.client,
     });
     while (op && op.op !== "Document.complete") {
+      // Reader is waiting for the user; ask again for the next operation.
+      if (op.op === "Document.wait") {
+        op = await options.post("/v1/cite/next", {
+          transaction: op.transaction,
+        });
+        continue;
+      }
       const reply = { transaction: op.transaction };
       try {
         reply.result = options.document.execute(op);

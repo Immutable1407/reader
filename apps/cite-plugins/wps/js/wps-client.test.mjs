@@ -278,6 +278,7 @@ it("runs a command until Reader completes it and reports errors", async () => {
   const document = createDocument(word.app);
   const sent = [];
   const replies = [
+    { op: "Document.wait", transaction: "t" },
     { op: "Document.getState", transaction: "t" },
     { op: "Document.unknown", transaction: "t" },
     { op: "Document.complete", transaction: "t", activate: true, error: "" },
@@ -299,11 +300,12 @@ it("runs a command until Reader completes it and reports errors", async () => {
     "/v1/cite/execCommand",
     { command: "refresh", documentId: "doc", client: "wps" },
   ]);
-  expect(sent[1][1]).toMatchObject({
+  expect(sent[1]).toEqual(["/v1/cite/next", { transaction: "t" }]);
+  expect(sent[2][1]).toMatchObject({
     transaction: "t",
     result: { fields: [] },
   });
-  expect(sent[2][1]).toEqual({
+  expect(sent[3][1]).toEqual({
     transaction: "t",
     error: "插件版本过旧，请在 Reader 设置中重新安装",
   });
