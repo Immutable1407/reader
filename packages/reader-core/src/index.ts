@@ -651,3 +651,4 @@ export type {
   ProxyCheckResult,
 } from "./proxy-settings";
 export type { UpdateProgress } from "./update-progress";
+export type { CommandLineStatus } from "./command-line";

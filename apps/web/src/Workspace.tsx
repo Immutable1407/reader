@@ -95,7 +95,12 @@ import { SourceReferences } from "./SourceReferences";
 import { ChatSession } from "./chat/chat-session";
 import { AssistantPanel } from "./chat/AssistantPanel";
 import { ImagePreview, imageLabel } from "./ImagePreview";
-import { composeChatContext } from "./chat/compose-context";
+import {
+  composeChatContext,
+  type OversizeChoice,
+  type OversizeContext,
+} from "./chat/compose-context";
+import { ContextSizeDialog } from "./chat/ContextSizeDialog";
 import { ReferenceNavigation } from "./reference-navigation";
 import { SelectionToolbar } from "./SelectionToolbar";
 import { AnnotationToolbar, annotationLabels } from "./AnnotationToolbar";
@@ -381,6 +386,10 @@ export function Workspace({
   const chat = useSyncExternalStore(session.subscribe, session.getSnapshot);
   const sendSerial = useRef(0);
   const [sending, setSending] = useState(false);
+  const [oversize, setOversize] = useState<{
+    request: OversizeContext;
+    resolve: (choice: OversizeChoice) => void;
+  }>();
   const [pageInput, setPageInput] = useState("");
   const abort = useRef<AbortController | null>(null);
   const searchSerial = useRef(0);
@@ -712,6 +721,8 @@ export function Workspace({
         includeChapter: aiConfig?.chatIncludeChapter,
         useSection,
         marks: annotationContext(annotations, 4000, palette),
+        confirmOversize: (request) =>
+          new Promise((resolve) => setOversize({ request, resolve })),
       });
       if (controller.signal.aborted) return;
       if (!directImage) setPrompt("");
@@ -1738,6 +1749,13 @@ export function Workspace({
       <ProcessingUsageDialog
         document={usageOpen ? doc : null}
         onClose={() => setUsageOpen(false)}
+      />
+      <ContextSizeDialog
+        request={oversize?.request}
+        onChoose={(choice) => {
+          oversize?.resolve(choice);
+          setOversize(undefined);
+        }}
       />
     </div>
   );

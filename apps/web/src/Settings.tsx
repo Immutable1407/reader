@@ -15,6 +15,7 @@ import {
   X,
 } from "lucide-react";
 import { DiagnosticExport } from "./DiagnosticExport";
+import { CommandLineSettings } from "./CommandLineSettings";
 import { ProviderIdentity } from "./ProviderIdentity";
 import { TaskModels } from "./TaskModels";
 import { APIAgentForm, APIModelForm } from "./APIAgentForm";
@@ -834,17 +835,6 @@ export function Settings({
                       保存
                     </Button>
                   </div>
-                  {journalRank.hasKey && (
-                    <Button
-                      className="mt-2"
-                      size="xs"
-                      variant="ghost"
-                      disabled={journalSaving}
-                      onClick={() => void saveJournalRank({}, "")}
-                    >
-                      移除 SecretKey
-                    </Button>
-                  )}
                   <div className="mt-4 flex items-center gap-2 text-xs">
                     <span id="journal-rank-filter-label">指标筛选</span>
                     <Select
@@ -1093,6 +1083,7 @@ export function Settings({
                 数据目录。发送的选区或章节会交给对应服务。
               </p>
             </section>
+            <CommandLineSettings open={open} />
           </TabsContent>
         </Tabs>
       </DialogContent>
