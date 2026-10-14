@@ -35,7 +35,7 @@ Private mOffsets() As Long
 
 ' ---------------------------------------------------------------- commands
 
-Public Sub ReaderCiteAction(control As IRibbonControl)
+Public Sub ReaderCiteAction(control As Object)
     RunCommand control.ID
 End Sub
 
