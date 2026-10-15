@@ -179,7 +179,7 @@ it("records, persists, cancels and restores shortcuts in the panel", async () =>
   expect(button().getAttribute("aria-pressed")).toBe("false");
   await act(async () =>
     Array.from(host.querySelectorAll("button"))
-      .find((el) => el.textContent === "恢复默认快捷键")!
+      .find((el) => el.textContent === "恢复默认")!
       .click(),
   );
   expect(readBindings()).toEqual(defaults());

@@ -42,16 +42,27 @@ export function ShortcutPanel() {
         点击组合键后按下新快捷键，按 Esc 取消。使用 {isMac() ? "Cmd" : "Ctrl"}{" "}
         加字母或数字，可搭配 Shift。
       </p>
-      <Input
-        aria-label="搜索快捷键"
-        placeholder="搜索快捷键名称…"
-        value={query}
-        onChange={(event) => {
-          setQuery(event.target.value);
-          setEditing(null);
-          setError("");
-        }}
-      />
+      <div className="flex items-center gap-2">
+        <Input
+          className="min-w-0 flex-1"
+          aria-label="搜索快捷键"
+          placeholder="搜索快捷键名称…"
+          value={query}
+          onChange={(event) => {
+            setQuery(event.target.value);
+            setEditing(null);
+            setError("");
+          }}
+        />
+        <Button
+          variant="ghost"
+          className="shrink-0"
+          disabled={saving}
+          onClick={() => void save(defaults())}
+        >
+          恢复默认
+        </Button>
+      </div>
       <div className="divide-y">
         {filtered.map((action) => (
           <div
@@ -116,13 +127,6 @@ export function ShortcutPanel() {
       <p role="status" className="text-sm text-destructive">
         {error}
       </p>
-      <Button
-        variant="ghost"
-        disabled={saving}
-        onClick={() => void save(defaults())}
-      >
-        恢复默认快捷键
-      </Button>
     </section>
   );
 }
