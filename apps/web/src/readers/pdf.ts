@@ -48,6 +48,7 @@ export class PDFReaderAdapter implements ReaderAdapter {
   private fitWidth = true;
   private appliedZoom?: ReaderTheme["zoom"];
   private wheelScale?: number;
+  private wheelAppliedScale?: number;
   private disposed = false;
   private navigationRequest = 0;
   private blocks: PDFBlockOverlay;
@@ -401,6 +402,10 @@ export class PDFReaderAdapter implements ReaderAdapter {
       return;
     event.preventDefault();
     if (!Number.isFinite(event.deltaY) || event.deltaY === 0) return;
+    // Focus animations and other navigation can change scale outside this handler.
+    // Keep fractional wheel deltas only while the viewer still has our last scale.
+    if (this.viewer.currentScale !== this.wheelAppliedScale)
+      this.wheelScale = undefined;
     const unit =
       event.deltaMode === 1
         ? 16
@@ -408,15 +413,16 @@ export class PDFReaderAdapter implements ReaderAdapter {
           ? this.container.clientHeight
           : 1;
     const delta = Math.max(-100, Math.min(100, event.deltaY * unit));
+    // A full wheel event changes scale by at most 20%; smaller pinch deltas
+    // remain proportional. Opposite deltas use reciprocal factors.
+    const factor = Math.exp((-delta / 100) * Math.log(1.2));
     // Retain sub-percent deltas that PDF.js rounds when applying each scale.
     this.wheelScale = Math.min(
       5,
-      Math.max(
-        0.25,
-        (this.wheelScale ?? this.viewer.currentScale) * Math.exp(-delta / 100),
-      ),
+      Math.max(0.25, (this.wheelScale ?? this.viewer.currentScale) * factor),
     );
     this.zoomTo(this.wheelScale, [event.clientX, event.clientY]);
+    this.wheelAppliedScale = this.viewer.currentScale;
   };
   private onMouseUp = (event: MouseEvent) => {
     this.selecting = false;
