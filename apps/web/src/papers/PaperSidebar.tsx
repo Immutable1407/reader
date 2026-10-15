@@ -7,6 +7,7 @@ import {
   CircleHelp,
   Copy,
   Eye,
+  FileDown,
   FileText,
   Folder,
   FolderOpen,
@@ -15,6 +16,7 @@ import {
   Tags,
   Library,
   Loader2,
+  Pencil,
   Pin,
   Plus,
   Star,
@@ -488,6 +490,7 @@ export function PaperSidebar({
                 )
               }
             >
+              <FileDown />
               导出引用
             </ContextMenuItem>
             <ContextMenuItem
@@ -565,7 +568,8 @@ export function PaperSidebar({
           <>
             {pinItem(key)}
             <ContextMenuItem onClick={() => setSmartEditing(item)}>
-              编辑…
+              <Pencil />
+              编辑
             </ContextMenuItem>
             {!isPinned && hideItem(key)}
             <ContextMenuSeparator />
@@ -577,6 +581,7 @@ export function PaperSidebar({
                 )
               }
             >
+              <FileDown />
               导出引用
             </ContextMenuItem>
             <ContextMenuItem
