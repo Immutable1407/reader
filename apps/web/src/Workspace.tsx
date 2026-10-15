@@ -980,6 +980,26 @@ export function Workspace({
                     <TabsTrigger value="gray">灰色</TabsTrigger>
                   </TabsList>
                 </Tabs>
+                <div className="flex items-center gap-3">
+                  <span className="shrink-0 text-sm">Agent 字号</span>
+                  <Slider
+                    className="reading-appearance-slider min-w-0 flex-1"
+                    thumbLabel="Agent 字号"
+                    min={80}
+                    max={160}
+                    step={5}
+                    value={[Math.round(assistantSize * 100)]}
+                    onValueChange={(value) =>
+                      setTheme({
+                        assistantFontScale:
+                          (Array.isArray(value) ? value[0] : value) / 100,
+                      })
+                    }
+                  />
+                  <span className="w-10 text-right text-xs tabular-nums">
+                    {Math.round(assistantSize * 100)}%
+                  </span>
+                </div>
                 {doc.type === "epub" ? (
                   <>
                     <div className="setting-row">
@@ -1122,26 +1142,6 @@ export function Workspace({
                   </Button>
                 </div>
                 <TranslationFontControls theme={theme} setTheme={setTheme} />
-                <div className="flex items-center gap-3">
-                  <span className="shrink-0 text-sm">Agent 字号</span>
-                  <Slider
-                    className="reading-appearance-slider min-w-0 flex-1"
-                    thumbLabel="Agent 字号"
-                    min={80}
-                    max={160}
-                    step={5}
-                    value={[Math.round(assistantSize * 100)]}
-                    onValueChange={(value) =>
-                      setTheme({
-                        assistantFontScale:
-                          (Array.isArray(value) ? value[0] : value) / 100,
-                      })
-                    }
-                  />
-                  <span className="w-10 text-right text-xs tabular-nums">
-                    {Math.round(assistantSize * 100)}%
-                  </span>
-                </div>
               </div>
             </PopoverContent>
           </Popover>
