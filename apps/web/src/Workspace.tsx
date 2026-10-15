@@ -1123,10 +1123,10 @@ export function Workspace({
                 </div>
                 <TranslationFontControls theme={theme} setTheme={setTheme} />
                 <div className="flex items-center gap-3">
-                  <span className="shrink-0 text-sm">Agent 输出字号</span>
+                  <span className="shrink-0 text-sm">Agent 字号</span>
                   <Slider
                     className="reading-appearance-slider min-w-0 flex-1"
-                    thumbLabel="Agent 输出字号"
+                    thumbLabel="Agent 字号"
                     min={80}
                     max={160}
                     step={5}
