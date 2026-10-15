@@ -3,6 +3,7 @@ import {
   BookOpen,
   ExternalLink,
   FolderPlus,
+  Globe,
   Loader2,
   MoreHorizontal,
   Pin,
@@ -219,15 +220,6 @@ export function PaperDetail({
           <BookOpen />
           {percent > 1 ? `继续阅读 · ${percent}%` : "开始阅读"}
         </Button>
-        {snapshotAvailable && (
-          <Button
-            size="sm"
-            variant="outline"
-            onClick={() => setSnapshotOpen(true)}
-          >
-            查看网页快照
-          </Button>
-        )}
         <div className="paper-detail-actions">
           <DropdownMenu>
             <DropdownMenuTrigger
@@ -277,6 +269,14 @@ export function PaperDetail({
                 docs={[doc]}
                 actions={actions}
                 inPanel
+                extra={
+                  snapshotAvailable && (
+                    <DropdownMenuItem onClick={() => setSnapshotOpen(true)}>
+                      <Globe />
+                      查看网页快照
+                    </DropdownMenuItem>
+                  )
+                }
               />
             </DropdownMenuContent>
           </DropdownMenu>
