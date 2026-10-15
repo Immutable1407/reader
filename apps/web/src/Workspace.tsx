@@ -748,6 +748,24 @@ export function Workspace({
       }
     }
   };
+  const regenerate = async () => {
+    const current = useReaderStore.getState();
+    if (abort.current || session.getSnapshot().busy || current.aiModelSaving)
+      return;
+    if (!current.aiConfig?.primary) {
+      onSettings();
+      return;
+    }
+    const serial = ++sendSerial.current;
+    setSending(true);
+    try {
+      await session.regenerate(current.aiConfig.primary);
+    } catch (error) {
+      if (serial === sendSerial.current) toast.error((error as Error).message);
+    } finally {
+      if (serial === sendSerial.current) setSending(false);
+    }
+  };
   const blockAction = (block: PDFBlock, action: PDFBlockAction) => {
     if (action === "copy") {
       if (block.image)
@@ -1372,6 +1390,8 @@ export function Workspace({
                 <AssistantPanel
                   key={doc.id}
                   session={session}
+                  onRegenerate={() => void regenerate()}
+                  regenerateDisabled={aiModelSaving || sending}
                   empty={
                     <div className="chat-empty">
                       <p>

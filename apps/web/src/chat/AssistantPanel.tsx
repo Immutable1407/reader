@@ -6,6 +6,7 @@ import { Button } from "@reader/ui/components/button";
 import { ScrollArea } from "@reader/ui/components/scroll-area";
 import {
   ChatSession,
+  chatRetryAction,
   type ChatSnapshot,
   type PendingAnswer,
 } from "./chat-session";
@@ -61,15 +62,20 @@ export function AssistantPanel({
   empty,
   extras,
   references,
+  onRegenerate,
+  regenerateDisabled = false,
 }: {
   session: ChatSession;
   empty: ReactNode;
   extras: (message: Message) => ReactNode;
   references: (message: Message) => ReactNode;
+  onRegenerate: () => void;
+  regenerateDisabled?: boolean;
 }) {
   const state = useSyncExternalStore(session.subscribe, session.getSnapshot);
   const scroll = useChatScroll(state.pending?.key);
   const pending = state.pending;
+  const retryAction = chatRetryAction(state);
   return (
     <div className="chat-thread">
       <ScrollArea className="chat-scroll" viewportRef={scroll.viewportRef}>
@@ -172,15 +178,21 @@ export function AssistantPanel({
               </div>
             );
           })}
-          {(state.loadError ||
-            (pending && !["generating", "saved"].includes(pending.phase))) && (
+          {retryAction && (
             <Button
               variant="ghost"
               size="sm"
-              disabled={state.busy}
-              onClick={() => void session.retry()}
+              disabled={
+                state.busy ||
+                (retryAction === "regenerate" && regenerateDisabled)
+              }
+              onClick={() =>
+                retryAction === "sync"
+                  ? void session.retrySync()
+                  : onRegenerate()
+              }
             >
-              重试同步
+              {retryAction === "sync" ? "重试同步" : "重新生成"}
             </Button>
           )}
         </div>
