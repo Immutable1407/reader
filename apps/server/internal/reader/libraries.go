@@ -67,7 +67,7 @@ func paperLimit(kind string, size int64, path string) string {
 }
 
 // "guide" records the finished onboarding and the last release notes shown.
-var preferenceKeys = map[string]bool{"library": true, "guide": true}
+var preferenceKeys = map[string]bool{"library": true, "guide": true, "shortcuts": true}
 
 func (s *Server) preferences(w http.ResponseWriter, r *http.Request) {
 	key := r.PathValue("key")

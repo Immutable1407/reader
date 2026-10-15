@@ -1,3 +1,4 @@
+import { useShortcut } from "./shortcuts/shortcuts";
 import { AnnotationHoverCard } from "./AnnotationHoverCard";
 import { AnnotationQuote } from "./AnnotationQuote";
 import {
@@ -393,23 +394,13 @@ export function Workspace({
     setSearchedQuery("");
     setSearching(false);
   }, [doc.id]);
-  useEffect(() => {
-    const find = (event: KeyboardEvent) => {
-      if (
-        (event.metaKey || event.ctrlKey) &&
-        !event.shiftKey &&
-        !event.altKey &&
-        event.key.toLowerCase() === "f"
-      ) {
-        event.preventDefault();
-        setLeft(true);
-        setLeftTab("search");
-        requestAnimationFrame(() => searchInput.current?.focus());
-      }
-    };
-    window.addEventListener("keydown", find);
-    return () => window.removeEventListener("keydown", find);
-  }, []);
+  useShortcut("readerLeft", () => setLeft((value) => !value));
+  useShortcut("readerRight", () => setRight((value) => !value));
+  useShortcut("search", () => {
+    setLeft(true);
+    setLeftTab("search");
+    requestAnimationFrame(() => searchInput.current?.focus());
+  });
   useEffect(() => {
     let alive = true;
     session.activate();

@@ -2613,7 +2613,7 @@ export interface paths {
                 query?: never;
                 header?: never;
                 path: {
-                    key: "library" | "guide";
+                    key: "library" | "guide" | "shortcuts";
                 };
                 cookie?: never;
             };
@@ -2646,7 +2646,7 @@ export interface paths {
                 query?: never;
                 header?: never;
                 path: {
-                    key: "library" | "guide";
+                    key: "library" | "guide" | "shortcuts";
                 };
                 cookie?: never;
             };

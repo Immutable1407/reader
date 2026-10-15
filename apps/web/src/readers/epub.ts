@@ -1,3 +1,4 @@
+import { forwardReaderShortcut } from "../shortcuts/shortcuts";
 import {
   installEPUBPaging,
   installEPUBScroll,
@@ -314,6 +315,7 @@ export class EPUBReaderAdapter implements ReaderAdapter {
       changed();
     };
     const key = (event: KeyboardEvent) => {
+      forwardReaderShortcut(event);
       this.pointers.delete(wnd);
       this.onKeyDown(event);
     };

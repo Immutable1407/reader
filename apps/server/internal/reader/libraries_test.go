@@ -263,3 +263,16 @@ func TestFoldersNestButTagsStayFlat(t *testing.T) {
 		t.Fatalf("bad folders: %d", w.Code)
 	}
 }
+
+func TestShortcutPreferences(t *testing.T) {
+	s := testServer(t)
+	if w := request(t, s, "PUT", "/api/preferences/shortcuts", strings.NewReader(`{"readerLeft":{"key":"b","shift":true}}`)); w.Code != 200 {
+		t.Fatal(w.Body.String())
+	}
+	if w := request(t, s, "GET", "/api/preferences/shortcuts", nil); w.Code != 200 || !strings.Contains(w.Body.String(), `"key":"b"`) {
+		t.Fatal(w.Body.String())
+	}
+	if w := request(t, s, "GET", "/api/preferences/guide", nil); strings.Contains(w.Body.String(), "readerLeft") {
+		t.Fatal("shortcut preferences overwrite guide")
+	}
+}
