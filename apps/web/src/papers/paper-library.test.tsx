@@ -9,10 +9,19 @@ import { PaperLibrary } from "./PaperLibrary";
 import { PaperSidebar } from "./PaperSidebar";
 import { usePaperUI } from "./state";
 import { paper } from "./fixtures";
+import { exportAnnotatedPDFWithToast } from "../annotated-pdf-export";
+vi.mock("../annotated-pdf-export", () => ({
+  exportAnnotatedPDFWithToast: vi.fn(async () => 1),
+}));
 vi.mock("@reader/api", () => ({
   api: {
     snapshotStatus: vi.fn(async () => ({ available: false })),
-    journalRankConfig: vi.fn(async () => ({ enabled: true, hasKey: false, selected: [], available: [] })),
+    journalRankConfig: vi.fn(async () => ({
+      enabled: true,
+      hasKey: false,
+      selected: [],
+      available: [],
+    })),
     update: vi.fn(async () => ({})),
     documents: vi.fn(async () => []),
     trash: vi.fn(async () => []),
@@ -604,3 +613,36 @@ it.each(["list", "table"] as const)(
     expect(navButton("解析中")).toBeDefined();
   },
 );
+
+it("exports selected PDFs sequentially and prevents duplicate batch exports", async () => {
+  let finishFirst!: (value: number) => void;
+  vi.mocked(exportAnnotatedPDFWithToast).mockImplementationOnce(
+    () =>
+      new Promise<number>((resolve) => {
+        finishFirst = resolve;
+      }),
+  );
+  await act(async () =>
+    useReaderStore.setState({
+      documents: [...docs, paper({ id: "epub", title: "EPUB", type: "epub" })],
+    }),
+  );
+  await act(async () => button("批量").click());
+  expect(button("导出带批注的 PDF").disabled).toBe(true);
+  await act(async () => usePaperUI.getState().setPicked(["epub"]));
+  expect(button("导出带批注的 PDF").disabled).toBe(true);
+  await act(async () => usePaperUI.getState().setPicked(["a", "b", "epub"]));
+  const trigger = button("导出带批注的 PDF");
+  await act(async () => {
+    trigger.click();
+    trigger.click();
+  });
+  expect(exportAnnotatedPDFWithToast).toHaveBeenCalledExactlyOnceWith(docs[0]);
+  expect(trigger.disabled).toBe(true);
+  // Changing the selection during export does not change the captured batch.
+  await act(async () => usePaperUI.getState().setPicked(["epub"]));
+  await act(async () => finishFirst(1));
+  expect(exportAnnotatedPDFWithToast).toHaveBeenCalledTimes(2);
+  expect(exportAnnotatedPDFWithToast).toHaveBeenNthCalledWith(2, docs[1]);
+  expect(button("导出带批注的 PDF").disabled).toBe(true);
+});

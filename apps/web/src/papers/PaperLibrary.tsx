@@ -15,6 +15,7 @@ import {
   Columns3,
   List,
   Table2,
+  FileDown,
   FolderMinus,
   FolderPlus,
   Loader2,
@@ -75,6 +76,7 @@ import {
 } from "@reader/ui/components/dropdown-menu";
 import { useReaderStore } from "../store";
 import { TrashView } from "../TrashView";
+import { exportAnnotatedPDFWithToast } from "../annotated-pdf-export";
 import { trashWithUndo } from "../library-actions";
 import { toast } from "sonner";
 import {
@@ -232,6 +234,21 @@ export function PaperLibrary({
   const visibleIds = visible.map((d) => d.id);
   const selected = documents.find((d) => d.id === selectedId);
   const pickedDocs = documents.filter((d) => picked.has(d.id));
+  const pickedPDFs = pickedDocs.filter((doc) => doc.type === "pdf");
+  const [exportingPDFs, setExportingPDFs] = useState(false);
+  const pdfExportRunning = useRef(false);
+  const exportPickedPDFs = async () => {
+    if (pdfExportRunning.current || !pickedPDFs.length) return;
+    pdfExportRunning.current = true;
+    setExportingPDFs(true);
+    try {
+      // Each export reports its own result and handles failure before continuing.
+      for (const doc of pickedPDFs) await exportAnnotatedPDFWithToast(doc);
+    } finally {
+      pdfExportRunning.current = false;
+      setExportingPDFs(false);
+    }
+  };
   const categories = paperCategories(prefs, documents);
   const category = view.startsWith("folder:") ? view.slice(7) : "";
   const smart = prefs.smartCategories || [];
@@ -775,6 +792,19 @@ export function PaperLibrary({
                   >
                     <Quote />
                     导出引用
+                  </Button>
+                  <Button
+                    size="sm"
+                    variant="ghost"
+                    disabled={!pickedPDFs.length || exportingPDFs}
+                    onClick={() => void exportPickedPDFs()}
+                  >
+                    {exportingPDFs ? (
+                      <Loader2 className="animate-spin" />
+                    ) : (
+                      <FileDown />
+                    )}
+                    {exportingPDFs ? "正在导出 PDF…" : "导出带批注的 PDF"}
                   </Button>
                   <DropdownMenu>
                     <DropdownMenuTrigger
