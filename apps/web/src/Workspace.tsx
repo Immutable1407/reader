@@ -946,7 +946,7 @@ export function Workspace({
               <Type />
             </PopoverTrigger>
             <PopoverContent className="w-72">
-              <h3 className="mb-4 text-sm font-medium">阅读外观</h3>
+              <h3 className="text-sm font-medium">阅读外观</h3>
               <div className="space-y-4">
                 <Tabs
                   value={
