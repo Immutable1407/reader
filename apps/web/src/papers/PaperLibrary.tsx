@@ -39,7 +39,6 @@ import type {
   PaperColumn,
   PaperSort,
   Processing,
-  ReadingStatus,
 } from "@reader/core";
 import { Button } from "@reader/ui/components/button";
 import { Checkbox } from "@reader/ui/components/checkbox";
@@ -89,7 +88,6 @@ import {
   savePaperPreferences,
   toggleTagFor,
   toggleCategoryFor,
-  setReadingStatus,
   setStarred,
 } from "./actions";
 import {
@@ -688,6 +686,20 @@ export function PaperLibrary({
                   已选 {picked.size} 篇
                 </span>
                 <div className="ml-auto flex flex-wrap items-center gap-1">
+                  <Button
+                    size="sm"
+                    variant="ghost"
+                    title="导出带批注的 PDF"
+                    disabled={!pickedPDFs.length || exportingPDFs}
+                    onClick={() => void exportPickedPDFs()}
+                  >
+                    {exportingPDFs ? (
+                      <Loader2 className="animate-spin" />
+                    ) : (
+                      <FileDown />
+                    )}
+                    {exportingPDFs ? "正在导出…" : "导出"}
+                  </Button>
                   <DropdownMenu>
                     <DropdownMenuTrigger
                       render={
@@ -699,7 +711,7 @@ export function PaperLibrary({
                       }
                     >
                       <FolderPlus />
-                      加入分类
+                      分类
                     </DropdownMenuTrigger>
                     <DropdownMenuContent className="max-h-80 w-48">
                       {flattenCategories(categoryTree(categories)).map(
@@ -741,33 +753,6 @@ export function PaperLibrary({
                       移出当前分类
                     </Button>
                   )}
-                  <DropdownMenu>
-                    <DropdownMenuTrigger
-                      render={
-                        <Button
-                          size="sm"
-                          variant="ghost"
-                          disabled={!pickedDocs.length}
-                        />
-                      }
-                    >
-                      阅读状态
-                    </DropdownMenuTrigger>
-                    <DropdownMenuContent>
-                      {(Object.keys(statusLabels) as ReadingStatus[]).map(
-                        (key) => (
-                          <DropdownMenuItem
-                            key={key}
-                            onClick={() =>
-                              void setReadingStatus(pickedDocs, key)
-                            }
-                          >
-                            标为{statusLabels[key]}
-                          </DropdownMenuItem>
-                        ),
-                      )}
-                    </DropdownMenuContent>
-                  </DropdownMenu>
                   <Button
                     size="icon-sm"
                     aria-label="星标"
@@ -794,19 +779,6 @@ export function PaperLibrary({
                     }
                   >
                     <Quote />
-                  </Button>
-                  <Button
-                    size="sm"
-                    variant="ghost"
-                    disabled={!pickedPDFs.length || exportingPDFs}
-                    onClick={() => void exportPickedPDFs()}
-                  >
-                    {exportingPDFs ? (
-                      <Loader2 className="animate-spin" />
-                    ) : (
-                      <FileDown />
-                    )}
-                    {exportingPDFs ? "正在导出 PDF…" : "导出带批注的 PDF"}
                   </Button>
                   <DropdownMenu>
                     <DropdownMenuTrigger
@@ -844,14 +816,15 @@ export function PaperLibrary({
                     </DropdownMenuContent>
                   </DropdownMenu>
                   <Button
-                    size="sm"
+                    size="icon-sm"
+                    aria-label="移到回收站"
+                    title="移到回收站"
                     variant="ghost"
                     className="text-destructive"
                     disabled={!pickedDocs.length}
                     onClick={() => void trashPapers(pickedDocs, true)}
                   >
                     <Trash2 />
-                    移到回收站
                   </Button>
                 </div>
               </div>

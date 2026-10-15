@@ -127,7 +127,7 @@ const navButton = (label: string) =>
   )!;
 const button = (label: string) =>
   [...host.querySelectorAll<HTMLButtonElement>("button")].find(
-    (b) => b.textContent?.trim() === label,
+    (b) => b.textContent?.trim() === label || b.getAttribute("aria-label") === label,
   )!;
 
 it("shows details on click and saves an edited field as manual metadata", async () => {
@@ -628,11 +628,11 @@ it("exports selected PDFs sequentially and prevents duplicate batch exports", as
     }),
   );
   await act(async () => button("批量").click());
-  expect(button("导出带批注的 PDF").disabled).toBe(true);
+  expect(button("导出").disabled).toBe(true);
   await act(async () => usePaperUI.getState().setPicked(["epub"]));
-  expect(button("导出带批注的 PDF").disabled).toBe(true);
+  expect(button("导出").disabled).toBe(true);
   await act(async () => usePaperUI.getState().setPicked(["a", "b", "epub"]));
-  const trigger = button("导出带批注的 PDF");
+  const trigger = button("导出");
   await act(async () => {
     trigger.click();
     trigger.click();
@@ -644,5 +644,5 @@ it("exports selected PDFs sequentially and prevents duplicate batch exports", as
   await act(async () => finishFirst(1));
   expect(exportAnnotatedPDFWithToast).toHaveBeenCalledTimes(2);
   expect(exportAnnotatedPDFWithToast).toHaveBeenNthCalledWith(2, docs[1]);
-  expect(button("导出带批注的 PDF").disabled).toBe(true);
+  expect(button("导出").disabled).toBe(true);
 });
