@@ -90,19 +90,31 @@ it.each(["error", "cancel", "eof"] as const)(
   },
 );
 
-it("requires successful synchronization before regeneration and preserves partial output offline", async () => {
-  const h = setup();
-  await h.session.load();
-  await h.session.send(input);
-  h.messages.mockRejectedValueOnce(new Error("offline"));
-  await h.session.regenerate("api");
-  expect(h.stream).toHaveBeenCalledTimes(1);
-  expect(h.session.getSnapshot().pending?.content).toBe("partial");
-  expect(chatRetryAction(h.session.getSnapshot())).toBe("sync");
-  await h.session.retrySync();
-  expect(chatRetryAction(h.session.getSnapshot())).toBe("regenerate");
-  h.session.dispose();
-});
+it.each(["error", "cancel", "eof"] as const)(
+  "keeps regeneration after %s when either history check fails, without replaying offline",
+  async (mode) => {
+    const h = setup(mode);
+    await h.session.load();
+    h.messages.mockRejectedValueOnce(new Error("offline after generation"));
+    await h.session.send(input);
+    expect(chatRetryAction(h.session.getSnapshot())).toBe("regenerate");
+    h.messages.mockRejectedValueOnce(new Error("offline before regeneration"));
+    await h.session.regenerate("api");
+    expect(h.stream).toHaveBeenCalledTimes(1);
+    expect(h.session.getSnapshot()).toMatchObject({
+      busy: false,
+      pending: {
+        content: "partial",
+        notice: "暂时无法读取对话记录，请稍后重试。",
+      },
+    });
+    expect(chatRetryAction(h.session.getSnapshot())).toBe("regenerate");
+    await h.session.regenerate("api");
+    expect(h.stream).toHaveBeenCalledTimes(2);
+    expect(h.requests[1]).toEqual({ ...h.requests[0], provider: "api" });
+    h.session.dispose();
+  },
+);
 
 it.each(["cancel", "eof"] as const)(
   "reconciles a late successful save after %s instead of regenerating",
@@ -139,7 +151,7 @@ it("retries a history load failure without generating", async () => {
   const h = setup();
   h.messages.mockRejectedValueOnce(new Error("offline"));
   await h.session.load();
-  expect(chatRetryAction(h.session.getSnapshot())).toBe("sync");
+  expect(chatRetryAction(h.session.getSnapshot())).toBe("reload");
   await h.session.retrySync();
   expect(h.session.getSnapshot().loaded).toBe(true);
   expect(h.stream).not.toHaveBeenCalled();

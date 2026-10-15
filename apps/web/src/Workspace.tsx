@@ -694,7 +694,7 @@ export function Workspace({
       question = "请解释附件中的图表或公式。";
     if (!question.trim()) return;
     if (!session.getSnapshot().loaded) {
-      toast.error("对话记录尚未加载，请重试同步。");
+      toast.error("对话记录尚未加载，请重新加载。");
       return;
     }
     setSending(true);

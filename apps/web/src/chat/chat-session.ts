@@ -33,7 +33,6 @@ export type PendingAnswer = {
   fallback: string;
   input: ChatInput;
   savedId?: string;
-  syncFailed?: boolean;
   error?: string;
   regenerationBlocked?: boolean;
   controller: AbortController;
@@ -184,7 +183,7 @@ export class ChatSession {
   async send(input: ChatInput) {
     if (!this.alive || this.state.busy) return;
     if (!this.state.loaded)
-      throw new Error("对话记录尚未加载，请重试同步后发送。");
+      throw new Error("对话记录尚未加载，请重新加载后发送。");
     await this.generate({
       ...structuredClone(input),
       userMessageId: crypto.randomUUID().replaceAll("-", ""),
@@ -364,7 +363,6 @@ export class ChatSession {
         this.querySignal(),
       );
       if (!this.current(serial) || this.active !== pending) return false;
-      pending.syncFailed = false;
       const userIndex = messages.findIndex(
         (message) =>
           message.id === pending.input.userMessageId && message.role === "user",
@@ -401,7 +399,7 @@ export class ChatSession {
         pending.notice = pending.regenerationBlocked
           ? "这轮问题已有后续记录，无法重新生成。"
           : pending.phase === "syncing"
-            ? "回答已保存，记录待同步；请重试同步。"
+            ? "回答已保存，暂未读取到对应记录，请重试。"
             : pending.phase === "cancelled"
               ? "已停止，可重新生成。"
               : pending.error
@@ -412,11 +410,10 @@ export class ChatSession {
       return true;
     } catch {
       if (!this.current(serial)) return false;
-      pending.syncFailed = true;
       pending.notice =
         pending.phase === "syncing"
-          ? "回答已保存，同步失败；请重试同步。"
-          : "记录同步失败，完成状态未确认；已保留收到的文字。";
+          ? "回答已保存，暂时无法读取，请稍后重试。"
+          : "暂时无法读取对话记录，请稍后重试。";
       this.publish({ pending: { ...pending } });
       return false;
     }
@@ -425,8 +422,8 @@ export class ChatSession {
 
 export function chatRetryAction(
   state: ChatSnapshot,
-): "sync" | "regenerate" | undefined {
-  if (state.loadError) return "sync";
+): "reload" | "sync" | "regenerate" | undefined {
+  if (state.loadError) return "reload";
   const pending = state.pending;
   if (
     !pending ||
@@ -434,7 +431,5 @@ export function chatRetryAction(
     ["generating", "saved"].includes(pending.phase)
   )
     return;
-  return pending.phase === "syncing" || pending.syncFailed
-    ? "sync"
-    : "regenerate";
+  return pending.phase === "syncing" ? "sync" : "regenerate";
 }
