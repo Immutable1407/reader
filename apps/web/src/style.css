@@ -3198,3 +3198,10 @@ textarea.paper-note-input {
   height: auto;
   display: block;
 }
+
+.reading-appearance-slider [data-slot="slider-track"] {
+  background: color-mix(in oklch, var(--foreground) 28%, var(--popover));
+}
+.reading-appearance-slider [data-slot="slider-range"] {
+  background: var(--foreground);
+}

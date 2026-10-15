@@ -117,7 +117,7 @@ import { EPUBReadingView } from "./translation/EPUBReadingView";
 import { PDFReadingView } from "./translation/PDFReadingView";
 import { useReaderStore } from "./store";
 import { scheduleProgress, flushProgress } from "./progress";
-import { stepReadingTextSize, stepTranslationSize } from "./appearance";
+import { Slider } from "@reader/ui/components/slider";
 import { TranslationFontControls } from "./TranslationFontControls";
 function IconButton({
   label,
@@ -964,45 +964,59 @@ export function Workspace({
               <Type />
             </PopoverTrigger>
             <PopoverContent className="w-72">
-              <h3 className="mb-4 text-sm font-medium">阅读外观</h3>
+              <h3 className="text-sm font-medium">阅读外观</h3>
               <div className="space-y-4">
-                <div className="grid grid-cols-2 gap-2">
-                  {[
-                    { label: "浅色", mode: "light" as const },
-                    { label: "纸张", mode: "sepia" as const },
-                    {
-                      label: "深色",
-                      mode: "dark" as const,
-                      contrast: "high" as const,
-                    },
-                    {
-                      label: "深色柔和",
-                      mode: "dark" as const,
-                      contrast: "soft" as const,
-                    },
-                  ].map(({ label, mode, contrast }) => {
-                    const active =
-                      theme.mode === mode &&
-                      (mode !== "dark" ||
-                        (theme.pdfDarkContrast ?? "soft") === contrast);
-                    return (
-                      <Button
-                        key={label}
-                        size="sm"
-                        variant={active ? "default" : "outline"}
-                        aria-pressed={active}
-                        onClick={() =>
-                          setTheme({
-                            mode,
-                            appearance: mode,
-                            ...(contrast ? { pdfDarkContrast: contrast } : {}),
-                          })
-                        }
-                      >
-                        {label}
-                      </Button>
-                    );
-                  })}
+                <Tabs
+                  value={
+                    theme.mode === "dark"
+                      ? theme.pdfDarkContrast === "high"
+                        ? "dark"
+                        : "gray"
+                      : theme.mode
+                  }
+                  onValueChange={(value) => {
+                    if (!value) return;
+                    const mode =
+                      value === "gray"
+                        ? "dark"
+                        : (value as "light" | "sepia" | "dark");
+                    setTheme({
+                      mode,
+                      appearance: mode,
+                      ...(mode === "dark"
+                        ? {
+                            pdfDarkContrast: value === "gray" ? "soft" : "high",
+                          }
+                        : {}),
+                    });
+                  }}
+                >
+                  <TabsList className="w-full" aria-label="阅读配色">
+                    <TabsTrigger value="light">浅色</TabsTrigger>
+                    <TabsTrigger value="dark">深色</TabsTrigger>
+                    <TabsTrigger value="sepia">纸张</TabsTrigger>
+                    <TabsTrigger value="gray">灰色</TabsTrigger>
+                  </TabsList>
+                </Tabs>
+                <div className="flex items-center gap-3">
+                  <span className="shrink-0 text-sm">Agent 字号</span>
+                  <Slider
+                    className="reading-appearance-slider min-w-0 flex-1"
+                    thumbLabel="Agent 字号"
+                    min={80}
+                    max={160}
+                    step={5}
+                    value={[Math.round(assistantSize * 100)]}
+                    onValueChange={(value) =>
+                      setTheme({
+                        assistantFontScale:
+                          (Array.isArray(value) ? value[0] : value) / 100,
+                      })
+                    }
+                  />
+                  <span className="w-10 text-right text-xs tabular-nums">
+                    {Math.round(assistantSize * 100)}%
+                  </span>
                 </div>
                 {doc.type === "epub" ? (
                   <>
@@ -1083,96 +1097,74 @@ export function Workspace({
                   </>
                 ) : (
                   <>
-                    <div className="flex gap-2">
-                      {(["width", 1, 1.25, 1.5] as const).map((zoom) => (
-                        <Button
-                          key={zoom}
-                          size="sm"
-                          variant={theme.zoom === zoom ? "default" : "outline"}
-                          onClick={() => setTheme({ zoom })}
-                        >
-                          {zoom === "width" ? "适宽" : `${zoom * 100}%`}
-                        </Button>
-                      ))}
+                    <div className="flex items-center gap-3">
+                      <span className="shrink-0 text-sm">原文缩放</span>
+                      <Slider
+                        className="reading-appearance-slider min-w-0 flex-1"
+                        thumbLabel="原文缩放"
+                        min={50}
+                        max={300}
+                        step={5}
+                        value={[
+                          typeof theme.zoom === "number"
+                            ? Math.round(theme.zoom * 100)
+                            : 100,
+                        ]}
+                        onValueChange={(value) =>
+                          setTheme({
+                            zoom:
+                              (Array.isArray(value) ? value[0] : value) / 100,
+                          })
+                        }
+                      />
+                      <span className="w-10 text-right text-xs tabular-nums">
+                        {typeof theme.zoom === "number"
+                          ? `${Math.round(theme.zoom * 100)}%`
+                          : "自动"}
+                      </span>
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        onClick={() => setTheme({ zoom: "width" })}
+                      >
+                        适宽
+                      </Button>
                     </div>
                   </>
                 )}
-                <div className="setting-row">
-                  <span>译文字号</span>
-                  <Button
-                    size="icon-xs"
-                    variant="outline"
-                    aria-label="减小译文字号"
-                    onClick={() =>
+                <div className="flex items-center gap-3">
+                  <span className="shrink-0 text-sm">译文字号</span>
+                  <Slider
+                    className="reading-appearance-slider min-w-0 flex-1"
+                    thumbLabel="译文字号"
+                    min={80}
+                    max={160}
+                    step={5}
+                    value={[Math.round(translationSize * 100)]}
+                    onValueChange={(value) =>
                       setTheme({
-                        translationFontSize: stepTranslationSize(
-                          translationSize,
-                          -1,
-                        ),
+                        translationFontSize:
+                          (Array.isArray(value) ? value[0] : value) / 100,
                       })
                     }
-                  >
-                    −
-                  </Button>
-                  <span>{Math.round(translationSize * 100)}%</span>
+                  />
+                  <span className="w-10 text-right text-xs tabular-nums">
+                    {Math.round(translationSize * 100)}%
+                  </span>
                   <Button
-                    size="icon-xs"
+                    size="sm"
                     variant="outline"
-                    aria-label="增大译文字号"
-                    onClick={() =>
-                      setTheme({
-                        translationFontSize: stepTranslationSize(
-                          translationSize,
-                          1,
-                        ),
-                      })
-                    }
+                    onClick={() => setTheme({ translationFontSize: 1 })}
                   >
-                    +
+                    恢复
                   </Button>
                 </div>
                 <TranslationFontControls theme={theme} setTheme={setTheme} />
-                <div className="setting-row">
-                  <span>AI 助读字号</span>
-                  <Button
-                    size="icon-xs"
-                    variant="outline"
-                    aria-label="减小 AI 助读字号"
-                    disabled={assistantSize <= 0.8}
-                    onClick={() =>
-                      setTheme({
-                        assistantFontScale: stepReadingTextSize(
-                          assistantSize,
-                          -1,
-                        ),
-                      })
-                    }
-                  >
-                    −
-                  </Button>
-                  <span>{Math.round(assistantSize * 100)}%</span>
-                  <Button
-                    size="icon-xs"
-                    variant="outline"
-                    aria-label="增大 AI 助读字号"
-                    disabled={assistantSize >= 1.6}
-                    onClick={() =>
-                      setTheme({
-                        assistantFontScale: stepReadingTextSize(
-                          assistantSize,
-                          1,
-                        ),
-                      })
-                    }
-                  >
-                    +
-                  </Button>
-                </div>
               </div>
             </PopoverContent>
           </Popover>
           <IconButton
-            label="AI 与批注"
+            label="Agent 与批注"
             active={right}
             expanded={right}
             onClick={() => setRight(!right)}
@@ -1438,7 +1430,7 @@ export function Workspace({
               <TabsList className="panel-tabs">
                 <TabsTrigger value="ai">
                   <Sparkles className="size-3.5" />
-                  AI 助读
+                  Agent
                 </TabsTrigger>
                 <TabsTrigger value="notes">
                   <StickyNote className="size-3.5" />
