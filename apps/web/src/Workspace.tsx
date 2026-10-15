@@ -698,7 +698,7 @@ export function Workspace({
       question = "请解释附件中的图表或公式。";
     if (!question.trim()) return;
     if (!session.getSnapshot().loaded) {
-      toast.error("对话记录尚未加载，请重试同步。");
+      toast.error("对话记录尚未加载，请重新加载。");
       return;
     }
     setSending(true);
@@ -750,6 +750,24 @@ export function Workspace({
         setSending(false);
         abort.current = null;
       }
+    }
+  };
+  const regenerate = async () => {
+    const current = useReaderStore.getState();
+    if (abort.current || session.getSnapshot().busy || current.aiModelSaving)
+      return;
+    if (!current.aiConfig?.primary) {
+      onSettings();
+      return;
+    }
+    const serial = ++sendSerial.current;
+    setSending(true);
+    try {
+      await session.regenerate(current.aiConfig.primary);
+    } catch (error) {
+      if (serial === sendSerial.current) toast.error((error as Error).message);
+    } finally {
+      if (serial === sendSerial.current) setSending(false);
     }
   };
   const blockAction = (block: PDFBlock, action: PDFBlockAction) => {
@@ -1446,6 +1464,8 @@ export function Workspace({
                 <AssistantPanel
                   key={doc.id}
                   session={session}
+                  onRegenerate={() => void regenerate()}
+                  regenerateDisabled={aiModelSaving || sending}
                   empty={
                     <div className="chat-empty">
                       <p>
