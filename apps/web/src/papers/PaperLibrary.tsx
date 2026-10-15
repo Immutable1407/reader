@@ -769,7 +769,9 @@ export function PaperLibrary({
                     </DropdownMenuContent>
                   </DropdownMenu>
                   <Button
-                    size="sm"
+                    size="icon-sm"
+                    aria-label="星标"
+                    title="星标"
                     variant="ghost"
                     disabled={!pickedDocs.length}
                     onClick={() =>
@@ -780,10 +782,11 @@ export function PaperLibrary({
                     }
                   >
                     <Star />
-                    星标
                   </Button>
                   <Button
-                    size="sm"
+                    size="icon-sm"
+                    aria-label="导出引用"
+                    title="导出引用"
                     variant="ghost"
                     disabled={!pickedDocs.length}
                     onClick={() =>
@@ -791,7 +794,6 @@ export function PaperLibrary({
                     }
                   >
                     <Quote />
-                    导出引用
                   </Button>
                   <Button
                     size="sm"
@@ -810,14 +812,15 @@ export function PaperLibrary({
                     <DropdownMenuTrigger
                       render={
                         <Button
-                          size="sm"
+                          size="icon-sm"
+                          aria-label="标签"
+                          title="标签"
                           variant="ghost"
                           disabled={!pickedDocs.length}
                         />
                       }
                     >
                       <Tag />
-                      标签
                     </DropdownMenuTrigger>
                     <DropdownMenuContent className="max-h-80 w-48">
                       {tags.map((tag) => (

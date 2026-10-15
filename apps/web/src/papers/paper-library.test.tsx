@@ -155,7 +155,7 @@ it("selects all visible papers and changes their status together", async () => {
   await act(async () => row("Attention Is All You Need").click());
   expect(host.textContent).toContain("已选 1 篇");
   const star = [...host.querySelectorAll("button")].find(
-    (b) => b.textContent === "星标",
+    (b) => b.getAttribute("aria-label") === "星标",
   )!;
   await act(async () => star.click());
   expect(api.update).toHaveBeenCalledExactlyOnceWith("b", { favorite: true });
