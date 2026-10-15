@@ -1062,7 +1062,7 @@ export function Workspace({
                     <div className="flex items-center gap-3">
                       <span className="shrink-0 text-sm">原文缩放</span>
                       <Slider
-                        className="min-w-0 flex-1"
+                        className="reading-appearance-slider min-w-0 flex-1"
                         thumbLabel="原文缩放"
                         min={50}
                         max={300}
@@ -1097,7 +1097,7 @@ export function Workspace({
                 <div className="flex items-center gap-3">
                   <span className="shrink-0 text-sm">译文字号</span>
                   <Slider
-                    className="min-w-0 flex-1"
+                    className="reading-appearance-slider min-w-0 flex-1"
                     thumbLabel="译文字号"
                     min={80}
                     max={160}
@@ -1125,7 +1125,7 @@ export function Workspace({
                 <div className="flex items-center gap-3">
                   <span className="shrink-0 text-sm">Agent 输出字号</span>
                   <Slider
-                    className="min-w-0 flex-1"
+                    className="reading-appearance-slider min-w-0 flex-1"
                     thumbLabel="Agent 输出字号"
                     min={80}
                     max={160}
