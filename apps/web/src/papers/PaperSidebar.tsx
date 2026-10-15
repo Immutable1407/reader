@@ -229,7 +229,6 @@ export function PaperSidebar({
     view,
     setView,
     select,
-    startPicking,
     selectedId,
     setNaming,
     setSmartEditing,
@@ -277,7 +276,7 @@ export function PaperSidebar({
       }}
     >
       <Eye />
-      在侧栏隐藏
+      隐藏
     </ContextMenuItem>
   );
   const viewRow = (v: BuiltinView, isPinned = false) => (
@@ -482,18 +481,6 @@ export function PaperSidebar({
             )}
             <ContextMenuSeparator />
             <ContextMenuItem
-              onClick={() => {
-                choose(key);
-                startPicking(
-                  documents
-                    .filter((d) => matchesView(d, key, jobs, context))
-                    .map((d) => d.id),
-                );
-              }}
-            >
-              批量选择这个分类的论文
-            </ContextMenuItem>
-            <ContextMenuItem
               onClick={() =>
                 exportCitations(
                   documents.filter((d) => matchesView(d, key, jobs, context)),
@@ -501,14 +488,14 @@ export function PaperSidebar({
                 )
               }
             >
-              导出这个分类的引用
+              导出引用
             </ContextMenuItem>
             <ContextMenuItem
               variant="destructive"
               onClick={() => setDeleting(name)}
             >
               <Trash2 />
-              删除分类
+              删除
             </ContextMenuItem>
           </>
         }
@@ -583,18 +570,6 @@ export function PaperSidebar({
             {!isPinned && hideItem(key)}
             <ContextMenuSeparator />
             <ContextMenuItem
-              onClick={() => {
-                choose(key);
-                startPicking(
-                  documents
-                    .filter((d) => matchesView(d, key, jobs, context))
-                    .map((d) => d.id),
-                );
-              }}
-            >
-              批量选择这个分类的论文
-            </ContextMenuItem>
-            <ContextMenuItem
               onClick={() =>
                 exportCitations(
                   documents.filter((d) => matchesView(d, key, jobs, context)),
@@ -602,7 +577,7 @@ export function PaperSidebar({
                 )
               }
             >
-              导出这个分类的引用
+              导出引用
             </ContextMenuItem>
             <ContextMenuItem
               variant="destructive"
@@ -614,7 +589,7 @@ export function PaperSidebar({
               }}
             >
               <Trash2 />
-              删除智能标签分类
+              删除
             </ContextMenuItem>
           </>
         }
