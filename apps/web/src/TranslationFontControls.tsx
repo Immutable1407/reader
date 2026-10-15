@@ -100,7 +100,7 @@ export function TranslationFontControls({
           </SelectContent>
         </Select>
       </div>
-      <div className="flex gap-2">
+      <div className="flex justify-end gap-2">
         {canQueryLocalFonts() && !installed.length && (
           <Button
             size="sm"
