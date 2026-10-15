@@ -90,7 +90,7 @@ export function PDFReadingView({
 }) {
   const [mode, setMode] = useState<Mode>("source"),
     [swapped, setSwapped] = useState(false),
-    [autoCenterSource, setAutoCenterSource] = useState(true);
+    [syncEnabled, setSyncEnabled] = useState(true);
   const { translations, error } = useTranslations(doc.id);
   const [popup, setPopup] = useState<{ block: PDFBlock; rect: DOMRect }>(),
     [linked, setLinked] = useState<Record<string, number[]>>();
@@ -109,8 +109,8 @@ export function PDFReadingView({
     );
   };
   const previousMode = useRef<Mode>("source");
-  const autoCenterSourceRef = useRef(autoCenterSource);
-  autoCenterSourceRef.current = autoCenterSource;
+  const syncEnabledRef = useRef(syncEnabled);
+  syncEnabledRef.current = syncEnabled;
   const enteringParallel = useRef<string | undefined>(undefined);
   const explicitFocus = useRef({
     operation: 0,
@@ -300,9 +300,7 @@ export function PDFReadingView({
     // Both panels center their own geometry; a tall translation must not shift
     // a short original away from its center (or vice versa).
     const source =
-      mode !== "translation" && autoCenterSourceRef.current
-        ? engine?.focusBlock?.(block.id, mode)
-        : undefined;
+      mode !== "translation" ? engine?.focusBlock?.(block.id, mode) : undefined;
     const translated =
       mode !== "source"
         ? followTranslation(anchor, undefined, { smooth: true, center: true })
@@ -601,7 +599,7 @@ export function PDFReadingView({
         previous !== mode &&
         mode !== "translation" &&
         reading.current &&
-        autoCenterSourceRef.current
+        syncEnabledRef.current
       )
         await engine.followBlock?.(reading.current);
       if (cancelled) return;
@@ -769,7 +767,7 @@ export function PDFReadingView({
             (engine?.getPageCount?.() ||
               Math.max(1, ...blocks.map((b) => b.page))),
         );
-      if (mode === "parallel" && autoCenterSourceRef.current) {
+      if (mode === "parallel" && syncEnabledRef.current) {
         control.current.following("source");
         void engine?.followBlock?.(anchor);
       }
@@ -831,27 +829,39 @@ export function PDFReadingView({
     setMode(value);
   };
   const activePopup = popup && byId.get(popup.block.id);
+  const toggleSync = () => {
+    const enabled = !syncEnabledRef.current;
+    syncEnabledRef.current = enabled;
+    setSyncEnabled(enabled);
+    // Stop pending follow animations before changing the synchronization policy.
+    input(side.current);
+    engine?.cancelBlockFocus?.();
+    const anchor = reading.current;
+    if (!enabled || mode !== "parallel" || !anchor) return;
+    if (side.current === "source") {
+      void followTranslation(anchor, undefined, { smooth: true });
+    } else {
+      control.current.following("source");
+      void engine?.followBlock?.(anchor).catch((e) => toast.error(e.message));
+    }
+  };
   const autoCenterButton = (
     <Tooltip>
       <TooltipTrigger
         render={
           <Button
-            variant={autoCenterSource ? "default" : "outline"}
+            variant={syncEnabled ? "default" : "outline"}
             size="icon-sm"
-            aria-label={
-              autoCenterSource
-                ? "关闭原文自动锚点居中"
-                : "开启原文自动锚点居中"
-            }
-            aria-pressed={autoCenterSource}
-            onClick={() => setAutoCenterSource((value) => !value)}
+            aria-label={syncEnabled ? "取消同步效果" : "开启同步效果"}
+            aria-pressed={syncEnabled}
+            onClick={toggleSync}
           />
         }
       >
         <Crosshair />
       </TooltipTrigger>
       <TooltipContent>
-        {autoCenterSource ? "关闭原文自动锚点居中" : "开启原文自动锚点居中"}
+        {syncEnabled ? "取消同步效果" : "开启同步效果"}
       </TooltipContent>
     </Tooltip>
   );
@@ -936,7 +946,10 @@ export function PDFReadingView({
                   )
                     return;
                   recordReading(anchor);
-                  if (state.current.mode === "parallel")
+                  if (
+                    state.current.mode === "parallel" &&
+                    syncEnabledRef.current
+                  )
                     followTranslation(anchor);
                 },
                 blockHover: (block) => {

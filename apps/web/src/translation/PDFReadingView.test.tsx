@@ -497,14 +497,14 @@ it("can disable automatic original centering while reading the translation", asy
   await click("原文译文");
   vi.mocked(adapter.focusBlock!).mockClear();
   const centerButton = host.querySelector<HTMLButtonElement>(
-    '[aria-label="关闭原文自动锚点居中"]',
+    '[aria-label="取消同步效果"]',
   )!;
   expect(centerButton.getAttribute("aria-pressed")).toBe("true");
   await act(async () => centerButton.click());
   expect(
-    host.querySelector('[aria-label="开启原文自动锚点居中"]')?.getAttribute(
-      "aria-pressed",
-    ),
+    host
+      .querySelector('[aria-label="开启同步效果"]')
+      ?.getAttribute("aria-pressed"),
   ).toBe("false");
   const pane = host.querySelector<HTMLElement>(".translation-document")!;
   const block = pane.querySelector<HTMLElement>("[data-translation-block]")!;
@@ -513,7 +513,7 @@ it("can disable automatic original centering while reading the translation", asy
   await act(async () =>
     fixture.events!.readingAnchor?.({ blockId: "p1-b1", fraction: 0.5 }),
   );
-  expect(pane.scrollTop).toBe(-20);
+  expect(pane.scrollTop).toBe(0);
   expect(host.querySelector("[data-focused]")).toBeNull();
   await act(async () => {
     pane.dispatchEvent(new WheelEvent("wheel", { bubbles: true, deltaY: 100 }));
@@ -522,9 +522,9 @@ it("can disable automatic original centering while reading the translation", asy
   });
   expect(adapter.followBlock).not.toHaveBeenCalled();
   await act(async () => {
-    host.querySelector<HTMLButtonElement>(
-      '[aria-label="开启原文自动锚点居中"]',
-    )!.click();
+    host
+      .querySelector<HTMLButtonElement>('[aria-label="开启同步效果"]')!
+      .click();
   });
   await act(async () => {
     pane.dispatchEvent(new WheelEvent("wheel", { bubbles: true, deltaY: 20 }));
@@ -536,9 +536,9 @@ it("can disable automatic original centering while reading the translation", asy
     fraction: 0.55,
   });
   await act(async () => {
-    host.querySelector<HTMLButtonElement>(
-      '[aria-label="关闭原文自动锚点居中"]',
-    )!.click();
+    host
+      .querySelector<HTMLButtonElement>('[aria-label="取消同步效果"]')!
+      .click();
   });
   const translatedBlock = host.querySelector<HTMLElement>(
     "[data-translation-block]",
@@ -548,7 +548,7 @@ it("can disable automatic original centering while reading the translation", asy
       new KeyboardEvent("keydown", { key: "Enter", bubbles: true }),
     );
   });
-  expect(adapter.focusBlock).not.toHaveBeenCalled();
+  expect(adapter.focusBlock).toHaveBeenLastCalledWith("p1-b1", "parallel");
 });
 
 function translationGeometry(height = 200) {
@@ -886,5 +886,84 @@ it.each(["mode", "wheel"])(
     } finally {
       vi.useRealTimers();
     }
+  },
+);
+
+it("disables source following and smoothly resynchronizes from the source when enabled", async () => {
+  await click("原文译文");
+  const { pane } = translationGeometry();
+  await click("取消同步效果");
+  await act(async () =>
+    fixture.events!.readingAnchor?.({ blockId: "p1-b1", fraction: 0.5 }),
+  );
+  expect(pane.scrollTop).toBe(0);
+  vi.useFakeTimers();
+  try {
+    await click("开启同步效果");
+    expect(pane.scrollTop).toBe(0);
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(96);
+    });
+    expect(pane.scrollTop).toBeGreaterThan(0);
+    expect(pane.scrollTop).toBeLessThan(400);
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(600);
+    });
+    expect(pane.scrollTop).toBe(400);
+  } finally {
+    vi.useRealTimers();
+  }
+});
+
+it("disables translation following and resynchronizes from the last manually scrolled translation", async () => {
+  await click("原文译文");
+  const { pane } = translationGeometry();
+  await click("取消同步效果");
+  vi.mocked(adapter.followBlock!).mockClear();
+  vi.useFakeTimers();
+  try {
+    await act(async () => {
+      pane.dispatchEvent(
+        new WheelEvent("wheel", { bubbles: true, deltaY: 100 }),
+      );
+      pane.scrollTop = 400;
+      pane.dispatchEvent(new Event("scroll", { bubbles: true }));
+      await vi.advanceTimersByTimeAsync(32);
+    });
+    expect(adapter.followBlock).not.toHaveBeenCalled();
+    await click("开启同步效果");
+    expect(adapter.followBlock).toHaveBeenLastCalledWith({
+      blockId: "p1-b1",
+      fraction: 0.5,
+    });
+    expect(pane.scrollTop).toBe(400);
+  } finally {
+    vi.useRealTimers();
+  }
+});
+
+it.each(["仅原文", "原文译文"])(
+  "keeps annotation and search focus available with sync disabled in %s",
+  async (mode) => {
+    if (mode === "原文译文") await click(mode);
+    await click("取消同步效果");
+    vi.mocked(adapter.focusBlock!).mockClear();
+    await act(async () => {
+      void fixture.ready!.focusLocation?.({
+        type: "pdf",
+        page: 1,
+        x: 0.1,
+        y: 0.2,
+      });
+    });
+    expect(adapter.focusBlock).toHaveBeenLastCalledWith(
+      "p1-b1",
+      mode === "仅原文" ? "source" : "parallel",
+    );
+    expect(
+      host
+        .querySelector('[aria-label="开启同步效果"]')
+        ?.getAttribute("aria-pressed"),
+    ).toBe("false");
   },
 );
