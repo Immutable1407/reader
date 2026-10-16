@@ -495,6 +495,17 @@ export const api = {
       method: "PUT",
       body: JSON.stringify(preferences),
     }),
+  shortcutPreferences: () =>
+    request<Record<string, { key: string; shift: boolean }>>(
+      "/api/preferences/shortcuts",
+    ),
+  saveShortcutPreferences: (
+    preferences: Record<string, { key: string; shift: boolean }>,
+  ) =>
+    request<Record<string, { key: string; shift: boolean }>>(
+      "/api/preferences/shortcuts",
+      { method: "PUT", body: JSON.stringify(preferences) },
+    ),
   guidePreferences: () => request<GuidePreferences>("/api/preferences/guide"),
   saveGuidePreferences: (preferences: GuidePreferences) =>
     request<GuidePreferences>("/api/preferences/guide", {

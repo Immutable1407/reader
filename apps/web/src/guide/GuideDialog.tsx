@@ -1,6 +1,13 @@
+import { ShortcutPanel } from "../shortcuts/ShortcutPanel";
 import { useState, type KeyboardEvent } from "react";
 import { toast } from "sonner";
-import { ChevronLeft, ChevronRight, Star, MessageSquare } from "lucide-react";
+import {
+  ChevronLeft,
+  ChevronRight,
+  Star,
+  MessageSquare,
+  Keyboard,
+} from "lucide-react";
 import { Button } from "@reader/ui/components/button";
 import {
   Dialog,
@@ -190,13 +197,18 @@ export function GuideDialog({
         <DialogTitle className="sr-only">指南</DialogTitle>
         <Tabs
           orientation="vertical"
-          value={guideTopics[index].id}
+          value={topic === "shortcuts" ? "shortcuts" : guideTopics[index].id}
           onValueChange={(value) => onTopicChange(String(value))}
           className="guide-layout"
         >
           <div className="guide-nav">
             <h2 className="mb-3 px-2 text-sm font-medium">指南</h2>
             <TabsList variant="line" aria-label="指南主题" className="w-full">
+              <TabsTrigger value="shortcuts" className="h-9 px-2">
+                <Keyboard />
+                快捷键
+              </TabsTrigger>
+              <div className="my-2 w-full border-t" role="separator" />
               {guideTopics.map((t) => (
                 <TabsTrigger key={t.id} value={t.id} className="h-9 px-2">
                   <t.icon />
@@ -205,6 +217,9 @@ export function GuideDialog({
               ))}
             </TabsList>
           </div>
+          <TabsContent value="shortcuts" className="min-w-0">
+            <ShortcutPanel />
+          </TabsContent>
           {guideTopics.map((t, i) => (
             <TabsContent key={t.id} value={t.id} className="min-w-0">
               <TopicPanel
