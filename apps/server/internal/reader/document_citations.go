@@ -5,18 +5,20 @@ import (
 	"strings"
 )
 
-var documentCitationPattern = regexp.MustCompile(`\[S[1-9][0-9]*\]|[^]*(?:|)`)
+var documentCitationPattern = regexp.MustCompile(`[^]*(?:|)`)
+var documentNativeCitationPattern = regexp.MustCompile(`\[S[1-9][0-9]*\]`)
 var documentSourceIDPattern = regexp.MustCompile(`^S[1-9][0-9]*$`)
 
 // Provider markers and Reader labels resolve through the same evidence check.
 // Unknown IDs, malformed markers and unfinished citations never bypass it.
 func documentCitationSources(text string) ([]string, error) {
 	sources := []string{}
+	// Scan native labels independently: an unrelated provider marker must not
+	// hide a source label that the original validator would have checked.
+	for _, marker := range documentNativeCitationPattern.FindAllString(text, -1) {
+		sources = append(sources, marker[1:len(marker)-1])
+	}
 	for _, marker := range documentCitationPattern.FindAllString(text, -1) {
-		if strings.HasPrefix(marker, "[") {
-			sources = append(sources, marker[1:len(marker)-1])
-			continue
-		}
 		parts := strings.Split(strings.TrimSuffix(strings.TrimPrefix(marker, ""), ""), "")
 		kind := parts[0]
 		if !strings.HasPrefix(kind, "cite") && !strings.HasPrefix(kind, "filecite") && !strings.HasPrefix("cite", kind) && !strings.HasPrefix("filecite", kind) {

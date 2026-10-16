@@ -24,6 +24,11 @@ func TestDocumentProviderCitationsRequireReadEvidence(t *testing.T) {
 			t.Fatalf("unverified citation accepted: %q %v", text, err)
 		}
 	}
+	for _, text := range []string{"other[S999]", "other [S999]"} {
+		if _, err := a.references(text); errorKind(err) != ErrorProtocol {
+			t.Fatalf("provider marker hid native source validation: %q %v", text, err)
+		}
+	}
 }
 
 func TestProviderCitationPersistsAndValidatesOriginalLocation(t *testing.T) {
