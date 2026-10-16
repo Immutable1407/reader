@@ -202,8 +202,8 @@ assets/            # Logo 源文件与应用图标
 
 <a href="https://www.star-history.com/?repos=cynicalight%2Freader&amp;type=date&amp;legend=top-left">
   <picture>
-    <source media="(prefers-color-scheme: dark)" srcset="https://api.star-history.com/chart?repos=cynicalight/reader&amp;type=date&amp;legend=top-left&amp;theme=dark" />
-    <img src="https://api.star-history.com/chart?repos=cynicalight/reader&amp;type=date&amp;legend=top-left" alt="Reader 的 GitHub Star 增长历史" />
+    <source media="(prefers-color-scheme: dark)" srcset="https://api.star-history.com/svg?repos=cynicalight/reader&amp;type=date&amp;legend=top-left&amp;theme=dark" />
+    <img src="https://api.star-history.com/svg?repos=cynicalight/reader&amp;type=date&amp;legend=top-left" alt="Reader 的 GitHub Star 增长历史" />
   </picture>
 </a>
 

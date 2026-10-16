@@ -205,8 +205,8 @@ See the [roadmap](docs/roadmap.md) (Chinese) for longer-term plans.
 
 <a href="https://www.star-history.com/?repos=cynicalight%2Freader&amp;type=date&amp;legend=top-left">
   <picture>
-    <source media="(prefers-color-scheme: dark)" srcset="https://api.star-history.com/chart?repos=cynicalight/reader&amp;type=date&amp;legend=top-left&amp;theme=dark" />
-    <img src="https://api.star-history.com/chart?repos=cynicalight/reader&amp;type=date&amp;legend=top-left" alt="Reader GitHub star history" />
+    <source media="(prefers-color-scheme: dark)" srcset="https://api.star-history.com/svg?repos=cynicalight/reader&amp;type=date&amp;legend=top-left&amp;theme=dark" />
+    <img src="https://api.star-history.com/svg?repos=cynicalight/reader&amp;type=date&amp;legend=top-left" alt="Reader GitHub star history" />
   </picture>
 </a>
 
