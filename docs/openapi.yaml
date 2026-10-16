@@ -5101,6 +5101,12 @@
                       "description": "Translation model by provider. Empty uses the provider's fast-tier recommendation.",
                       "additionalProperties": { "type": "string" },
                     },
+                  "translationPrompt":
+                    {
+                      "type": "string",
+                      "maxLength": 6000,
+                      "description": "Translation style and terminology preferences. Empty resets to default; omission preserves the saved value. Does not replace source-alignment or output-format rules.",
+                    },
                   "translationEfforts":
                     {
                       "type": "object",

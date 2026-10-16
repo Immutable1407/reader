@@ -3886,6 +3886,8 @@ export interface components {
             translationModels?: {
                 [key: string]: string;
             };
+            /** @description Translation style and terminology preferences. Empty resets to default; omission preserves the saved value. Does not replace source-alignment or output-format rules. */
+            translationPrompt?: string;
             /** @description Translation effort by provider and model ID. Defaults to medium. */
             translationEfforts?: {
                 [key: string]: {

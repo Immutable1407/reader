@@ -583,6 +583,8 @@ export interface AIConfig {
   efforts?: Record<string, Record<string, ReasoningEffort>>;
   translationModels?: Record<string, string>;
   translationEfforts?: Record<string, Record<string, ReasoningEffort>>;
+  /** Translation style and terminology preferences. Empty uses the default. */
+  translationPrompt?: string;
   /** Image-input model of the "api" agent; other agents use their chat model. */
   visionModels?: Record<string, string>;
   visionEfforts?: Record<string, Record<string, ReasoningEffort>>;

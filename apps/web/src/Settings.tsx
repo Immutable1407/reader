@@ -1,4 +1,5 @@
 import { AutoTranslationSettings } from "./papers/AutoTranslationSettings";
+import { TranslationPromptSettings } from "./TranslationPromptSettings";
 import { useEffect, useRef, useState } from "react";
 import {
   ChevronLeft,
@@ -330,23 +331,25 @@ export function Settings({
       setAIConfig(await api.saveAIConfig(change(await api.aiConfig())));
     } catch (e) {
       toast.error((e as Error).message);
-      return;
+      return false;
     } finally {
       setSaving(false);
     }
     await refresh();
+    return true;
   };
-  const saveAPI = (connection: APIConnection) => {
+  const saveAPI = async (connection: APIConnection) => {
     // A new address or key is a new connection: test its models again.
     for (const key of checked.current)
       if (key.startsWith('["api"')) checked.current.delete(key);
-    return saveConfig((latest) => ({ ...latest, api: connection }));
+    await saveConfig((latest) => ({ ...latest, api: connection }));
   };
-  const saveAPIModels = (change: (models: string[]) => string[]) =>
-    saveConfig((latest) => ({
+  const saveAPIModels = async (change: (models: string[]) => string[]) => {
+    await saveConfig((latest) => ({
       ...latest,
       apiModels: change(latest.apiModels ?? []),
     }));
+  };
   const checkStatus = (id: string, capability?: AICapability) => (
     <div className="flex flex-wrap gap-x-5">
       {(
@@ -1037,6 +1040,13 @@ export function Settings({
                       ? "只列出通过检测的模型：问答与翻译需通过文本推理，图片需通过图片理解。公式转换与主动图片提问使用图片模型。"
                       : "问答与翻译分别使用上方模型；未指定时，问答使用主力模型，翻译使用快速模型。公式转换与主动图片提问会向此 Agent 发送图片。"}
                   </p>
+                  <TranslationPromptSettings
+                    value={config.translationPrompt ?? ""}
+                    disabled={saving || aiModelSaving || testing.size > 0}
+                    onSave={(translationPrompt) =>
+                      saveConfig((latest) => ({ ...latest, translationPrompt }))
+                    }
+                  />
                 </div>
               )}
               <div className="grid grid-cols-1 items-start gap-3 sm:grid-cols-2">
