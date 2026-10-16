@@ -502,6 +502,7 @@ export interface ProcessingStage {
   warning?: string;
 }
 export interface Processing {
+  retranslating?: boolean;
   autoTranslateMaxPages?: number;
   manualTranslation?: boolean;
   enabled?: boolean;

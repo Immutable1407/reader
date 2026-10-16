@@ -244,9 +244,18 @@ const translationFailureLogs = 10
 
 func (s *Server) translationAttempt(ctx context.Context, doc Document, m translationInput, batch translationBatch, service *GenerationService, progress func()) (*translationAttempt, error) {
 	a := &translationAttempt{paragraphs: len(batch.Paragraphs)}
+	previous, err := s.translationPrevious(doc.ID)
+	if err != nil {
+		return nil, err
+	}
+	var replacements []TranslationBlock
 	a.decoder = newTranslationJSONL(batch, func(t TranslationBlock) error {
 		if err := ctx.Err(); err != nil {
 			return err
+		}
+		if previous[t.BlockID+":"+t.SourceHash] {
+			replacements = append(replacements, t)
+			return nil
 		}
 		if err := s.saveTranslation(doc.ID, t); err != nil {
 			return err
@@ -274,6 +283,24 @@ func (s *Server) translationAttempt(ctx context.Context, doc Document, m transla
 	// Cancellation/truncation never promotes an unfinished line to a saved record.
 	if a.err == nil && strings.TrimSpace(a.decoder.buffer) != "" {
 		a.err = a.decoder.line(a.decoder.buffer)
+	}
+	// Keep the previous translation until the provider confirms completion.
+	// Failed/cancelled streams must not replace it even with complete JSONL rows.
+	for _, item := range replacements {
+		delete(a.decoder.completed, item.BlockID)
+	}
+	if a.err == nil && ctx.Err() == nil {
+		for _, item := range replacements {
+			if err := ctx.Err(); err != nil {
+				a.err = err
+				break
+			}
+			if err := s.saveTranslation(doc.ID, item); err != nil {
+				return nil, err
+			}
+			a.decoder.completed[item.BlockID] = true
+			progress()
+		}
 	}
 	return a, nil
 }
@@ -391,6 +418,10 @@ func (s *Server) recordTranslationFailure(documentID string, batch translationBa
 var translationFileID = regexp.MustCompile(`[^A-Za-z0-9_-]`)
 
 func (s *Server) settleTranslations(ctx context.Context, p *Processing, m translationInput) error {
+	options, err := s.retranslationOptions(p)
+	if err != nil {
+		return err
+	}
 	doc, err := s.Store.Document(p.DocumentID)
 	if err != nil {
 		return err
@@ -442,10 +473,10 @@ func (s *Server) settleTranslations(ctx context.Context, p *Processing, m transl
 			}
 			return nil
 		}
-		config := s.aiConfig()
+		config := options.apply(s.aiConfig())
 		if !validAgent(config.Primary) || !(primaryCapable(config, taskTranslation) || capable(config, "text-api", false)) {
 			s.configMu.Lock()
-			config = s.readAIConfig()
+			config = options.apply(s.readAIConfig())
 			if !validAgent(config.Primary) || !(primaryCapable(config, taskTranslation) || capable(config, "text-api", false)) {
 				s.processingMu.Lock()
 				p.Status = "waiting"
