@@ -32,12 +32,14 @@ export function SourceReferences({
   const [error, setError] = useState("");
   const [candidates, setCandidates] = useState<ReferenceCard[]>();
   const request = useRef(0);
-  useEffect(
-    () => () => {
+  useEffect(() => {
+    setPending(undefined);
+    setError("");
+    setCandidates(undefined);
+    return () => {
       request.current++;
-    },
-    [message.id, adapter],
-  );
+    };
+  }, [message.id, adapter]);
   const cards = referenceCards(message, toc);
   if (!cards.length) return children ?? null;
   const choose = async (card: ReferenceCard) => {

@@ -97,6 +97,27 @@ it("uses the same formula and citation rules in the animated streaming renderer"
   expect(host.textContent).toContain("[S64]");
 });
 
+it.each(["x\n- y", "x\n> y", "x\n\n+ y", "x\n# y"])(
+  "protects display math from Markdown block syntax: %s",
+  async (value) => {
+    await render("\\[\n" + value + "\n\\]\n\n正常段落");
+    expect(host.querySelector('[data-math="display"]')?.textContent).toBe(
+      value,
+    );
+    expect(host.querySelector("ul,blockquote,h1")).toBeNull();
+    expect(host.textContent).toContain("正常段落");
+  },
+);
+
+it.each(["", "ci", "cite", "filecite", "cite", "citeS999citeS64"])(
+  "does not expose damaged citation markers: %s",
+  async (marker) => {
+    await render("结论 " + marker, true);
+    expect(host.textContent).not.toContain("");
+    expect(host.querySelector('a[href^="#reader-evidence?"]')).toBeNull();
+  },
+);
+
 it("shows readable citation labels in a stream and only links saved known sources", async () => {
   const content = "结论 citeS64S65，另见 [S64]。`citeS64`";
   for (const part of ["结论 citeS", "结论 citeS64", content])

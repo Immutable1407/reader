@@ -10,7 +10,7 @@ export const ChatCitationNavigation = createContext<
   | undefined
 >(undefined);
 
-const citation = /\[S[1-9][0-9]*\]|(?:cite|filecite)[^]*(?:|$)/g;
+const citation = /\[S[1-9][0-9]*\]|[^]*(?:|)/g;
 const sourceID = /^S[1-9][0-9]*$/;
 const text = (value: string): Text => ({ type: "text", value });
 
@@ -30,13 +30,29 @@ export function remarkChatCitations({
       for (const match of node.value.matchAll(citation)) {
         parts.push(text(node.value.slice(start, match.index)));
         const raw = match[0];
+        start = match.index + raw.length;
+        const markerParts = raw.replace(/^|$/g, "").split("");
+        const kind = markerParts[0];
+        if (
+          !raw.startsWith("[") &&
+          !["cite", "filecite"].some(
+            (name) => name.startsWith(kind) || kind.startsWith(name),
+          )
+        ) {
+          parts.push(text(raw));
+          continue;
+        }
         const complete = raw.startsWith("[") || raw.endsWith("");
         const ids = raw.startsWith("[")
           ? [raw.slice(1, -1)]
-          : raw.slice(0, -1).split("").slice(1);
+          : markerParts.slice(1);
         if (!complete) {
           parts.push(text(generating ? "" : "[引用未完成]"));
-        } else if (!ids.length || !ids.every((id) => sourceID.test(id))) {
+        } else if (
+          (!raw.startsWith("[") && kind !== "cite" && kind !== "filecite") ||
+          !ids.length ||
+          !ids.every((id) => sourceID.test(id))
+        ) {
           parts.push(text("[引用不可用]"));
         } else {
           for (const id of ids) {
@@ -52,7 +68,6 @@ export function remarkChatCitations({
             );
           }
         }
-        start = match.index + raw.length;
       }
       if (!start) return;
       parts.push(text(node.value.slice(start)));

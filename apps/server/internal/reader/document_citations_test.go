@@ -19,7 +19,7 @@ func TestDocumentProviderCitationsRequireReadEvidence(t *testing.T) {
 			t.Fatal("duplicate reference", string(refs))
 		}
 	}
-	for _, text := range []string{"[S999]", "citeS999", "citeS64S999", "citeturn1search0", "cite", "citeS64", "citeS64"} {
+	for _, text := range []string{"[S999]", "citeS999", "citeS64S999", "citeturn1search0", "cite", "citeS64", "citeS64", "cite", "filecite", "cite", "ci", "citeS999citeS64"} {
 		if _, err := a.references(text); errorKind(err) != ErrorProtocol {
 			t.Fatalf("unverified citation accepted: %q %v", text, err)
 		}

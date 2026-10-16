@@ -43,13 +43,13 @@ const message: Message = {
 };
 const navigate = vi.fn(async () => {});
 const adapter = { flashReference: vi.fn() } as unknown as ReaderAdapter;
-const render = () =>
+const render = (reader = adapter) =>
   act(async () =>
     root.render(
       <SourceReferences
         message={message}
         toc={[]}
-        adapter={adapter}
+        adapter={reader}
         onNavigate={navigate}
       >
         <MessageMarkdown content={message.content} />
@@ -103,4 +103,23 @@ it("does not navigate when the source expired or its message unmounted", async (
   await act(async () => root.render(null));
   await act(async () => finish({ valid: true }));
   expect(navigate).not.toHaveBeenCalled();
+});
+
+it("allows a fresh navigation after the reader changes during validation", async () => {
+  navigate.mockClear();
+  let finish!: (value: { valid: boolean }) => void;
+  vi.mocked(api.validateEvidence).mockImplementationOnce(
+    () =>
+      new Promise((resolve) => {
+        finish = resolve;
+      }),
+  );
+  await render();
+  await act(async () => host.querySelector<HTMLAnchorElement>("a")!.click());
+  await render({ ...adapter });
+  vi.mocked(api.validateEvidence).mockResolvedValueOnce({ valid: true });
+  await act(async () => host.querySelector<HTMLAnchorElement>("a")!.click());
+  expect(navigate).toHaveBeenCalledTimes(1);
+  await act(async () => finish({ valid: true }));
+  expect(navigate).toHaveBeenCalledTimes(1);
 });
