@@ -423,7 +423,7 @@ func (s *Server) importFile(ctx context.Context, temp, filename, library string,
 			return Document{}, 409, importError{409, "检测到 PDF 过大，请确认是否是论文？如果是图书类，请导入图书库。", "large-paper", pages}
 		}
 	}
-	d := Document{ID: docID, Type: kind, Title: strings.TrimSuffix(filepath.Base(filename), filepath.Ext(filename)), Size: size, CreatedAt: now(), LastOpenedAt: now(), Library: library}
+	d := Document{ID: docID, Type: kind, Title: strings.TrimSuffix(filepath.Base(filename), filepath.Ext(filename)), Size: size, CreatedAt: now(), LastOpenedAt: "", Library: library}
 	d.Category, d.CategorySource, d.ClassificationStatus, d.Tags, d.Folders = "article", "default", "pending", []string{}, []string{}
 	if kind == "pdf" && library == "books" {
 		// Classification reads parsed text, which books gain chapter by chapter.

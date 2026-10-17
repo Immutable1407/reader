@@ -115,6 +115,9 @@ export type PaperSort =
   | "opened"
   | "added"
   | "year"
+  | "published"
+  | "progress"
+  | "size"
   | "title"
   | "author"
   | "venue"
@@ -122,7 +125,19 @@ export type PaperSort =
   | "notes";
 /** Optional columns of the paper table; the title is always shown. */
 export type PaperColumn =
-  "authors" | "year" | "venue" | "added" | "opened" | "notes" | "status";
+  | "authors"
+  | "year"
+  | "published"
+  | "tags"
+  | "progress"
+  | "doi"
+  | "arxiv"
+  | "size"
+  | "venue"
+  | "added"
+  | "opened"
+  | "notes"
+  | "status";
 export interface JournalRankBadge {
   key: string;
   name: string;
