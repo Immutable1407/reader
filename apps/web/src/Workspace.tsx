@@ -1468,6 +1468,17 @@ export function Workspace({
                   session={session}
                   onRegenerate={() => void regenerate()}
                   regenerateDisabled={aiModelSaving || sending}
+                  renderAnswer={(message, content) => (
+                    <SourceReferences
+                      key={message.id}
+                      message={message}
+                      toc={toc}
+                      adapter={adapter}
+                      onNavigate={visitReference}
+                    >
+                      {content}
+                    </SourceReferences>
+                  )}
                   empty={
                     <div className="chat-empty">
                       <p>

@@ -1708,8 +1708,11 @@ export interface paths {
             requestBody: {
                 content: {
                     "application/json": {
-                        /** @enum {string} */
-                        action: "start" | "pause" | "resume";
+                        /**
+                         * @description retranslate restarts completed paper text with saved current translation choices, retaining previous translations until replacement succeeds. Books keep chapter translation controls.
+                         * @enum {string}
+                         */
+                        action: "start" | "pause" | "resume" | "retranslate";
                     };
                 };
             };
@@ -3781,6 +3784,7 @@ export interface components {
         Processing: {
             enabled?: boolean;
             readonly manualTranslation?: boolean;
+            readonly retranslating?: boolean;
             readonly autoTranslateMaxPages?: number;
             /** @description EPUB work uses explicit chapter requests; the legacy automatic queue has been migrated. */
             readonly epubManual?: boolean;
@@ -3886,6 +3890,8 @@ export interface components {
             translationModels?: {
                 [key: string]: string;
             };
+            /** @description Translation style and terminology preferences. Empty resets to default; omission preserves the saved value. Does not replace source-alignment or output-format rules. */
+            translationPrompt?: string;
             /** @description Translation effort by provider and model ID. Defaults to medium. */
             translationEfforts?: {
                 [key: string]: {

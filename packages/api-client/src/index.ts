@@ -290,7 +290,10 @@ export const api = {
     ),
   assistance: (id: string) =>
     request<Processing>(`/api/documents/${id}/assistance`),
-  setAssistance: (id: string, action: "start" | "pause" | "resume") =>
+  setAssistance: (
+    id: string,
+    action: "start" | "pause" | "resume" | "retranslate",
+  ) =>
     request<Processing>(`/api/documents/${id}/assistance`, {
       method: "POST",
       body: JSON.stringify({ action }),

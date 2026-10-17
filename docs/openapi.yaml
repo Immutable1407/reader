@@ -2068,7 +2068,14 @@
                                   "action":
                                     {
                                       "type": "string",
-                                      "enum": ["start", "pause", "resume"],
+                                      "enum":
+                                        [
+                                          "start",
+                                          "pause",
+                                          "resume",
+                                          "retranslate",
+                                        ],
+                                      "description": "retranslate restarts completed paper text with saved current translation choices, retaining previous translations until replacement succeeds. Books keep chapter translation controls.",
                                     },
                                 },
                             },
@@ -4878,6 +4885,7 @@
                 {
                   "enabled": { "type": "boolean" },
                   "manualTranslation": { "type": "boolean", "readOnly": true },
+                  "retranslating": { "type": "boolean", "readOnly": true },
                   "autoTranslateMaxPages":
                     {
                       "type": "integer",
@@ -5100,6 +5108,12 @@
                       "type": "object",
                       "description": "Translation model by provider. Empty uses the provider's fast-tier recommendation.",
                       "additionalProperties": { "type": "string" },
+                    },
+                  "translationPrompt":
+                    {
+                      "type": "string",
+                      "maxLength": 6000,
+                      "description": "Translation style and terminology preferences. Empty resets to default; omission preserves the saved value. Does not replace source-alignment or output-format rules.",
                     },
                   "translationEfforts":
                     {

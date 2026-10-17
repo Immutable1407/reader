@@ -25,6 +25,7 @@ type Processing struct {
 	ManualTranslation     bool `json:"manualTranslation,omitempty"`
 	Enabled               bool `json:"enabled"`
 	EPUBManual            bool `json:"epubManual,omitempty"`
+	Retranslating         bool `json:"retranslating,omitempty"`
 	// Chapter is a book chapter waiting for its pages to be parsed.
 	Chapter           *PageRange       `json:"chapter,omitempty"`
 	Translating       *ProcessingStage `json:"translating,omitempty"`
