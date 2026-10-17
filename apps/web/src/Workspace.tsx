@@ -1297,6 +1297,7 @@ export function Workspace({
                 doc.type === "pdf" ? PDFReadingView : EPUBReadingView;
               return (
                 <ReadingView
+                  sidebarsOpen={{ left, right }}
                   document={doc}
                   theme={theme}
                   annotations={annotations}
