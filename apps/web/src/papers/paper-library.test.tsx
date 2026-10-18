@@ -912,3 +912,25 @@ it("captures a lower picker row at its own origin with the actual pointer hotspo
   await dragColumn(columnGrip("状态", popup), "dragend");
   expect(document.querySelector(".paper-column-drag-preview")).toBeNull();
 });
+
+it("closes the column picker with Escape from a focused drag handle", async () => {
+  await act(async () =>
+    useReaderStore.setState({
+      libraryPreferences: { mode: "papers", papers: { layout: "table" } },
+    }),
+  );
+  const trigger = host.querySelector<HTMLButtonElement>(
+    '[aria-label="显示的列"]',
+  )!;
+  await act(async () => trigger.click());
+  const popup = document.querySelector('[aria-label="显示与排列列"]')!;
+  const handle = columnGrip("作者", popup);
+  await act(async () => handle.focus());
+  await act(async () =>
+    handle.dispatchEvent(
+      new KeyboardEvent("keydown", { key: "Escape", bubbles: true }),
+    ),
+  );
+  expect(trigger.getAttribute("aria-expanded")).toBe("false");
+  expect(api.saveLibraryPreferences).not.toHaveBeenCalled();
+});

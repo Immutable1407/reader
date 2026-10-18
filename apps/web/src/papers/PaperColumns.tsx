@@ -122,7 +122,7 @@ export function usePaperColumns(prefs: PaperLibraryPreferences) {
       }}
       onDragEnd={finish}
       onKeyDown={(event) => {
-        event.stopPropagation();
+        if (event.key !== "Escape" || dragging) event.stopPropagation();
         const backward = event.key === (vertical ? "ArrowUp" : "ArrowLeft");
         const forward = event.key === (vertical ? "ArrowDown" : "ArrowRight");
         if (event.key === "Escape") {
