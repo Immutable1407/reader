@@ -3339,3 +3339,95 @@ textarea.paper-note-input {
 .pdf-container[data-theme="dark"] .reader-location-highlight > div {
   background: rgb(100 170 255 / 36%);
 }
+
+/* Column drag handles are separate from sorting and resizing controls. */
+.paper-column-heading {
+  display: flex;
+  align-items: center;
+  min-width: 0;
+}
+.paper-column-heading > :last-child {
+  min-width: 0;
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.paper-column-grip.paper-column-grip {
+  width: 16px;
+  min-width: 16px;
+  padding: 0;
+  color: var(--muted-foreground);
+  cursor: grab;
+  opacity: 0.45;
+}
+.paper-column-grip:hover,
+.paper-column-grip:focus-visible {
+  opacity: 1;
+}
+.paper-column-grip:active {
+  cursor: grabbing;
+}
+.paper-column-option {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 5px 2px;
+  border-radius: 4px;
+}
+.paper-columns-popover {
+  max-height: min(70vh, 440px);
+  overflow-y: auto;
+  scrollbar-width: none;
+}
+.paper-columns-popover::-webkit-scrollbar {
+  display: none;
+}
+[data-column-dragging="true"] {
+  opacity: 0.4;
+}
+.paper-column-option[data-column-drop] {
+  background: var(--accent);
+}
+th[data-column-drop]::after,
+.paper-column-option[data-column-drop]::after {
+  content: "";
+  position: absolute;
+  pointer-events: none;
+  background: var(--primary);
+}
+th[data-column-drop]::after {
+  top: 3px;
+  bottom: 3px;
+  width: 2px;
+}
+th[data-column-drop="before"]::after {
+  left: 0;
+}
+th[data-column-drop="after"]::after {
+  right: 0;
+}
+.paper-column-option[data-column-drop]::after {
+  left: 2px;
+  right: 2px;
+  height: 2px;
+}
+.paper-column-option[data-column-drop="before"]::after {
+  top: 0;
+}
+.paper-column-option[data-column-drop="after"]::after {
+  bottom: 0;
+}
+@media (prefers-reduced-motion: no-preference) {
+  .paper-column-option,
+  .paper-table th,
+  .paper-column-grip {
+    transition:
+      opacity 140ms ease,
+      background-color 140ms ease;
+  }
+  .paper-column-grip:active svg {
+    transform: scale(0.9);
+  }
+}
