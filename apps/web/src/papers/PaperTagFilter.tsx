@@ -1,8 +1,6 @@
 import { useState } from "react";
-import { Search } from "lucide-react";
 import type { Document, Processing } from "@reader/core";
 import { Button } from "@reader/ui/components/button";
-import { Input } from "@reader/ui/components/input";
 import {
   ToggleGroup,
   ToggleGroupItem,
@@ -31,7 +29,6 @@ function PaperTagFilter({ documents, jobs }: Props) {
     smart: prefs.smartCategories,
     notDuplicates: prefs.notDuplicates,
   });
-  const [query, setQuery] = useState("");
   const selected = new Set(tagFilter.tags.map((tag) => tag.toLowerCase()));
   const options = paperTags([...scope, { tags: tagFilter.tags }]);
   const counted =
@@ -40,11 +37,6 @@ function PaperTagFilter({ documents, jobs }: Props) {
   for (const doc of counted)
     for (const tag of new Set(doc.tags.map((tag) => tag.toLowerCase())))
       counts.set(tag, (counts.get(tag) || 0) + 1);
-  const shown = options.filter(
-    (tag) =>
-      selected.has(tag.toLowerCase()) ||
-      tag.toLowerCase().includes(query.trim().toLowerCase()),
-  );
   return (
     <section className="paper-tag-filter" aria-label="标签筛选">
       <div className="paper-tag-match" role="group" aria-label="标签匹配方式">
@@ -65,16 +57,6 @@ function PaperTagFilter({ documents, jobs }: Props) {
           </Button>
         ))}
       </div>
-      <div className="relative">
-        <Search className="pointer-events-none absolute top-2 left-2 size-3.5 text-muted-foreground" />
-        <Input
-          aria-label="查找标签"
-          placeholder="查找标签"
-          value={query}
-          onChange={(e) => setQuery(e.target.value)}
-          className="h-8 pl-7 text-xs"
-        />
-      </div>
       <ToggleGroup
         multiple
         size="sm"
@@ -91,7 +73,7 @@ function PaperTagFilter({ documents, jobs }: Props) {
           })
         }
       >
-        {shown.map((tag) => {
+        {options.map((tag) => {
           const key = tag.toLowerCase();
           const active = selected.has(key);
           const count = counts.get(key) || 0;
@@ -119,9 +101,9 @@ function PaperTagFilter({ documents, jobs }: Props) {
           );
         })}
       </ToggleGroup>
-      {!shown.length && (
+      {!options.length && (
         <p className="px-1 py-2 text-xs text-muted-foreground">
-          {options.length ? "没有匹配的标签" : "当前范围暂无标签"}
+          当前范围暂无标签
         </p>
       )}
     </section>

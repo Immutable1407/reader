@@ -839,16 +839,6 @@ it("selects tags in the popover, switches AND/OR and keeps zero-result selection
   expect(host.textContent).toContain("没有符合条件的论文");
   expect(tag("Agent").disabled).toBe(false);
   expect(tag("Agent").textContent).toContain("0");
-  const search = popover.querySelector<HTMLInputElement>(
-    '[aria-label="查找标签"]',
-  )!;
-  await act(async () => {
-    Object.getOwnPropertyDescriptor(
-      HTMLInputElement.prototype,
-      "value",
-    )!.set!.call(search, "missing");
-    search.dispatchEvent(new Event("input", { bubbles: true }));
-  });
   expect(tag("Agent")).not.toBeNull();
   await act(async () => tag("Agent").click());
   expect(row("Graph Attention Networks")).not.toBeNull();
