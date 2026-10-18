@@ -607,11 +607,12 @@ export function PaperLibrary({
               <span className="tabular-nums">{visible.length} 篇</span>
               <Button
                 variant="ghost"
-                size="xs"
+                size="icon-xs"
                 aria-label="清除当前标签条件"
+                title="清除当前标签条件"
                 onClick={() => ui.setTagFilter({ ...tagFilter, tags: [] })}
               >
-                清除
+                <Trash2 />
               </Button>
             </div>
           )}
