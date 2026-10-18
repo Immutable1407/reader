@@ -110,6 +110,15 @@ func readAnthropicStream(ctx context.Context, r io.Reader, c APIConnection, emit
 		}
 		return nil
 	}
+	observedThinking := false
+	observeThinking := func(part string) error {
+		if !observedThinking && emit != nil && strings.TrimSpace(part) != "" {
+			observedThinking = true
+			return emit(ProviderEvent{OutputObserved: true})
+		}
+		return nil
+	}
+
 	dispatch := func() (bool, error) {
 		data := strings.TrimSuffix(frame.String(), "\n")
 		frame.Reset()
@@ -124,13 +133,15 @@ func readAnthropicStream(ctx context.Context, r io.Reader, c APIConnection, emit
 				Usage anthropicUsage `json:"usage"`
 			} `json:"message"`
 			Block struct {
-				Type string `json:"type"`
-				Text string `json:"text"`
+				Type     string `json:"type"`
+				Text     string `json:"text"`
+				Thinking string `json:"thinking"`
 			} `json:"content_block"`
 			Delta struct {
-				Type   string `json:"type"`
-				Text   string `json:"text"`
-				Reason string `json:"stop_reason"`
+				Type     string `json:"type"`
+				Text     string `json:"text"`
+				Reason   string `json:"stop_reason"`
+				Thinking string `json:"thinking"`
 			} `json:"delta"`
 			Usage anthropicUsage `json:"usage"`
 		}
@@ -178,6 +189,9 @@ func readAnthropicStream(ctx context.Context, r io.Reader, c APIConnection, emit
 			if e.Block.Type == "text" {
 				return false, add(e.Block.Text)
 			}
+			if e.Block.Type == "thinking" {
+				return false, observeThinking(e.Block.Thinking)
+			}
 		case "content_block_delta":
 			if e.Index == nil || blocks[*e.Index] == "" {
 				return false, protocol()
@@ -187,6 +201,9 @@ func readAnthropicStream(ctx context.Context, r io.Reader, c APIConnection, emit
 			}
 			if blocks[*e.Index] != "thinking" || (e.Delta.Type != "thinking_delta" && e.Delta.Type != "signature_delta") {
 				return false, protocol()
+			}
+			if e.Delta.Type == "thinking_delta" {
+				return false, observeThinking(e.Delta.Thinking)
 			}
 		case "content_block_stop":
 			if e.Index == nil || blocks[*e.Index] == "" {

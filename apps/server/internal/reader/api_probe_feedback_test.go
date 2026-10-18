@@ -115,3 +115,77 @@ func TestAPIProbeFirstOutput(t *testing.T) {
 		t.Fatalf("stale timings retained: %s", w.Body.String())
 	}
 }
+
+func TestAnthropicProbeFirstThinkingOutput(t *testing.T) {
+	for _, tt := range []struct {
+		name                    string
+		initial, timeout, empty bool
+	}{
+		{name: "thinking-delta"},
+		{name: "thinking-start", initial: true},
+		{name: "thinking-then-timeout", timeout: true},
+		{name: "empty-then-timeout", timeout: true, empty: true},
+	} {
+		t.Run(tt.name, func(t *testing.T) {
+			upstream := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+				if r.Method == "GET" {
+					fmt.Fprint(w, `{"data":[]}`)
+					return
+				}
+				w.Header().Set("Content-Type", "text/event-stream")
+				prefix, rest, _ := strings.Cut(anthropicTestWire("READER_OK"), "\n\n")
+				fmt.Fprint(w, prefix+"\n\ndata: {\"type\":\"ping\"}\n\n")
+				w.(http.Flusher).Flush()
+				time.Sleep(100 * time.Millisecond)
+				thought := "private thought"
+				if tt.empty {
+					thought = " "
+				}
+				if tt.initial {
+					fmt.Fprintf(w, "data: {\"type\":\"content_block_start\",\"index\":1,\"content_block\":{\"type\":\"thinking\",\"thinking\":%q}}\n\n", thought)
+				} else {
+					fmt.Fprint(w, "data: {\"type\":\"content_block_start\",\"index\":1,\"content_block\":{\"type\":\"thinking\",\"thinking\":\"\"}}\n\n")
+					fmt.Fprintf(w, "data: {\"type\":\"content_block_delta\",\"index\":1,\"delta\":{\"type\":\"thinking_delta\",\"thinking\":%q}}\n\n", thought)
+				}
+				fmt.Fprint(w, "data: {\"type\":\"content_block_delta\",\"index\":1,\"delta\":{\"type\":\"signature_delta\",\"signature\":\"private signature\"}}\n\n")
+				w.(http.Flusher).Flush()
+				if tt.timeout {
+					<-r.Context().Done()
+					return
+				}
+				time.Sleep(200 * time.Millisecond)
+				fmt.Fprint(w, "data: {\"type\":\"content_block_stop\",\"index\":1}\n\n"+rest)
+			}))
+			defer upstream.Close()
+			s := testServer(t)
+			c := s.aiConfig()
+			c.API = APIConnection{URL: upstream.URL, Protocol: "anthropic"}
+			if err := s.writeAIConfig(c); err != nil {
+				t.Fatal(err)
+			}
+			started := time.Now()
+			w := request(t, s, "POST", "/api/ai/test/api?model=test&capability=text&timeoutSeconds=1", nil)
+			elapsed := time.Since(started).Milliseconds()
+			var cap Capability
+			if err := json.Unmarshal(w.Body.Bytes(), &cap); err != nil {
+				t.Fatal(err)
+			}
+			if w.Code != 200 || cap.Text == tt.timeout {
+				t.Fatalf("unexpected probe outcome: %s", w.Body.String())
+			}
+			if tt.empty {
+				if cap.TextFirstOutputMs != nil {
+					t.Fatalf("empty events counted as output: %s", w.Body.String())
+				}
+			} else if cap.TextFirstOutputMs == nil || *cap.TextFirstOutputMs < 50 || elapsed-*cap.TextFirstOutputMs < 150 {
+				t.Fatalf("expected first thinking before answer/timeout, elapsed=%d: %s", elapsed, w.Body.String())
+			}
+			if tt.timeout && !strings.Contains(cap.Error, "超时") {
+				t.Fatalf("missing timeout: %s", w.Body.String())
+			}
+			if strings.Contains(w.Body.String(), "private") {
+				t.Fatal("probe leaked thinking")
+			}
+		})
+	}
+}

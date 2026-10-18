@@ -528,7 +528,7 @@ func (s *Server) probeConnection(parent context.Context, c AIConfig, p string, i
 			}
 			started := time.Now()
 			return streamCompletion(ctx, api.conn, completion, req.Input, func(event ProviderEvent) error {
-				if firstOutput == nil && strings.TrimSpace(event.Reasoning+event.Text) != "" {
+				if firstOutput == nil && (event.OutputObserved || strings.TrimSpace(event.Reasoning+event.Text) != "") {
 					elapsed := time.Since(started).Milliseconds()
 					firstOutput = &elapsed
 				}
