@@ -21,11 +21,12 @@ type ProcessingStage struct {
 	Warning string `json:"warning,omitempty"`
 }
 type Processing struct {
-	AutoTranslateMaxPages *int `json:"autoTranslateMaxPages,omitempty"`
-	ManualTranslation     bool `json:"manualTranslation,omitempty"`
-	Enabled               bool `json:"enabled"`
-	EPUBManual            bool `json:"epubManual,omitempty"`
-	Retranslating         bool `json:"retranslating,omitempty"`
+	AutoTranslateMaxPages *int   `json:"autoTranslateMaxPages,omitempty"`
+	ManualTranslation     bool   `json:"manualTranslation,omitempty"`
+	Enabled               bool   `json:"enabled"`
+	EPUBManual            bool   `json:"epubManual,omitempty"`
+	Retranslating         bool   `json:"retranslating,omitempty"`
+	LayoutRevision        string `json:"layoutRevision,omitempty"`
 	// Chapter is a book chapter waiting for its pages to be parsed.
 	Chapter           *PageRange       `json:"chapter,omitempty"`
 	Translating       *ProcessingStage `json:"translating,omitempty"`
@@ -256,8 +257,11 @@ func (s *Server) analysisDir(id string) string {
 	return filepath.Join(s.Store.Root, "cache", id, "analysis")
 }
 func (s *Server) readLayout(id string) (layoutManifest, error) {
+	return readValidatedLayout(filepath.Join(s.analysisDir(id), "manifest.json"))
+}
+func readValidatedLayout(path string) (layoutManifest, error) {
 	var m layoutManifest
-	b, e := os.ReadFile(filepath.Join(s.analysisDir(id), "manifest.json"))
+	b, e := os.ReadFile(path)
 	if e != nil {
 		return m, e
 	}
@@ -270,7 +274,7 @@ func (s *Server) readLayout(id string) (layoutManifest, error) {
 	}
 	for _, b := range m.Blocks {
 		r := b.Bounds
-		if !blockIDPattern.MatchString(b.ID) || b.Page < 1 || b.Page > m.Pages || r.X < 0 || r.Y < 0 || r.Width <= 0 || r.Height <= 0 || r.X+r.Width > 1.001 || r.Y+r.Height > 1.001 || (b.Image != "" && b.Image != "assets/"+b.ID+".png") {
+		if !blockIDPattern.MatchString(b.ID) || b.Page < 1 || b.Page > m.Pages || r.X < 0 || r.Y < 0 || r.Width <= 0 || r.Height <= 0 || r.X+r.Width > 1.001 || r.Y+r.Height > 1.001 || (b.Image != "" && !validBlockImage(b)) {
 			return m, errors.New("版面位置无效")
 		}
 	}

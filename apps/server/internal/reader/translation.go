@@ -32,7 +32,7 @@ func translationSource(b PDFBlock) string {
 		return ""
 	}
 	switch b.Label {
-	case "reference", "reference_content", "algorithm", "display_formula", "inline_formula", "formula_number", "header", "footer", "number":
+	case "reference", "reference_content", "display_formula", "inline_formula", "formula_number", "header", "footer", "number":
 		return ""
 	}
 	if isImageAsset(b) {

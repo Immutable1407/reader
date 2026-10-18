@@ -198,7 +198,7 @@ export function PDFReadingView({
       cache.dispose();
       setBlockImages(undefined);
     };
-  }, [engine]);
+  }, [engine, blocks]);
   const visibleBlocks = blocks.filter(
     (b) => !isPDFPageDecoration(b) && !equationNumbers.pairedIds.has(b.id),
   );

@@ -4999,6 +4999,7 @@
                   "enabled": { "type": "boolean" },
                   "manualTranslation": { "type": "boolean", "readOnly": true },
                   "retranslating": { "type": "boolean", "readOnly": true },
+                  "layoutRevision": { "type": "string", "readOnly": true },
                   "autoTranslateMaxPages":
                     {
                       "type": "integer",

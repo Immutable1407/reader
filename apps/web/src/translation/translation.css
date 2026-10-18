@@ -353,9 +353,3 @@
     animation: none;
   }
 }
-
-/* Older layouts stored algorithms on one line; wrap rather than scroll sideways. */
-.translation-algorithm .message-markdown pre {
-  white-space: pre-wrap;
-  overflow-wrap: anywhere;
-}

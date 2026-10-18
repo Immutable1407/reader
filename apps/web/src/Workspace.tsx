@@ -440,7 +440,13 @@ export function Workspace({
     return () => {
       alive = false;
     };
-  }, [doc.id, doc.type, processing?.phase, processing?.status]);
+  }, [
+    doc.id,
+    doc.type,
+    processing?.phase,
+    processing?.status,
+    processing?.layoutRevision,
+  ]);
   const move = (next: DocumentLocation) => {
     void adapter?.goTo(next).catch((e) => toast.error(e.message));
   };
@@ -774,7 +780,7 @@ export function Workspace({
     if (action === "copy") {
       if (block.image)
         void copyImage(
-          blockImageURL(doc.id, block.id),
+          blockImageURL(doc.id, block.id, block.image),
           (block.caption || block.text).trim(),
         );
       else void copyText(block.text.trim(), "已复制");

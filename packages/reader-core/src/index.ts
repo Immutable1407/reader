@@ -518,6 +518,7 @@ export interface ProcessingStage {
 }
 export interface Processing {
   retranslating?: boolean;
+  layoutRevision?: string;
   autoTranslateMaxPages?: number;
   manualTranslation?: boolean;
   enabled?: boolean;

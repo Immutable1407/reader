@@ -200,6 +200,8 @@ func TestRetranslationQueueRollsBackAndJoinsOldWorker(t *testing.T) {
 
 func TestRetranslationRunsThroughExistingLaneAndClearsRestartState(t *testing.T) {
 	s, _, m := completedTranslationFixture(t)
+	prepareReparseDocument(t, s)
+	reparseFixture(t, m)
 	provider := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		batch := readTranslationInput(t, r).Batch
 		if len(batch.Paragraphs) != 2 {

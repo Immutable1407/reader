@@ -46,10 +46,14 @@ export function configureAPI(token: string) {
 export function publicationURL(documentId: string, resource: string) {
   return `/pub/${encodeURIComponent(sessionToken)}/${encodeURIComponent(documentId)}/${resource}`;
 }
-export function blockImageURL(documentId: string, blockId: string) {
+export function blockImageURL(
+  documentId: string,
+  blockId: string,
+  revision?: string,
+) {
   return publicationURL(
     documentId,
-    `assets/${encodeURIComponent(blockId)}.png`,
+    `assets/${encodeURIComponent(blockId)}.png${revision ? `?v=${encodeURIComponent(revision)}` : ""}`,
   );
 }
 export const client = createClient<paths>();
