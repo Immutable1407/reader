@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Check, Search, Tag, X } from "lucide-react";
+import { Check, Search, X } from "lucide-react";
 import type { Document, Processing } from "@reader/core";
 import { Button } from "@reader/ui/components/button";
 import { Input } from "@reader/ui/components/input";
@@ -18,8 +18,12 @@ interface Props {
   jobs: Map<string, Processing>;
 }
 
-/** Temporary conditions shared by the table and list filter popovers. */
-function PaperTagFilter({ documents, jobs }: Props) {
+/** Temporary conditions opened from the table tag column. */
+function PaperTagFilter({
+  documents,
+  jobs,
+  onClose,
+}: Props & { onClose: () => void }) {
   const { tagFilter, setTagFilter, view, query: textQuery } = usePaperUI();
   const prefs = useReaderStore((s) => s.libraryPreferences.papers) || {};
   const scope = filterPapers(documents, view, textQuery, "title", jobs, {
@@ -48,10 +52,9 @@ function PaperTagFilter({ documents, jobs }: Props) {
         <Button
           variant="ghost"
           size="icon-xs"
-          aria-label="清除标签筛选"
-          title="清除标签筛选"
-          disabled={!selected.size}
-          onClick={() => setTagFilter({ ...tagFilter, tags: [] })}
+          aria-label="关闭标签筛选"
+          title="关闭标签筛选"
+          onClick={onClose}
         >
           <X />
         </Button>
@@ -135,31 +138,30 @@ function PaperTagFilter({ documents, jobs }: Props) {
   );
 }
 
-export function PaperTagFilterButton({
-  documents,
-  jobs,
-  column = false,
-}: Props & { column?: boolean }) {
+export function PaperTagFilterButton({ documents, jobs }: Props) {
+  const [open, setOpen] = useState(false);
   const count = usePaperUI((s) => s.tagFilter.tags.length);
   return (
-    <Popover>
+    <Popover open={open} onOpenChange={setOpen}>
       <PopoverTrigger
         render={
           <Button
             variant={count ? "secondary" : "ghost"}
-            size={column ? "xs" : "sm"}
-            className={column ? "max-w-full min-w-0 px-1.5" : undefined}
-            aria-label={column ? "按标签筛选" : "打开标签筛选"}
+            size="xs"
+            className="max-w-full min-w-0 px-1.5"
+            aria-label="按标签筛选"
             title={count ? `筛选标签 · 已选 ${count} 个` : "筛选标签"}
           />
         }
       >
-        {!column && <Tag className="size-3.5" />}
         <span className="truncate">标签</span>
-        {!column && count > 0 && <span className="tabular-nums">{count}</span>}
       </PopoverTrigger>
       <PopoverContent align="start" className="w-64" aria-label="标签筛选条件">
-        <PaperTagFilter documents={documents} jobs={jobs} />
+        <PaperTagFilter
+          documents={documents}
+          jobs={jobs}
+          onClose={() => setOpen(false)}
+        />
       </PopoverContent>
     </Popover>
   );

@@ -106,6 +106,7 @@ export const defaultColumnWidths: Record<PaperColumn, number> = {
 };
 
 export const defaultColumns: PaperColumn[] = [
+  "tags",
   "authors",
   "year",
   "venue",

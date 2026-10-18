@@ -506,6 +506,24 @@ export function PaperLibrary({
       }
     }
   };
+  const emptyState = (
+    <div className="empty-state">
+      <h2>{documents.length ? "没有符合条件的论文" : "暂无论文"}</h2>
+      {documents.length > 0 &&
+        (query || view !== "all" || tagFilter.tags.length > 0) && (
+          <Button
+            variant="outline"
+            onClick={() => {
+              ui.setQuery("");
+              ui.setView("all");
+              ui.setTagFilter({ ...tagFilter, tags: [] });
+            }}
+          >
+            显示全部论文
+          </Button>
+        )}
+    </div>
+  );
   const renderRow = (doc: Document, tableColumns?: PaperColumn[]) => (
     <PaperRow
       columns={tableColumns}
@@ -574,14 +592,11 @@ export function PaperLibrary({
               <Input
                 aria-label="搜索论文"
                 placeholder="标题、作者、出处、DOI、摘要、标签…"
-                title="空格分隔的词需全部命中，不支持 AND/OR 表达式；标签组合可通过标签按钮筛选"
+                title="空格分隔的词需全部命中，不支持 AND/OR 表达式；标签组合可点击表格标签列筛选"
                 value={query}
                 onChange={(e) => ui.setQuery(e.target.value)}
               />
             </div>
-            {(!table || !columns.includes("tags") || !visible.length) && (
-              <PaperTagFilterButton documents={documents} jobs={jobs} />
-            )}
             <Select
               value={sort}
               onValueChange={(value) => {
@@ -907,7 +922,7 @@ export function PaperLibrary({
               <div className="empty-state">
                 <Loader2 className="animate-spin text-muted-foreground" />
               </div>
-            ) : visible.length ? (
+            ) : visible.length || table ? (
               view === "duplicates" ? (
                 <div className="paper-list" ref={listRef}>
                   {groups.map((group) => (
@@ -1008,7 +1023,6 @@ export function PaperLibrary({
                                 <PaperTagFilterButton
                                   documents={documents}
                                   jobs={jobs}
-                                  column
                                 />
                               ) : (
                                 <span className="px-1.5">
@@ -1037,6 +1051,15 @@ export function PaperLibrary({
                     </TableHeader>
                     <TableBody>
                       {visible.map((doc) => renderRow(doc, columns))}
+                      {!visible.length && (
+                        <TableRow>
+                          <TableCell
+                            colSpan={columns.length + 2 + (picking ? 1 : 0)}
+                          >
+                            {emptyState}
+                          </TableCell>
+                        </TableRow>
+                      )}
                     </TableBody>
                   </Table>
                 </div>
@@ -1046,22 +1069,7 @@ export function PaperLibrary({
                 </div>
               )
             ) : (
-              <div className="empty-state">
-                <h2>{documents.length ? "没有符合条件的论文" : "暂无论文"}</h2>
-                {documents.length > 0 &&
-                  (query || view !== "all" || tagFilter.tags.length > 0) && (
-                    <Button
-                      variant="outline"
-                      onClick={() => {
-                        ui.setQuery("");
-                        ui.setView("all");
-                        ui.setTagFilter({ ...tagFilter, tags: [] });
-                      }}
-                    >
-                      显示全部论文
-                    </Button>
-                  )}
-              </div>
+              emptyState
             )}
           </section>
           {selected && !picking && (

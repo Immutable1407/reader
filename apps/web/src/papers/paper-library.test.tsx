@@ -546,7 +546,11 @@ it("resizes table columns at their shared boundary", async () => {
     useReaderStore.setState({
       libraryPreferences: {
         mode: "papers",
-        papers: { sort: "title", layout: "table" },
+        papers: {
+          sort: "title",
+          layout: "table",
+          columns: ["authors", "year", "venue", "status"],
+        },
       },
     }),
   );
@@ -799,15 +803,14 @@ it("selects tags in the popover, switches AND/OR and keeps zero-result selection
         { ...docs[1], tags: ["rag"] },
         paper({ id: "c", title: "Agent Survey", tags: ["Agent"] }),
       ],
+      libraryPreferences: { mode: "papers", papers: { layout: "table" } },
     }),
   );
   expect(
     host.querySelector('.paper-sidebar [aria-label="标签筛选"]'),
   ).toBeNull();
   await act(async () =>
-    host
-      .querySelector<HTMLButtonElement>('[aria-label="打开标签筛选"]')!
-      .click(),
+    host.querySelector<HTMLButtonElement>('[aria-label="按标签筛选"]')!.click(),
   );
   const popover = document.querySelector('[data-slot="popover-content"]')!;
   const matchButton = (label: string) =>
@@ -854,27 +857,32 @@ it("selects tags in the popover, switches AND/OR and keeps zero-result selection
   expect(api.saveLibraryPreferences).not.toHaveBeenCalled();
 });
 
-it("opens tag filtering without a visible sidebar", async () => {
+it("closes the tag popover with its cross without clearing selected tags", async () => {
   await act(async () => {
     useReaderStore.setState({
       documents: [{ ...docs[0], tags: ["RAG"] }, docs[1]],
+      libraryPreferences: { mode: "papers", papers: { layout: "table" } },
     });
     root.render(<Harness navOpen={false} />);
   });
-  expect(host.querySelector(".paper-sidebar")).toBeNull();
+  const trigger = host.querySelector<HTMLButtonElement>(
+    '[aria-label="按标签筛选"]',
+  )!;
+  await act(async () => trigger.click());
+  const close = () =>
+    document.querySelector<HTMLButtonElement>('[aria-label="关闭标签筛选"]')!;
+  expect(close()).not.toBeNull();
+  expect(close().disabled).toBe(false);
+  await act(async () => close().click());
+  expect(trigger.getAttribute("aria-expanded")).toBe("false");
+  await act(async () => trigger.click());
   await act(async () =>
-    host
-      .querySelector<HTMLButtonElement>('[aria-label="打开标签筛选"]')!
-      .click(),
-  );
-  const popover = document.querySelector('[data-slot="popover-content"]');
-  expect(popover).not.toBeNull();
-  await act(async () =>
-    popover!
+    document
       .querySelector<HTMLButtonElement>('[aria-label="筛选标签 RAG"]')!
       .click(),
   );
-  expect(row("Graph Attention Networks")).toBeNull();
+  await act(async () => close().click());
+  expect(trigger.getAttribute("aria-expanded")).toBe("false");
   expect(usePaperUI.getState().tagFilter.tags).toEqual(["RAG"]);
 });
 
@@ -923,16 +931,17 @@ it("does not run paper-list shortcuts from the tag column popover", async () => 
   expect(api.update).not.toHaveBeenCalled();
 });
 
-it("uses the tag column in tables and keeps a fallback when the column or results are absent", async () => {
+it("defaults tags to the second column and has no extra tag toolbar button", async () => {
   await act(async () =>
     useReaderStore.setState({
-      libraryPreferences: {
-        mode: "papers",
-        papers: { layout: "table", columns: ["tags"] },
-      },
+      libraryPreferences: { mode: "papers", papers: { layout: "table" } },
     }),
   );
-  expect(host.querySelector('[aria-label="按标签筛选"]')).not.toBeNull();
+  expect(
+    [...host.querySelectorAll("th[data-column]")]
+      .slice(0, 2)
+      .map((th) => th.getAttribute("data-column")),
+  ).toEqual(["title", "tags"]);
   expect(host.querySelector('[aria-label="打开标签筛选"]')).toBeNull();
   await act(async () =>
     useReaderStore.setState({
@@ -942,17 +951,14 @@ it("uses the tag column in tables and keeps a fallback when the column or result
       },
     }),
   );
-  expect(host.querySelector('[aria-label="打开标签筛选"]')).not.toBeNull();
-  await act(async () => {
+  expect(host.querySelector('[aria-label="按标签筛选"]')).toBeNull();
+  expect(host.querySelector('[aria-label="打开标签筛选"]')).toBeNull();
+  await act(async () =>
     useReaderStore.setState({
-      libraryPreferences: {
-        mode: "papers",
-        papers: { layout: "table", columns: ["tags"] },
-      },
-    });
-    usePaperUI.getState().setTagFilter({ tags: ["missing"], match: "all" });
-  });
-  expect(host.querySelector('[aria-label="打开标签筛选"]')).not.toBeNull();
+      libraryPreferences: { mode: "papers", papers: { layout: "list" } },
+    }),
+  );
+  expect(host.querySelector('[aria-label="打开标签筛选"]')).toBeNull();
 });
 
 it("filters matching row tags across categories and keeps the current search", async () => {
