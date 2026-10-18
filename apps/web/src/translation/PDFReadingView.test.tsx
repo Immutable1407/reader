@@ -225,7 +225,7 @@ async function click(label: string) {
     });
   }
 }
-it("switches modes without recreating the PDF and links an original selection to its sentence", async () => {
+it("switches modes without recreating the PDF or marking the opposite selection", async () => {
   await click("原文译文");
   expect(adapter.focusBlock).not.toHaveBeenCalled();
   await act(async () =>
@@ -239,7 +239,7 @@ it("switches modes without recreating the PDF and links an original selection to
     }),
   );
   const marked = host.querySelector('[data-sentence="1"]');
-  expect(marked?.hasAttribute("data-linked")).toBe(true);
+  expect(marked?.hasAttribute("data-linked")).toBe(false);
   expect(
     host.querySelector('[data-sentence="0"]')?.hasAttribute("data-linked"),
   ).toBe(false);
@@ -251,7 +251,7 @@ it("switches modes without recreating the PDF and links an original selection to
   expect(host.querySelector(".translation-document")).toBeNull();
   expect(adapter.destroy).not.toHaveBeenCalled();
 });
-it("keeps the translated selection as the quote and anchors its counterpart to original text", async () => {
+it("keeps the translated selection and navigation metadata without marking the original", async () => {
   const highlights = new Map<string, Set<Range>>();
   vi.stubGlobal("CSS", { highlights });
   vi.stubGlobal(
@@ -298,10 +298,22 @@ it("keeps the translated selection as the quote and anchors its counterpart to o
       }),
     }),
   );
-  expect(adapter.focusSentences).toHaveBeenLastCalledWith(
+  expect(adapter.focusSentences).not.toHaveBeenCalledWith(
     "p1-b1",
     ["Second sentence."],
     true,
+  );
+  const selected = fixture.ready!.getSelection()!;
+  expect(selected.location.sentenceLink).toBeUndefined();
+  const prepared = await fixture.ready!.prepareAnnotation!(selected);
+  expect(prepared.location.translation).toEqual(selected.location.translation);
+  expect(prepared.location.sentenceLink).toBeUndefined();
+  await click("取消同步效果");
+  vi.mocked(adapter.focusBlock!).mockClear();
+  await act(async () => fixture.ready!.focusLocation!(prepared.location));
+  expect(adapter.focusBlock).toHaveBeenCalledExactlyOnceWith(
+    "p1-b1",
+    "parallel",
   );
   await act(async () => fixture.ready!.clearSelection());
   expect(events.selection).toHaveBeenLastCalledWith(null);
@@ -1187,3 +1199,30 @@ it.each(["left", "right"] as const)(
     }
   },
 );
+
+it("strips legacy cross-side links when preparing a mark without losing its position", async () => {
+  const location = {
+    type: "pdf" as const,
+    page: 1,
+    rects: [{ x: 0.1, y: 0.25, width: 0.2, height: 0.02 }],
+    sentenceLink: { origin: "source" as const, parts: [] },
+  };
+  const prepared = await fixture.ready!.prepareAnnotation!({
+    text: "Second",
+    location,
+  });
+  expect(prepared.location.sentenceLink).toBeUndefined();
+  expect(prepared.location).toEqual({
+    type: "pdf",
+    page: 1,
+    rects: location.rects,
+  });
+  await click("原文译文");
+  await click("取消同步效果");
+  vi.mocked(adapter.focusBlock!).mockClear();
+  await act(async () => fixture.ready!.focusLocation!(prepared.location));
+  expect(adapter.focusBlock).toHaveBeenCalledExactlyOnceWith(
+    "p1-b1",
+    "parallel",
+  );
+});

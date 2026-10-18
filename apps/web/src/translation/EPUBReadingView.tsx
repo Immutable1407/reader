@@ -30,7 +30,7 @@ import {
   translatedAnnotationRanges,
 } from "./annotations";
 import { installTranslationSelectionHighlight } from "./selection-highlight";
-import { epubBlocksAt, epubOffsets, epubSentenceLocation } from "./epub-links";
+import { epubBlocksAt } from "./epub-links";
 import { isSelectionToolbar } from "../readers/selection-anchor";
 import { defaultTheme } from "@reader/core";
 import { translationFont } from "../appearance";
@@ -59,7 +59,6 @@ export function EPUBReadingView({
     doc.progress?.type === "epub" ? doc.progress.href : "",
   );
   const [error, setError] = useState("");
-  const [linked, setLinked] = useState<Record<string, number[]>>({});
   const pane = useRef<HTMLDivElement>(null);
   const engine = useRef<ReaderAdapter | undefined>(undefined);
   const selection = useRef<ReaderSelection | null>(null);
@@ -155,7 +154,6 @@ export function EPUBReadingView({
     engine.current?.clearSelection();
     window.getSelection()?.removeAllRanges();
     live.current.events.selection(null);
-    setLinked({});
     void engine.current?.focusEPUBLocations?.([]);
   };
   const syncSource = async (location: EPUBLocation) => {
@@ -243,7 +241,6 @@ export function EPUBReadingView({
         !window.getSelection()?.toString().trim()
       ) {
         selection.current = null;
-        setLinked({});
         void engine.current?.focusEPUBLocations?.([]);
         live.current.events.selection(null);
       }
@@ -280,21 +277,8 @@ export function EPUBReadingView({
     side.current = "translation";
     selection.current = value.selection;
     live.current.events.selection(value.selection);
-    setLinked(
-      Object.fromEntries(
-        value.links.map((l) => [l.blockId, l.sentenceIndexes]),
-      ),
-    );
     updateLocation(value.selection.location);
     void syncSource(value.selection.location);
-    if (live.current.mode === "parallel")
-      void engine.current
-        ?.focusEPUBLocations?.(
-          value.selection.location.translation?.ranges?.flatMap((r) =>
-            r.location ? [r.location] : [],
-          ) ?? [value.selection.location],
-        )
-        .catch((e) => toast.error(e.message));
   };
   const scroll = () => {
     live.current.events.annotationHover?.(null);
@@ -453,35 +437,9 @@ export function EPUBReadingView({
                       value.location,
                       live.current.blocks,
                     );
-                    const selectedRange = epubOffsets(value.location);
-                    const links = Object.fromEntries(
-                      matches.map((block) => {
-                        const translated = live.current.translations.find(
-                          (t) => t.blockId === block.id,
-                        );
-                        const indexes =
-                          translated?.sentences.flatMap((_, index) => {
-                            const range = epubOffsets(
-                              epubSentenceLocation(
-                                block,
-                                translated.sentences,
-                                [index],
-                              ),
-                            );
-                            return !selectedRange ||
-                              !range ||
-                              (range.start < selectedRange.end &&
-                                selectedRange.start < range.end)
-                              ? [index]
-                              : [];
-                          }) ?? [];
-                        return [block.id, indexes];
-                      }),
-                    );
-                    setLinked(links);
                     if (matches[0] && live.current.mode === "parallel")
                       follow(matches[0].id);
-                  } else setLinked({});
+                  }
                 },
               }}
             />
@@ -632,7 +590,6 @@ export function EPUBReadingView({
                   translation={translations.find((t) => t.blockId === block.id)}
                   paused={processing?.enabled === false}
                   retry={() => retry(block.id)}
-                  linked={linked[block.id]}
                 />
               </section>
             ))}

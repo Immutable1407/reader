@@ -25,11 +25,7 @@ import type {
   TOCItem,
   TranslationBlock,
 } from "@reader/core";
-import {
-  defaultTheme,
-  isPDFPageDecoration,
-  sentenceAnchor,
-} from "@reader/core";
+import { defaultTheme, isPDFPageDecoration } from "@reader/core";
 import { api } from "@reader/api";
 import { Button } from "@reader/ui/components/button";
 import { Tabs, TabsList, TabsTrigger } from "@reader/ui/components/tabs";
@@ -48,7 +44,6 @@ import { formulaNumbers } from "./formulaNumbers";
 import { TranslationText } from "./TranslationText";
 import { blockImageCache } from "./block-images";
 import { useSentenceMarks } from "./useSentenceMarks";
-import { linkTranslatedSelection, sentenceLink } from "./sentence-links";
 import { translatedSelection as captureTranslationSelection } from "./selection";
 import { installTranslationSelectionHighlight } from "./selection-highlight";
 import { translationFont } from "../appearance";
@@ -95,8 +90,7 @@ export function PDFReadingView({
     [swapped, setSwapped] = useState(false),
     [syncEnabled, setSyncEnabled] = useState(true);
   const { translations, error } = useTranslations(doc.id);
-  const [popup, setPopup] = useState<{ block: PDFBlock; rect: DOMRect }>(),
-    [linked, setLinked] = useState<Record<string, number[]>>();
+  const [popup, setPopup] = useState<{ block: PDFBlock; rect: DOMRect }>();
   const [engine, setEngine] = useState<ReaderAdapter>();
   const [hoveredBlock, setHoveredBlock] = useState<string>();
   const [focusedBlock, setFocusedBlock] = useState<string>();
@@ -218,12 +212,6 @@ export function PDFReadingView({
   useEffect(() => {
     if (pane.current) return installTranslationSelectionHighlight(pane.current);
   }, [mode, doc.id]);
-  useEffect(() => {
-    if (theme.linkTranslationAnnotations === false) {
-      setLinked(undefined);
-      void engine?.focusSentences?.("", []);
-    }
-  }, [theme.linkTranslationAnnotations, engine]);
   const translate = async (blockId = "") => {
     try {
       await api.translate(doc.id, blockId);
@@ -463,30 +451,9 @@ export function PDFReadingView({
         if (key === "prepareAnnotation")
           return async (value: ReaderSelection) => {
             if (value.location.type !== "pdf") return value;
-            if (state.current.theme.linkTranslationAnnotations === false) {
-              const { sentenceLink: _, ...location } = value.location;
-              return { ...value, location };
-            }
-            if (value.location.sentenceLink) return value;
-            if (value.location.translation)
-              return linkTranslatedSelection(value, state.current.translations);
-            const currentTranslations = state.current.translations;
-            const links =
-              (await target.matchSentences?.(
-                value.location,
-                currentTranslations,
-              )) ?? [];
-            return {
-              ...value,
-              location: {
-                ...value.location,
-                sentenceLink: sentenceLink(
-                  links,
-                  currentTranslations,
-                  "source",
-                ),
-              },
-            };
+            // Keep navigation metadata, but never persist a cross-side mark.
+            const { sentenceLink: _, ...location } = value.location;
+            return { ...value, location };
           };
         if (key === "goTo")
           return (l: DocumentLocation) => actions.current.go(l);
@@ -572,7 +539,6 @@ export function PDFReadingView({
           return () => {
             window.getSelection()?.removeAllRanges();
             selection.current = null;
-            setLinked(undefined);
             void target.focusSentences?.("", []);
             state.current.events.selection(null);
             target.clearSelection();
@@ -596,7 +562,6 @@ export function PDFReadingView({
     selection.current = null;
     events.selection(null);
     window.getSelection()?.removeAllRanges();
-    setLinked(undefined);
     void engine.focusSentences?.("", []);
     if (previous !== mode && mode === "parallel") {
       const block = blocks.find(
@@ -711,60 +676,6 @@ export function PDFReadingView({
     if (side.current !== "source") return;
     selection.current = value;
     events.selection(value);
-    if (
-      !value ||
-      value.location.type !== "pdf" ||
-      theme.linkTranslationAnnotations === false
-    ) {
-      setLinked(undefined);
-      return;
-    }
-    const location = value.location;
-    const fallback = blocks
-      .filter(
-        (b) =>
-          b.page === location.page &&
-          location.rects?.some((r) => overlap(r, b.bounds) > 0),
-      )
-      .flatMap((block) => {
-        const t = byId.get(block.id);
-        if (!t) return [];
-        const needle = value.text.replace(/\s/g, "").toLowerCase();
-        const matches = t.sentences.flatMap((s, i) =>
-          sentenceAnchor(s).replace(/\s/g, "").toLowerCase().includes(needle)
-            ? [i]
-            : [],
-        );
-        return [
-          {
-            blockId: block.id,
-            sentenceIndexes: matches.length === 1 ? matches : [],
-          },
-        ];
-      });
-    const map = async () => {
-      const links = (
-        (await engine?.matchSentences?.(location, translations)) ?? fallback
-      ).filter((l) => l.sentenceIndexes.length);
-      if (selection.current !== value || !links.length) return;
-      const enriched = {
-        ...value,
-        location: {
-          ...location,
-          sentenceLink: sentenceLink(links, translations, "source"),
-        },
-      };
-      selection.current = enriched;
-      events.selection(enriched);
-      setLinked(
-        Object.fromEntries(links.map((l) => [l.blockId, l.sentenceIndexes])),
-      );
-      const anchor = { blockId: links[0].blockId, fraction: 0 };
-      recordReading(anchor);
-      if (state.current.mode === "parallel")
-        followTranslation(anchor, links[0].sentenceIndexes[0]);
-    };
-    void map().catch((e) => toast.error(e.message));
   };
   const translatedSelection = () => {
     selecting.current = false;
@@ -778,28 +689,8 @@ export function PDFReadingView({
       translations,
     );
     if (!value) return;
-    const captured =
-      theme.linkTranslationAnnotations === false
-        ? value.selection
-        : linkTranslatedSelection(value.selection, translations);
-    selection.current = captured;
-    events.selection(captured);
-    if (theme.linkTranslationAnnotations === false) return;
-    setLinked(
-      Object.fromEntries(
-        value.links.map((l) => [l.blockId, l.sentenceIndexes]),
-      ),
-    );
-    recordReading({ blockId: value.links[0].blockId, fraction: 0 });
-    if (mode === "parallel") {
-      control.current.following("source");
-      const first = value.passages[0];
-      void (
-        engine?.focusPassages
-          ? engine.focusPassages(value.passages, true)
-          : engine?.focusSentences?.(first.blockId, first.sources, true)
-      )?.catch((e) => toast.error(e.message));
-    }
+    selection.current = value.selection;
+    events.selection(value.selection);
   };
   const translatedScroll = () => {
     cancelAnimationFrame(scrollFrame.current);
@@ -1086,7 +977,6 @@ export function PDFReadingView({
                 selecting.current = true;
                 selection.current = null;
                 events.selection(null);
-                setLinked(undefined);
                 void engine?.focusSentences?.("", []);
               }}
               onPointerUp={translatedSelection}
@@ -1140,19 +1030,6 @@ export function PDFReadingView({
                       a.location.type === "pdf"
                         ? a.location.translation
                         : undefined;
-                    const pair =
-                      a.location.type === "pdf" &&
-                      theme.linkTranslationAnnotations !== false
-                        ? a.location.sentenceLink
-                        : undefined;
-                    if (pair?.origin === "source")
-                      return pair.parts
-                        .filter(
-                          (p) =>
-                            p.blockId === block.id &&
-                            p.sourceHash === translated?.sourceHash,
-                        )
-                        .map((p) => p.sentenceIndex);
                     return mark
                       ? (mark.ranges ?? [mark])
                           .filter(
@@ -1228,7 +1105,6 @@ export function PDFReadingView({
                       renderImage={blockImages?.url}
                       retry={() => void translate(block.id)}
                       paused={processing?.enabled === false}
-                      linked={linked?.[block.id] ?? []}
                     />
                     {noteIndexes.length > 0 && (
                       <span

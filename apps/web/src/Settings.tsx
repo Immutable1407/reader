@@ -795,9 +795,9 @@ export function Settings({
                   }
                 />
                 <span>
-                  译文原文划线关联
+                  原文译文悬停关联
                   <span className="block text-xs text-muted-foreground">
-                    悬停与批注同步到另一侧对应的完整句子
+                    悬停时提示另一侧对应的完整句子
                   </span>
                 </span>
               </label>
