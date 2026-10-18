@@ -1402,7 +1402,7 @@ function PaperRow({
                 variant="secondary"
                 render={<button type="button" />}
                 data-row-action
-                className="max-w-28 shrink-0 cursor-pointer hover:bg-secondary/80 active:scale-95"
+                className="max-w-28 shrink-0 cursor-pointer hover:bg-secondary/80 motion-safe:active:scale-95"
                 aria-label={`按 AND 筛选标签 ${tag}`}
                 title={`加入 AND 筛选：${tag}`}
                 onClick={(event) => {
