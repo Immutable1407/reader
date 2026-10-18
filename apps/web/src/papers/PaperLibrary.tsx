@@ -1410,7 +1410,7 @@ function PaperRow({
                 }}
                 onKeyDown={(event) => event.stopPropagation()}
               >
-                <span className="truncate">{tag}</span>
+                <span className="truncate">#{tag}</span>
               </Badge>
             ))}
           </div>
