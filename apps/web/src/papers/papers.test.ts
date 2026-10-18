@@ -14,6 +14,7 @@ import {
 } from "./format";
 import {
   categoryTree,
+  defaultColumns,
   cleanCategory,
   duplicateGroups,
   pairKey,
@@ -520,4 +521,83 @@ it("keeps never-opened imports after opened papers and uses real timestamps acro
   ]);
   expect(recentPapers(docs, []).map((d) => d.id)).toEqual(["later", "earlier"]);
   expect(wasOpened(paper({ progress: { type: "pdf", page: 1 } }))).toBe(true);
+});
+
+it("combines temporary AND/OR tags with the current view and every search term", () => {
+  const docs = [
+    paper({
+      id: "a",
+      title: "Alpha",
+      folders: ["ML"],
+      tags: ["RAG", "Agent"],
+      metadata: { abstract: "retrieval study" },
+    }),
+    paper({
+      id: "b",
+      title: "Beta",
+      folders: ["ML"],
+      tags: ["rag"],
+      metadata: { abstract: "retrieval study" },
+    }),
+    paper({
+      id: "c",
+      title: "Gamma",
+      tags: ["Agent"],
+      metadata: { abstract: "retrieval study" },
+    }),
+    paper({
+      id: "d",
+      title: "RAG Agent",
+      folders: ["ML"],
+      tags: ["agentic"],
+      metadata: { abstract: "retrieval study" },
+    }),
+  ];
+  const jobs = new Map<string, Processing>();
+  const ids = (match: "all" | "any", tags = ["rag", "AGENT"]) =>
+    filterPapers(docs, "folder:ML", "retrieval STUDY", "title", jobs, {
+      tagFilter: { tags, match },
+    }).map((d) => d.id);
+  expect(ids("all")).toEqual(["a"]);
+  expect(ids("any")).toEqual(["a", "b"]);
+  expect(ids("all", [])).toEqual(["a", "b", "d"]);
+  expect(ids("any", ["missing"])).toEqual([]);
+  expect(docs[0].tags).toEqual(["RAG", "Agent"]);
+});
+
+it("applies temporary tags after finding duplicate groups", () => {
+  const docs = [
+    paper({
+      id: "a",
+      title: "Same study",
+      tags: ["RAG"],
+      metadata: { doi: "10.1234/same" },
+    }),
+    paper({
+      id: "b",
+      title: "Same study",
+      tags: ["Agent"],
+      metadata: { doi: "10.1234/same" },
+    }),
+    paper({ id: "c", title: "Different study", tags: ["RAG"] }),
+  ];
+  expect(
+    filterPapers(docs, "duplicates", "", "title", new Map(), {
+      tagFilter: { tags: ["rag"], match: "all" },
+    }).map((d) => d.id),
+  ).toEqual(["a"]);
+});
+
+it("keeps tags immediately after the title when toggling other default or optional columns", () => {
+  for (const column of ["status", "authors", "published"] as const) {
+    const toggled = toggleColumn(defaultColumns, column);
+    expect(toggled[0]).toBe("tags");
+    expect(toggleColumn(toggled, column)).toEqual(defaultColumns);
+  }
+});
+
+it("restores the tag column to its default position after hiding and showing it", () => {
+  const hidden = toggleColumn(defaultColumns, "tags");
+  expect(hidden).toEqual(["authors", "year", "venue", "status"]);
+  expect(toggleColumn(hidden, "tags")).toEqual(defaultColumns);
 });

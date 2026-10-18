@@ -628,7 +628,7 @@ function TagChips({ doc }: { doc: Document }) {
     if (tag) void addTag([doc], tag);
   };
   return (
-    <div className="paper-chips" aria-label="标签">
+    <div className="paper-chips paper-tag-chips" aria-label="标签">
       {doc.tags.map((tag) => (
         <Chip
           key={tag}

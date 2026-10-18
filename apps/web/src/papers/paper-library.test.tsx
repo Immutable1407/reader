@@ -53,17 +53,19 @@ const docs: Document[] = [
 let root: Root, host: HTMLDivElement;
 const open = vi.fn();
 let jobs = new Map<string, Processing>();
-function Harness() {
+function Harness({ navOpen = true }: { navOpen?: boolean } = {}) {
   const documents = useReaderStore((s) => s.documents);
   return (
     <>
-      <PaperSidebar
-        documents={documents}
-        jobs={jobs}
-        trashCount={0}
-        openDocument={open}
-        onNewCategory={() => {}}
-      />
+      {navOpen && (
+        <PaperSidebar
+          documents={documents}
+          jobs={jobs}
+          trashCount={0}
+          openDocument={open}
+          onNewCategory={() => {}}
+        />
+      )}
       <PaperLibrary
         documents={documents}
         trash={[]}
@@ -71,7 +73,7 @@ function Harness() {
         loading={false}
         openDocument={open}
         moveToBooks={() => {}}
-        navOpen
+        navOpen={navOpen}
         onToggleNav={() => {}}
       />
     </>
@@ -100,6 +102,7 @@ beforeEach(async () => {
   usePaperUI.setState({
     view: "all",
     query: "",
+    tagFilter: { tags: [], match: "all" },
     selectedId: null,
     picking: false,
     picked: new Set(),
@@ -544,7 +547,11 @@ it("resizes table columns at their shared boundary", async () => {
     useReaderStore.setState({
       libraryPreferences: {
         mode: "papers",
-        papers: { sort: "title", layout: "table" },
+        papers: {
+          sort: "title",
+          layout: "table",
+          columns: ["authors", "year", "venue", "status"],
+        },
       },
     }),
   );
@@ -678,9 +685,11 @@ it("shows optional metadata columns and sorts publication dates without inventin
   expect(
     host.querySelector('th[data-column="published"]')?.getAttribute("style"),
   ).toContain("144px");
-  const sortBeforeTagsClick = prefs().sort;
-  await act(async () => columnGrip("标签").click());
-  expect(prefs().sort).toBe(sortBeforeTagsClick);
+  expect(
+    host
+      .querySelector('th[data-column="tags"] button')
+      ?.getAttribute("aria-label"),
+  ).toBe("按标签筛选");
   await act(async () => button("发表日期").click());
   expect(
     [...host.querySelectorAll("tbody [data-paper-id]")].map((el) =>
@@ -738,6 +747,293 @@ it.each(["list", "table"] as const)(
   },
 );
 
+it.each(["list", "table"] as const)(
+  "combines temporary tags with search in the %s view and clears only tags",
+  async (layout) => {
+    await act(async () => {
+      useReaderStore.setState({
+        documents: [
+          { ...docs[0], tags: ["RAG", "Agent"] },
+          { ...docs[1], tags: ["RAG"] },
+        ],
+        libraryPreferences: {
+          mode: "papers",
+          papers: { layout, columns: ["tags"] },
+        },
+      });
+      usePaperUI.getState().setQuery("Attention");
+      usePaperUI
+        .getState()
+        .setTagFilter({ tags: ["rag", "AGENT"], match: "all" });
+    });
+    expect(row("Attention Is All You Need")).not.toBeNull();
+    expect(row("Graph Attention Networks")).toBeNull();
+    await act(async () =>
+      usePaperUI
+        .getState()
+        .setTagFilter({ tags: ["rag", "Agent"], match: "any" }),
+    );
+    expect(row("Graph Attention Networks")).not.toBeNull();
+    await act(async () =>
+      host
+        .querySelector<HTMLButtonElement>('[aria-label="清除当前标签条件"]')!
+        .click(),
+    );
+    expect(usePaperUI.getState().tagFilter.tags).toEqual([]);
+    expect(usePaperUI.getState().query).toBe("Attention");
+    expect(api.update).not.toHaveBeenCalled();
+    expect(api.saveLibraryPreferences).not.toHaveBeenCalled();
+  },
+);
+
+it("can recover from an empty tag result using the list reset action", async () => {
+  await act(async () =>
+    usePaperUI.getState().setTagFilter({ tags: ["missing"], match: "all" }),
+  );
+  expect(host.textContent).toContain("没有符合条件的论文");
+  await act(async () => button("显示全部论文").click());
+  expect(usePaperUI.getState().tagFilter.tags).toEqual([]);
+  expect(row("Attention Is All You Need")).not.toBeNull();
+});
+
+it("selects tags in the popover, switches AND/OR and keeps zero-result selections removable", async () => {
+  await act(async () =>
+    useReaderStore.setState({
+      documents: [
+        { ...docs[0], tags: ["RAG", "Agent"] },
+        { ...docs[1], tags: ["rag"] },
+        paper({ id: "c", title: "Agent Survey", tags: ["Agent"] }),
+      ],
+      libraryPreferences: { mode: "papers", papers: { layout: "table" } },
+    }),
+  );
+  expect(
+    host.querySelector('.paper-sidebar [aria-label="标签筛选"]'),
+  ).toBeNull();
+  await act(async () =>
+    host.querySelector<HTMLButtonElement>('[aria-label="按标签筛选"]')!.click(),
+  );
+  const popover = document.querySelector('[data-slot="popover-content"]')!;
+  const matchButton = (label: string) =>
+    [...popover.querySelectorAll<HTMLButtonElement>("button")].find(
+      (item) => item.textContent === label,
+    )!;
+  const tag = (name: string) =>
+    popover.querySelector<HTMLButtonElement>(
+      `[aria-label="筛选标签 ${name}"]`,
+    )!;
+  expect(popover.querySelectorAll('[aria-label="筛选标签 rag"]')).toHaveLength(
+    0,
+  );
+  await act(async () => tag("RAG").click());
+  expect(row("Agent Survey")).toBeNull();
+  expect(tag("Agent").textContent).toContain("1");
+  await act(async () => tag("Agent").click());
+  expect(row("Graph Attention Networks")).toBeNull();
+  await act(async () => matchButton("任一 OR").click());
+  expect(row("Graph Attention Networks")).not.toBeNull();
+  expect(row("Agent Survey")).not.toBeNull();
+  await act(async () => {
+    matchButton("全部 AND").click();
+    usePaperUI.getState().setQuery("Graph");
+  });
+  expect(host.textContent).toContain("没有符合条件的论文");
+  expect(tag("Agent").disabled).toBe(false);
+  expect(tag("Agent").textContent).toContain("0");
+  expect(tag("Agent")).not.toBeNull();
+  await act(async () => tag("Agent").click());
+  expect(row("Graph Attention Networks")).not.toBeNull();
+  expect(usePaperUI.getState().query).toBe("Graph");
+  expect(api.update).not.toHaveBeenCalled();
+  expect(api.saveLibraryPreferences).not.toHaveBeenCalled();
+});
+
+it("closes the tag popover with its trigger without clearing selected tags", async () => {
+  await act(async () => {
+    useReaderStore.setState({
+      documents: [{ ...docs[0], tags: ["RAG"] }, docs[1]],
+      libraryPreferences: { mode: "papers", papers: { layout: "table" } },
+    });
+    root.render(<Harness navOpen={false} />);
+  });
+  const trigger = host.querySelector<HTMLButtonElement>(
+    '[aria-label="按标签筛选"]',
+  )!;
+  await act(async () => trigger.click());
+  await act(async () => trigger.click());
+  expect(trigger.getAttribute("aria-expanded")).toBe("false");
+  await act(async () => trigger.click());
+  await act(async () =>
+    document
+      .querySelector<HTMLButtonElement>('[aria-label="筛选标签 RAG"]')!
+      .click(),
+  );
+  await act(async () => trigger.click());
+  expect(trigger.getAttribute("aria-expanded")).toBe("false");
+  expect(usePaperUI.getState().tagFilter.tags).toEqual(["RAG"]);
+});
+
+it("clears temporary tags when opening a cited paper for metadata editing", async () => {
+  await act(async () => {
+    usePaperUI.getState().setTagFilter({ tags: ["missing"], match: "all" });
+    usePaperUI.getState().setExporting({ ids: ["b"], title: "Demo" });
+  });
+  const edit = [...document.querySelectorAll<HTMLButtonElement>("button")].find(
+    (b) => b.textContent?.trim() === "去补",
+  )!;
+  expect(edit).toBeDefined();
+  await act(async () => edit.click());
+  expect(usePaperUI.getState().tagFilter.tags).toEqual([]);
+  expect(row("Graph Attention Networks")).not.toBeNull();
+  expect(usePaperUI.getState().selectedId).toBe("b");
+});
+
+it("does not run paper-list shortcuts from the tag column popover", async () => {
+  await act(async () =>
+    useReaderStore.setState({
+      documents: [{ ...docs[0], tags: ["RAG"] }, docs[1]],
+      libraryPreferences: {
+        mode: "papers",
+        papers: { layout: "table", columns: ["tags"] },
+      },
+    }),
+  );
+  await act(async () =>
+    host.querySelector<HTMLButtonElement>('[aria-label="按标签筛选"]')!.click(),
+  );
+  const target = document.querySelector<HTMLButtonElement>(
+    '[data-slot="popover-content"] button[aria-pressed]',
+  )!;
+  await act(async () => target.focus());
+  await act(async () => {
+    target.dispatchEvent(
+      new KeyboardEvent("keydown", { key: "a", ctrlKey: true, bubbles: true }),
+    );
+    target.dispatchEvent(
+      new KeyboardEvent("keydown", { key: "ArrowDown", bubbles: true }),
+    );
+  });
+  expect(usePaperUI.getState().picking).toBe(false);
+  expect(document.activeElement).toBe(target);
+  expect(api.update).not.toHaveBeenCalled();
+});
+
+it("defaults tags to the second column and has no extra tag toolbar button", async () => {
+  await act(async () =>
+    useReaderStore.setState({
+      libraryPreferences: { mode: "papers", papers: { layout: "table" } },
+    }),
+  );
+  expect(
+    [...host.querySelectorAll("th[data-column]")]
+      .slice(0, 2)
+      .map((th) => th.getAttribute("data-column")),
+  ).toEqual(["title", "tags"]);
+  expect(host.querySelector('[aria-label="打开标签筛选"]')).toBeNull();
+  await act(async () =>
+    useReaderStore.setState({
+      libraryPreferences: {
+        mode: "papers",
+        papers: { layout: "table", columns: ["authors"] },
+      },
+    }),
+  );
+  expect(host.querySelector('[aria-label="按标签筛选"]')).toBeNull();
+  expect(host.querySelector('[aria-label="打开标签筛选"]')).toBeNull();
+  await act(async () =>
+    useReaderStore.setState({
+      libraryPreferences: { mode: "papers", papers: { layout: "list" } },
+    }),
+  );
+  expect(host.querySelector('[aria-label="打开标签筛选"]')).toBeNull();
+});
+
+it("filters matching row tags across categories and keeps the current search", async () => {
+  await act(async () =>
+    useReaderStore.setState({
+      documents: [
+        { ...docs[0], tags: ["RAG"], folders: ["ML"] },
+        { ...docs[1], tags: ["rag"], folders: ["Graphs"] },
+        paper({ id: "c", title: "Attention without tags" }),
+      ],
+      libraryPreferences: {
+        mode: "papers",
+        papers: { layout: "table", columns: ["tags"] },
+      },
+    }),
+  );
+  await act(async () => usePaperUI.getState().setQuery("Attention"));
+  const tag = row("Attention Is All You Need").querySelector<HTMLButtonElement>(
+    '[aria-label="按 AND 筛选标签 RAG"]',
+  );
+  expect(tag).not.toBeNull();
+  await act(async () => tag!.click());
+  expect(usePaperUI.getState().tagFilter).toEqual({
+    tags: ["RAG"],
+    match: "all",
+  });
+  expect(row("Graph Attention Networks")).not.toBeNull();
+  expect(row("Attention without tags")).toBeNull();
+  expect(host.querySelector(".paper-detail")).toBeNull();
+  await act(async () =>
+    row("Graph Attention Networks")
+      .querySelector<HTMLButtonElement>('[aria-label="按 AND 筛选标签 rag"]')!
+      .click(),
+  );
+  expect(usePaperUI.getState().tagFilter.tags).toEqual(["RAG"]);
+  await act(async () => usePaperUI.getState().setView("folder:ML"));
+  expect(row("Graph Attention Networks")).toBeNull();
+  await act(async () => usePaperUI.getState().setView("all"));
+  expect(row("Graph Attention Networks")).not.toBeNull();
+  expect(usePaperUI.getState().query).toBe("Attention");
+  expect(api.update).not.toHaveBeenCalled();
+  expect(api.saveLibraryPreferences).not.toHaveBeenCalled();
+});
+
+it("adds row tags with AND without opening papers or invoking list shortcuts", async () => {
+  await act(async () => {
+    useReaderStore.setState({
+      documents: [
+        { ...docs[0], tags: ["RAG", "Agent"] },
+        { ...docs[1], tags: ["RAG"] },
+      ],
+      libraryPreferences: {
+        mode: "papers",
+        papers: { layout: "table", columns: ["tags"] },
+      },
+    });
+    usePaperUI.getState().setTagFilter({ tags: ["RAG"], match: "any" });
+  });
+  const tag = row("Attention Is All You Need").querySelector<HTMLButtonElement>(
+    '[aria-label="按 AND 筛选标签 Agent"]',
+  );
+  expect(tag).not.toBeNull();
+  expect(tag!.tagName).toBe("BUTTON");
+  await act(async () => {
+    tag!.focus();
+    for (const key of ["Enter", " ", "ArrowDown", "1"])
+      tag!.dispatchEvent(new KeyboardEvent("keydown", { key, bubbles: true }));
+    tag!.dispatchEvent(
+      new KeyboardEvent("keydown", { key: "a", ctrlKey: true, bubbles: true }),
+    );
+  });
+  expect(usePaperUI.getState().selectedId).toBeNull();
+  expect(usePaperUI.getState().picking).toBe(false);
+  expect(document.activeElement).toBe(tag);
+  await act(async () => {
+    tag!.click();
+    tag!.dispatchEvent(new MouseEvent("dblclick", { bubbles: true }));
+  });
+  expect(usePaperUI.getState().tagFilter).toEqual({
+    tags: ["RAG", "Agent"],
+    match: "all",
+  });
+  expect(row("Graph Attention Networks")).toBeNull();
+  expect(host.querySelector(".paper-detail")).toBeNull();
+  expect(open).not.toHaveBeenCalled();
+  expect(api.update).not.toHaveBeenCalled();
+});
+
 const dragColumn = async (element: Element, type: string, x = 0, y = 0) => {
   const event = new MouseEvent(type, {
     bubbles: true,
@@ -760,7 +1056,11 @@ const headerColumns = () =>
     el.getAttribute("data-column"),
   );
 const columnGrip = (name: string, scope: ParentNode = host) =>
-  scope.querySelector<HTMLButtonElement>(`[aria-label="移动${name}列"]`)!;
+  scope.querySelector<HTMLButtonElement>(
+    name === "标签" && scope === host
+      ? '[aria-label="按标签筛选"]'
+      : `[aria-label="移动${name}列"]`,
+  )!;
 
 const layoutColumnTargets = (scope: ParentNode, vertical = false) => {
   const targets = scope.querySelectorAll<HTMLElement>(

@@ -22,7 +22,12 @@ const close = vi.fn(),
 beforeEach(async () => {
   vi.stubGlobal("IS_REACT_ACT_ENVIRONMENT", true);
   vi.clearAllMocks();
-  usePaperUI.setState({ view: "starred", query: "x", selectedId: null });
+  usePaperUI.setState({
+    view: "starred",
+    query: "x",
+    tagFilter: { tags: ["missing"], match: "all" },
+    selectedId: null,
+  });
   host = document.createElement("div");
   document.body.append(host);
   root = createRoot(host);
@@ -75,6 +80,7 @@ it("imports by reference and shows the new paper", async () => {
     view: "all",
     query: "",
     selectedId: "new",
+    tagFilter: { tags: [], match: "all" },
   });
   expect(close).toHaveBeenCalledWith(false);
 });

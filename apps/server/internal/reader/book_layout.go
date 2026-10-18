@@ -62,7 +62,8 @@ func (s *Server) runLayout(ctx context.Context, d Document, work string, from, t
 		args = append(args, "--from-page", strconv.Itoa(from), "--to-page", strconv.Itoa(to))
 	}
 	cmd := exec.CommandContext(child, node, args...)
-	cmd.Env = append(os.Environ(), "ELECTRON_RUN_AS_NODE=1", "NODE_USE_ENV_PROXY=1")
+	// Disable ONNX telemetry before loading native modules to avoid its exit-time teardown crash.
+	cmd.Env = append(os.Environ(), "ELECTRON_RUN_AS_NODE=1", "NODE_USE_ENV_PROXY=1", "ORT_DISABLE_TELEMETRY=1")
 	cmd.WaitDelay = 3 * time.Second
 	cmd.Dir = s.Store.Root
 	cmd.Stderr = stderr
