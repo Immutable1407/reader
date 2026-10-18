@@ -745,15 +745,15 @@ const dragColumn = async (element: Element, type: string, x = 0, y = 0) => {
     clientX: x,
     clientY: y,
   });
-  Object.defineProperty(event, "dataTransfer", {
-    value: {
-      setData: vi.fn(),
-      setDragImage: vi.fn(),
-      effectAllowed: "",
-      dropEffect: "",
-    },
-  });
+  const transfer = {
+    setData: vi.fn(),
+    setDragImage: vi.fn(),
+    effectAllowed: "",
+    dropEffect: "",
+  };
+  Object.defineProperty(event, "dataTransfer", { value: transfer });
   await act(async () => element.dispatchEvent(event));
+  return transfer;
 };
 const headerColumns = () =>
   [...host.querySelectorAll("th[data-column]")].map((el) =>
@@ -873,4 +873,42 @@ it("preserves column positions when hiding before the first reorder", async () =
   ).toEqual(["title", "authors", "year", "tags"]);
   await act(async () => checkbox.click());
   expect(headerColumns()).toEqual(["title", "authors", "year", "tags"]);
+});
+
+it("captures a lower picker row at its own origin with the actual pointer hotspot", async () => {
+  await act(async () =>
+    useReaderStore.setState({
+      libraryPreferences: { mode: "papers", papers: { layout: "table" } },
+    }),
+  );
+  await act(async () =>
+    host.querySelector<HTMLButtonElement>('[aria-label="显示的列"]')!.click(),
+  );
+  const popup = document.querySelector('[aria-label="显示与排列列"]')!;
+  const source = popup.querySelector<HTMLElement>('[data-column="status"]')!;
+  vi.spyOn(source, "getBoundingClientRect").mockReturnValue({
+    x: 800,
+    y: 420,
+    left: 800,
+    top: 420,
+    width: 180,
+    height: 32,
+    right: 980,
+    bottom: 452,
+    toJSON: () => ({}),
+  });
+  const transfer = await dragColumn(
+    columnGrip("状态", popup),
+    "dragstart",
+    809,
+    433,
+  );
+  const [preview, x, y] = transfer.setDragImage.mock.calls[0];
+  expect(preview).not.toBe(source);
+  expect(preview.style.position).toBe("fixed");
+  expect(preview.style.top).toBe("0px");
+  expect(preview.style.height).toBe("32px");
+  expect([x, y]).toEqual([9, 13]);
+  await dragColumn(columnGrip("状态", popup), "dragend");
+  expect(document.querySelector(".paper-column-drag-preview")).toBeNull();
 });

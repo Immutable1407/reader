@@ -1,4 +1,5 @@
-import { useState, type DragEvent } from "react";
+import { setColumnDragImage } from "./column-drag-image";
+import { useState, useEffect, useRef, type DragEvent } from "react";
 import { Columns3, GripVertical } from "lucide-react";
 import type { PaperColumn, PaperLibraryPreferences } from "@reader/core";
 import { Button } from "@reader/ui/components/button";
@@ -26,7 +27,11 @@ export function usePaperColumns(prefs: PaperLibraryPreferences) {
     column: TableColumn;
     side: "before" | "after";
   } | null>(null);
+  const dragImage = useRef<(() => void) | undefined>(undefined);
+  useEffect(() => () => dragImage.current?.(), []);
   const finish = () => {
+    dragImage.current?.();
+    dragImage.current = undefined;
     setDragging(null);
     setOver(null);
   };
@@ -92,7 +97,11 @@ export function usePaperColumns(prefs: PaperLibraryPreferences) {
       size="icon-xs"
       className="paper-column-grip"
       aria-label={`移动${tableColumnLabel(column)}列`}
-      title="拖动调整列顺序，或使用方向键移动"
+      title={
+        vertical
+          ? "拖动排序；Tab 聚焦手柄后按 ↑ / ↓ 移动"
+          : "拖动排序；Tab 聚焦手柄后按 ← / → 移动"
+      }
       draggable
       onClick={(event) => event.stopPropagation()}
       onDragStart={(event) => {
@@ -101,7 +110,14 @@ export function usePaperColumns(prefs: PaperLibraryPreferences) {
         event.dataTransfer.effectAllowed = "move";
         const surface =
           event.currentTarget.closest<HTMLElement>("[data-column]");
-        if (surface) event.dataTransfer.setDragImage(surface, 12, 12);
+        dragImage.current?.();
+        if (surface)
+          dragImage.current = setColumnDragImage(
+            surface,
+            event.dataTransfer,
+            event.clientX,
+            event.clientY,
+          );
         setDragging(column);
       }}
       onDragEnd={finish}
