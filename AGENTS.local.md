@@ -33,6 +33,10 @@
 ## 合并前检查
 合并 worktree 分支前运行完整检查：`pnpm typecheck`、`pnpm test`、`pnpm build`。
 
+## 抖音视频输出
+
+制作 Reader 抖音视频时，统一输出到 `/Users/bu44er/Desktop/tiktok/` 下的 `reader-xxx/` 项目目录。成片、文案 Markdown、封面和 `source/` 生成素材均保存在对应项目目录中，并遵循 `/Users/bu44er/Desktop/tiktok/AGENTS.md` 的命名和素材规范。Reader 视频及封面必须使用 `/Users/bu44er/Desktop/tiktok/reader-icon/` 中的 App 图标素材。
+
 ## Web 预览测试数据
 
 启动 Web preview 后，必须预先导入至少一篇可打开的真实论文，并确认论文已出现在该预览的书库中，再向用户提供预览链接。优先使用工作区已有的测试论文。根据当前验收功能准备好所需的解析结果、段落 block 或译文；不能只启动空书库，让用户自行导入论文。使用独立预览数据目录，保留用户现有书库。
