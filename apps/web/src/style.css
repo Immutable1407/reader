@@ -3096,13 +3096,115 @@ textarea.paper-note-input {
 }
 .link-preview {
   width: min(600px, calc(100vw - 24px));
-  pointer-events: none;
+  max-height: calc(100dvh - 24px);
+  overflow: hidden;
 }
 .link-preview img {
   width: 100%;
+  min-height: 0;
+  object-fit: contain;
   border-radius: 6px;
   background: white;
-  box-shadow: 0 0 0 1px var(--border);
+}
+.link-preview-header {
+  display: flex;
+  align-items: center;
+  flex-shrink: 0;
+  gap: 2px;
+}
+.link-preview-label {
+  flex: 1;
+  color: var(--muted-foreground);
+  font-size: 12px;
+}
+.link-preview-window {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 10px;
+  max-width: none;
+  max-height: none;
+  min-width: 0;
+  translate: none;
+  transform: none;
+  animation: none;
+  transition: none;
+  overflow: hidden;
+  box-shadow:
+    0 12px 40px rgb(0 0 0 / 16%),
+    0 2px 8px rgb(0 0 0 / 8%);
+}
+.link-preview-drag {
+  flex: 1;
+  justify-content: flex-start;
+  min-width: 0;
+  cursor: grab;
+  touch-action: none;
+  user-select: none;
+}
+.link-preview-drag:active,
+.link-preview-viewport:active {
+  cursor: grabbing;
+}
+.link-preview-viewport {
+  flex: 1;
+  min-height: 0;
+  min-width: 0;
+  overflow: auto;
+  overscroll-behavior: contain;
+  border-radius: 6px;
+  background: var(--muted);
+  cursor: grab;
+  touch-action: none;
+  scrollbar-width: none;
+}
+.link-preview-viewport::-webkit-scrollbar {
+  display: none;
+}
+.link-preview-stage {
+  display: grid;
+  place-items: center;
+}
+.link-preview-stage img {
+  display: block;
+  max-width: none;
+  user-select: none;
+  pointer-events: none;
+}
+.link-preview-zoom {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  gap: 4px;
+  padding-inline: 24px;
+}
+.link-preview-scale {
+  min-width: 3.5em;
+  text-align: center;
+  font-size: 12px;
+  color: var(--muted-foreground);
+  font-variant-numeric: tabular-nums;
+}
+.link-preview-resize {
+  position: absolute;
+  bottom: 6px;
+  right: 6px;
+  cursor: nwse-resize;
+  touch-action: none;
+  color: var(--muted-foreground);
+}
+.link-preview-status {
+  position: absolute;
+  bottom: 48px;
+  left: 18px;
+  max-width: calc(100% - 36px);
+  padding: 3px 6px;
+  border-radius: 4px;
+  background: var(--popover);
+  color: var(--muted-foreground);
+  font-size: 11px;
+  pointer-events: none;
 }
 .color-swatches {
   display: inline-flex;
