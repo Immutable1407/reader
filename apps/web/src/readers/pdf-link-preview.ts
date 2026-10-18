@@ -53,7 +53,7 @@ export function destinationPoint(dest: unknown[]) {
   }
 }
 
-const PREVIEW_WIDTH = 460;
+const PREVIEW_WIDTH = 580;
 const HOVER_DELAY = 300;
 
 /** Shows the target region of internal links (citations, figures, sections). */

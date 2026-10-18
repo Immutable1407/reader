@@ -3095,7 +3095,7 @@ textarea.paper-note-input {
   border-left-color: color-mix(in oklch, var(--primary) 45%, transparent);
 }
 .link-preview {
-  width: min(480px, calc(100vw - 24px));
+  width: min(600px, calc(100vw - 24px));
   pointer-events: none;
 }
 .link-preview img {
