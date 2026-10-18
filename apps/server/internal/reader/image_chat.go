@@ -62,7 +62,7 @@ func (s *Server) blockImage(w http.ResponseWriter, r *http.Request, documentID, 
 		return
 	}
 	w.Header().Set("Content-Type", "image/png")
-	w.Header().Set("Cache-Control", "private, max-age=3600")
+	w.Header().Set("Cache-Control", "private, no-cache")
 	http.ServeContent(w, r, blockID+".png", time.Time{}, bytes.NewReader(data))
 }
 func (s *Server) chatDocument(w http.ResponseWriter, r *http.Request, document Document, provider, question, textContext string, references json.RawMessage, ids []string, readingLocation json.RawMessage, userMessageID string) {

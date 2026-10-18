@@ -123,8 +123,8 @@ function TranslationContent({
     ["algorithm", "table", "chart", "image"].includes(block.label);
   const image = block.image ? (
     <BlockImage
-      key={block.id}
-      src={imageURL ?? blockImageURL(documentId, block.id)}
+      key={`${block.id}:${block.image}`}
+      src={imageURL ?? blockImageURL(documentId, block.id, block.image)}
       alt={block.caption || block.text || block.label}
       render={
         imageURL || !renderImage

@@ -7,13 +7,16 @@ import (
 	"net/http"
 )
 
-// Only task choices are persisted. Connections, capabilities and secrets still
-// come from the configured provider when the job runs or resumes.
+// Task choices and layout progress are persisted. Connections, capabilities
+// and secrets come from the configured provider when the job runs or resumes.
 type translationRunOptions struct {
-	Provider string `json:"provider"`
-	Model    string `json:"model"`
-	Effort   string `json:"effort"`
-	Prompt   string `json:"prompt"`
+	// One full layout parse per explicit restart; retries resume the same run.
+	LayoutRun   string `json:"layoutRun,omitempty"`
+	LayoutReady bool   `json:"layoutReady,omitempty"`
+	Provider    string `json:"provider"`
+	Model       string `json:"model"`
+	Effort      string `json:"effort"`
+	Prompt      string `json:"prompt"`
 }
 
 func snapshotTranslationOptions(c AIConfig) translationRunOptions {
@@ -142,6 +145,7 @@ func (s *Server) requestRetranslation(w http.ResponseWriter, r *http.Request) {
 }
 
 func (s *Server) queueRetranslation(p Processing, m translationInput, options translationRunOptions) error {
+	options.LayoutRun, options.LayoutReady = id(), false
 	items, err := s.translations(p.DocumentID, m)
 	if err != nil {
 		return err
@@ -193,10 +197,10 @@ ON CONFLICT(document_id,block_id,source_hash) DO UPDATE SET body=excluded.body`,
 	}
 	p.Enabled, p.Retranslating = true, true
 	p.AutoTranslateMaxPages, p.ManualTranslation = nil, false
-	p.Phase, p.Status, p.Detail = "translating", "queued", "等待重新翻译"
+	p.Phase, p.Status, p.Detail = "translating", "queued", "等待重新解析版面"
 	p.CompletedAt, p.Warning = "", ""
 	p.TranslationsDone, p.TranslationsTotal = translationCounts(items)
-	p.Translating = &ProcessingStage{Status: "queued", Detail: "等待重新翻译"}
+	p.Translating = &ProcessingStage{Status: "queued", Detail: "等待重新解析版面"}
 	p.UpdatedAt = now()
 	if _, err = tx.Exec("UPDATE document_processing SET phase=?,status=?,body=? WHERE document_id=?", p.Phase, p.Status, jsonText(p), p.DocumentID); err != nil {
 		return err

@@ -166,8 +166,8 @@ export function AssistanceControls({
             <AlertDialogHeader>
               <AlertDialogTitle>重新翻译全文？</AlertDialogTitle>
               <AlertDialogDescription>
-                将使用当前 Agent
-                翻译模型和已保存的翻译提示词重新翻译正文。现有译文会保留，新结果完成后逐段替换。
+                将重新解析全文版面，并使用当前 Agent
+                翻译模型和已保存的翻译提示词重新翻译。解析成功前保留现有内容；仍能对应原文的旧译文会在新结果完成后逐段替换。
               </AlertDialogDescription>
             </AlertDialogHeader>
             <AlertDialogFooter>
