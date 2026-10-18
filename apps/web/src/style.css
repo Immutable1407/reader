@@ -2905,6 +2905,27 @@ textarea.paper-title-input {
 .paper-chip:focus-within > [data-slot="button"]:last-child {
   opacity: 1;
 }
+.paper-tag-chips .paper-chip {
+  position: relative;
+}
+.paper-tag-chips .paper-chip > [data-slot="button"]:first-child {
+  padding-inline: 9px;
+}
+.paper-tag-chips .paper-chip > [data-slot="button"]:last-child {
+  position: absolute;
+  inset-block-start: -4px;
+  inset-inline-end: -4px;
+  z-index: 1;
+  width: 16px;
+  height: 16px;
+  margin: 0;
+  background: var(--background);
+  box-shadow: 0 0 0 1px var(--border);
+}
+.paper-tag-chips .paper-chip > [data-slot="button"]:last-child svg {
+  width: 12px;
+  height: 12px;
+}
 .paper-chip-input.paper-chip-input {
   width: 140px;
   height: 24px;
