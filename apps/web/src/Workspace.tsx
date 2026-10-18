@@ -1784,7 +1784,7 @@ export function Workspace({
       </Dialog>
       {exportingNotes && (
         <ExportDocumentDialog
-          key={doc.id}
+          key={`export-${doc.id}`}
           document={doc}
           annotations={annotations}
           messages={chat.messages}
