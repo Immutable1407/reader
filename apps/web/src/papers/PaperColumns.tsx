@@ -1,3 +1,4 @@
+import { beginColumnReorder } from "./column-reorder";
 import { setColumnDragImage } from "./column-drag-image";
 import { useState, useEffect, useRef, type DragEvent } from "react";
 import { Columns3, GripVertical } from "lucide-react";
@@ -23,17 +24,24 @@ export function usePaperColumns(prefs: PaperLibraryPreferences) {
   const order = columnOrder(prefs);
   const visible = visibleColumns(prefs);
   const [dragging, setDragging] = useState<TableColumn | null>(null);
-  const [over, setOver] = useState<{
-    column: TableColumn;
-    side: "before" | "after";
+  const preview = useRef<{
+    drag: ReturnType<typeof beginColumnReorder>;
+    vertical: boolean;
   } | null>(null);
   const dragImage = useRef<(() => void) | undefined>(undefined);
-  useEffect(() => () => dragImage.current?.(), []);
+  useEffect(
+    () => () => {
+      dragImage.current?.();
+      preview.current?.drag.cleanup();
+    },
+    [],
+  );
   const finish = () => {
     dragImage.current?.();
     dragImage.current = undefined;
     setDragging(null);
-    setOver(null);
+    preview.current?.drag.cleanup();
+    preview.current = null;
   };
   const move = (
     from: TableColumn,
@@ -52,45 +60,24 @@ export function usePaperColumns(prefs: PaperLibraryPreferences) {
       };
     });
   };
-  const target = (column: TableColumn, vertical = false) => {
-    const placement = (event: DragEvent<HTMLElement>) => {
-      const rect = event.currentTarget.getBoundingClientRect();
-      return (
-        vertical
-          ? event.clientY < rect.top + rect.height / 2
-          : event.clientX < rect.left + rect.width / 2
-      )
-        ? ("before" as const)
-        : ("after" as const);
-    };
-    return {
-      "data-column-dragging": dragging === column || undefined,
-      "data-column-drop": over?.column === column ? over.side : undefined,
-      onDragOver: (event: DragEvent<HTMLElement>) => {
-        if (!dragging || dragging === column) return;
-        event.preventDefault();
-        event.stopPropagation();
-        event.dataTransfer.dropEffect = "move";
-        const side = placement(event);
-        setOver((prev) =>
-          prev?.column === column && prev.side === side
-            ? prev
-            : { column, side },
-        );
-      },
-      onDragLeave: (event: DragEvent<HTMLElement>) => {
-        if (!event.currentTarget.contains(event.relatedTarget as Node | null))
-          setOver((prev) => (prev?.column === column ? null : prev));
-      },
-      onDrop: (event: DragEvent<HTMLElement>) => {
-        if (!dragging) return;
-        event.preventDefault();
-        event.stopPropagation();
-        if (dragging !== column) move(dragging, column, placement(event));
-        finish();
-      },
-    };
-  };
+  const target = (vertical = false) => ({
+    onDragOver: (event: DragEvent<HTMLElement>) => {
+      if (!dragging || preview.current?.vertical !== vertical) return;
+      event.preventDefault();
+      event.stopPropagation();
+      event.dataTransfer.dropEffect = "move";
+      preview.current.drag.update(vertical ? event.clientY : event.clientX);
+    },
+    onDrop: (event: DragEvent<HTMLElement>) => {
+      if (!dragging || preview.current?.vertical !== vertical) return;
+      event.preventDefault();
+      event.stopPropagation();
+      preview.current.drag.update(vertical ? event.clientY : event.clientX);
+      const destination = preview.current.drag.destination;
+      if (destination) move(dragging, destination.column, destination.side);
+      finish();
+    },
+  });
   const handle = (column: TableColumn, vertical = false) => (
     <Button
       variant="ghost"
@@ -110,14 +97,19 @@ export function usePaperColumns(prefs: PaperLibraryPreferences) {
         event.dataTransfer.effectAllowed = "move";
         const surface =
           event.currentTarget.closest<HTMLElement>("[data-column]");
-        dragImage.current?.();
-        if (surface)
+        finish();
+        if (surface) {
           dragImage.current = setColumnDragImage(
             surface,
             event.dataTransfer,
             event.clientX,
             event.clientY,
           );
+          preview.current = {
+            drag: beginColumnReorder(surface, order, vertical),
+            vertical,
+          };
+        }
         setDragging(column);
       }}
       onDragEnd={finish}
@@ -139,7 +131,7 @@ export function usePaperColumns(prefs: PaperLibraryPreferences) {
       <GripVertical className="size-3" />
     </Button>
   );
-  return { order, visible, target, handle };
+  return { order, visible, target, handle, cancel: finish };
 }
 
 export function PaperColumns({
@@ -148,7 +140,11 @@ export function PaperColumns({
   controls: ReturnType<typeof usePaperColumns>;
 }) {
   return (
-    <Popover>
+    <Popover
+      onOpenChange={(open) => {
+        if (!open) controls.cancel();
+      }}
+    >
       <PopoverTrigger
         render={
           <Button
@@ -165,13 +161,13 @@ export function PaperColumns({
         align="end"
         className="paper-columns-popover w-52"
         aria-label="显示与排列列"
+        {...controls.target(true)}
       >
         {controls.order.map((column) => (
           <div
             key={column}
             data-column={column}
             className="paper-column-option"
-            {...controls.target(column, true)}
           >
             {controls.handle(column, true)}
             <label className="flex min-w-0 flex-1 items-center gap-2 text-xs">

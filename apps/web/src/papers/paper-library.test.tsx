@@ -762,6 +762,23 @@ const headerColumns = () =>
 const columnGrip = (name: string, scope: ParentNode = host) =>
   scope.querySelector<HTMLButtonElement>(`[aria-label="移动${name}列"]`)!;
 
+const layoutColumnTargets = (scope: ParentNode, vertical = false) => {
+  const targets = scope.querySelectorAll<HTMLElement>(
+    vertical ? ".paper-column-option" : "th[data-column]",
+  );
+  targets.forEach((target, index) => {
+    const start = index * (vertical ? 32 : 100);
+    vi.spyOn(target, "getBoundingClientRect").mockReturnValue({
+      left: vertical ? 0 : start,
+      top: vertical ? start : 0,
+      width: 100,
+      height: 32,
+      right: vertical ? 100 : start + 100,
+      bottom: vertical ? start + 32 : 32,
+    } as DOMRect);
+  });
+};
+
 it("reorders headers and the column picker together, including the title", async () => {
   await act(async () =>
     useReaderStore.setState({
@@ -775,12 +792,20 @@ it("reorders headers and the column picker together, including the title", async
       },
     }),
   );
+  layoutColumnTargets(host);
   await dragColumn(columnGrip("标签"), "dragstart");
   const title = host.querySelector('th[data-column="title"]')!;
   await dragColumn(title, "dragover", -1);
-  expect(title.getAttribute("data-column-drop")).toBe("before");
+  const table = title.closest("table")!;
+  expect(table.style.getPropertyValue("--column-title")).toBe("100px");
+  expect(table.style.getPropertyValue("--column-tags")).toBe("-300px");
+  expect(headerColumns()).toEqual(["title", "authors", "year", "tags"]);
   expect(api.saveLibraryPreferences).not.toHaveBeenCalled();
-  await dragColumn(title, "drop", -1);
+  await dragColumn(
+    row("Attention Is All You Need").querySelector('td[data-column="title"]')!,
+    "drop",
+    -1,
+  );
   expect(headerColumns()).toEqual(["tags", "title", "authors", "year"]);
   expect(
     [
@@ -798,8 +823,16 @@ it("reorders headers and the column picker together, including the title", async
       el.getAttribute("data-column"),
     );
   expect(pickerColumns().slice(0, 4)).toEqual(headerColumns());
+  layoutColumnTargets(popup, true);
   await dragColumn(columnGrip("标题", popup), "dragstart");
-  await dragColumn(popup.querySelector('[data-column="year"]')!, "drop", 0, 1);
+  const year = popup.querySelector('[data-column="year"]')!;
+  await dragColumn(year, "dragover", 0, 116);
+  expect(
+    (popup as HTMLElement).style.getPropertyValue("--column-authors"),
+  ).toBe("-32px");
+  expect(api.saveLibraryPreferences).toHaveBeenCalledTimes(1);
+  await dragColumn(popup, "drop", 0, 116);
+  expect(api.saveLibraryPreferences).toHaveBeenCalledTimes(2);
   expect(headerColumns()).toEqual(["tags", "authors", "year", "title"]);
   expect(pickerColumns().slice(0, 4)).toEqual(headerColumns());
   const checkbox = popup.querySelector<HTMLButtonElement>(
@@ -828,6 +861,7 @@ it("cancels column dragging without saving and supports keyboard moves without s
       },
     }),
   );
+  layoutColumnTargets(host);
   await dragColumn(columnGrip("年份"), "dragstart");
   await dragColumn(
     host.querySelector('th[data-column="title"]')!,
@@ -835,7 +869,8 @@ it("cancels column dragging without saving and supports keyboard moves without s
     -1,
   );
   await dragColumn(columnGrip("年份"), "dragend");
-  expect(host.querySelector("[data-column-drop]")).toBeNull();
+  expect(host.querySelector("[data-column-reordering]")).toBeNull();
+  expect(headerColumns()).toEqual(["title", "authors", "year"]);
   expect(api.saveLibraryPreferences).not.toHaveBeenCalled();
   await act(async () =>
     columnGrip("年份").dispatchEvent(
@@ -932,5 +967,53 @@ it("closes the column picker with Escape from a focused drag handle", async () =
     ),
   );
   expect(trigger.getAttribute("aria-expanded")).toBe("false");
+  expect(api.saveLibraryPreferences).not.toHaveBeenCalled();
+});
+
+it("does not save when a live drag returns to its original slot", async () => {
+  await act(async () =>
+    useReaderStore.setState({
+      libraryPreferences: {
+        mode: "papers",
+        papers: { layout: "table", columns: ["authors", "year"] },
+      },
+    }),
+  );
+  layoutColumnTargets(host);
+  const title = host.querySelector('th[data-column="title"]')!;
+  const year = host.querySelector('th[data-column="year"]')!;
+  await dragColumn(columnGrip("年份"), "dragstart", 210);
+  await dragColumn(title, "dragover", 10);
+  expect(title.closest("table")!.style.getPropertyValue("--column-title")).toBe(
+    "100px",
+  );
+  await dragColumn(year, "dragover", 210);
+  expect(title.closest("table")!.style.getPropertyValue("--column-title")).toBe(
+    "0px",
+  );
+  await dragColumn(year, "drop", 210);
+  expect(api.saveLibraryPreferences).not.toHaveBeenCalled();
+  expect(headerColumns()).toEqual(["title", "authors", "year"]);
+});
+
+it("removes live drag styles on unmount without saving", async () => {
+  await act(async () =>
+    useReaderStore.setState({
+      libraryPreferences: {
+        mode: "papers",
+        papers: { layout: "table", columns: ["authors", "year"] },
+      },
+    }),
+  );
+  layoutColumnTargets(host);
+  await dragColumn(columnGrip("年份"), "dragstart");
+  await dragColumn(
+    host.querySelector('th[data-column="title"]')!,
+    "dragover",
+    -1,
+  );
+  expect(document.head.textContent).toContain("data-column-reordering");
+  await act(async () => root.render(null));
+  expect(document.head.textContent).not.toContain("data-column-reordering");
   expect(api.saveLibraryPreferences).not.toHaveBeenCalled();
 });

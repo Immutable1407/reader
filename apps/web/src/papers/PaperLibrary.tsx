@@ -859,6 +859,7 @@ export function PaperLibrary({
               ) : table ? (
                 <div className="paper-list paper-table" ref={listRef}>
                   <Table
+                    {...columnControls.target()}
                     style={{
                       minWidth:
                         240 +
@@ -882,7 +883,6 @@ export function PaperLibrary({
                               key={c}
                               scope="col"
                               data-column={c}
-                              {...columnControls.target(c)}
                               style={
                                 c === "title"
                                   ? undefined

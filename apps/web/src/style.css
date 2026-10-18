@@ -3384,41 +3384,6 @@ textarea.paper-note-input {
 .paper-columns-popover::-webkit-scrollbar {
   display: none;
 }
-[data-column-dragging="true"] {
-  opacity: 0.4;
-}
-.paper-column-option[data-column-drop] {
-  background: var(--accent);
-}
-th[data-column-drop]::after,
-.paper-column-option[data-column-drop]::after {
-  content: "";
-  position: absolute;
-  pointer-events: none;
-  background: var(--primary);
-}
-th[data-column-drop]::after {
-  top: 3px;
-  bottom: 3px;
-  width: 2px;
-}
-th[data-column-drop="before"]::after {
-  left: 0;
-}
-th[data-column-drop="after"]::after {
-  right: 0;
-}
-.paper-column-option[data-column-drop]::after {
-  left: 2px;
-  right: 2px;
-  height: 2px;
-}
-.paper-column-option[data-column-drop="before"]::after {
-  top: 0;
-}
-.paper-column-option[data-column-drop="after"]::after {
-  bottom: 0;
-}
 @media (prefers-reduced-motion: no-preference) {
   .paper-column-option,
   .paper-table th,
