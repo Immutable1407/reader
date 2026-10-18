@@ -678,9 +678,9 @@ it("shows optional metadata columns and sorts publication dates without inventin
   expect(
     host.querySelector('th[data-column="published"]')?.getAttribute("style"),
   ).toContain("144px");
-  expect(
-    host.querySelector('th[data-column="tags"] .paper-table-sort'),
-  ).toBeNull();
+  const sortBeforeTagsClick = prefs().sort;
+  await act(async () => columnGrip("标签").click());
+  expect(prefs().sort).toBe(sortBeforeTagsClick);
   await act(async () => button("发表日期").click());
   expect(
     [...host.querySelectorAll("tbody [data-paper-id]")].map((el) =>
@@ -792,6 +792,11 @@ it("reorders headers and the column picker together, including the title", async
       },
     }),
   );
+  expect(host.querySelector("th .paper-column-grip")).toBeNull();
+  expect(host.querySelectorAll('th[data-column="title"] button')).toHaveLength(
+    1,
+  );
+  expect(columnGrip("标题").textContent).toBe("标题");
   layoutColumnTargets(host);
   await dragColumn(columnGrip("标签"), "dragstart");
   const title = host.querySelector('th[data-column="title"]')!;

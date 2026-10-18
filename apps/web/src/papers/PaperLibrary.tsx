@@ -897,21 +897,14 @@ export function PaperLibrary({
                               }
                             >
                               <div className="paper-column-heading">
-                                {columnControls.handle(c)}
-                                {sortKey ? (
-                                  <Button
-                                    size="xs"
-                                    variant="ghost"
-                                    className="paper-table-sort"
-                                    onClick={() => sortBy(sortKey)}
-                                  >
+                                {columnControls.handle(
+                                  c,
+                                  false,
+                                  <>
                                     {c === "title" ? "标题" : columnLabels[c]}
                                     {active && <Arrow />}
-                                  </Button>
-                                ) : (
-                                  <span className="px-1.5">
-                                    {c === "title" ? "标题" : columnLabels[c]}
-                                  </span>
+                                  </>,
+                                  sortKey ? () => sortBy(sortKey) : undefined,
                                 )}
                               </div>
                               {/* The last column borders the menu column; the title absorbs its changes. */}

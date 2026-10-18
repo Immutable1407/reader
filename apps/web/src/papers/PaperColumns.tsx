@@ -1,6 +1,12 @@
 import { beginColumnReorder } from "./column-reorder";
 import { setColumnDragImage } from "./column-drag-image";
-import { useState, useEffect, useRef, type DragEvent } from "react";
+import {
+  useState,
+  useEffect,
+  useRef,
+  type DragEvent,
+  type ReactNode,
+} from "react";
 import { Columns3, GripVertical } from "lucide-react";
 import type { PaperColumn, PaperLibraryPreferences } from "@reader/core";
 import { Button } from "@reader/ui/components/button";
@@ -78,19 +84,29 @@ export function usePaperColumns(prefs: PaperLibraryPreferences) {
       finish();
     },
   });
-  const handle = (column: TableColumn, vertical = false) => (
+  const handle = (
+    column: TableColumn,
+    vertical = false,
+    content?: ReactNode,
+    onClick?: () => void,
+  ) => (
     <Button
       variant="ghost"
-      size="icon-xs"
-      className="paper-column-grip"
+      size={vertical ? "icon-xs" : "xs"}
+      className={
+        vertical ? "paper-column-grip" : "paper-table-sort cursor-grab"
+      }
       aria-label={`移动${tableColumnLabel(column)}列`}
       title={
         vertical
           ? "拖动排序；Tab 聚焦手柄后按 ↑ / ↓ 移动"
-          : "拖动排序；Tab 聚焦手柄后按 ← / → 移动"
+          : "拖动排序；Tab 聚焦列名后按 ← / → 移动"
       }
       draggable
-      onClick={(event) => event.stopPropagation()}
+      onClick={(event) => {
+        event.stopPropagation();
+        onClick?.();
+      }}
       onDragStart={(event) => {
         event.stopPropagation();
         event.dataTransfer.setData("application/x-reader-paper-column", column);
@@ -128,7 +144,11 @@ export function usePaperColumns(prefs: PaperLibraryPreferences) {
         if (to) move(column, to, backward ? "before" : "after");
       }}
     >
-      <GripVertical className="size-3" />
+      {vertical ? (
+        <GripVertical className="size-3" />
+      ) : (
+        (content ?? tableColumnLabel(column))
+      )}
     </Button>
   );
   return { order, visible, target, handle, cancel: finish };
