@@ -75,11 +75,11 @@ export const sortLabels: Record<PaperSort, string> = {
   notes: "批注数",
 };
 export const columnLabels: Record<PaperColumn, string> = {
+  tags: "标签",
   authors: "作者",
   year: "年份",
   published: "发表日期",
   venue: "出处",
-  tags: "标签",
   progress: "阅读进度",
   doi: "DOI",
   arxiv: "arXiv 编号",

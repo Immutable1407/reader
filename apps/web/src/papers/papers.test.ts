@@ -14,6 +14,7 @@ import {
 } from "./format";
 import {
   categoryTree,
+  defaultColumns,
   cleanCategory,
   duplicateGroups,
   pairKey,
@@ -585,4 +586,18 @@ it("applies temporary tags after finding duplicate groups", () => {
       tagFilter: { tags: ["rag"], match: "all" },
     }).map((d) => d.id),
   ).toEqual(["a"]);
+});
+
+it("keeps tags immediately after the title when toggling other default or optional columns", () => {
+  for (const column of ["status", "authors", "published"] as const) {
+    const toggled = toggleColumn(defaultColumns, column);
+    expect(toggled[0]).toBe("tags");
+    expect(toggleColumn(toggled, column)).toEqual(defaultColumns);
+  }
+});
+
+it("restores the tag column to its default position after hiding and showing it", () => {
+  const hidden = toggleColumn(defaultColumns, "tags");
+  expect(hidden).toEqual(["authors", "year", "venue", "status"]);
+  expect(toggleColumn(hidden, "tags")).toEqual(defaultColumns);
 });
