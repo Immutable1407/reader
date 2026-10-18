@@ -237,3 +237,33 @@ it("does not open an annotation deleted during a click", () => {
   expect(pointer("click").defaultPrevented).toBe(false);
   expect(activate).not.toHaveBeenCalled();
 });
+
+it("gives annotation clicks priority over block focus, including after repaint", async () => {
+  const block: PDFBlock = {
+    id: "paragraph",
+    page: 1,
+    label: "paragraph",
+    text: "Marked text and surrounding paragraph",
+    bounds: { x: 0.05, y: 0.05, width: 0.8, height: 0.4 },
+  };
+  const focus = vi.fn(() => true);
+  // Match PDFReaderAdapter: both capture listeners share the same host, with
+  // the annotation layer registered first. stopPropagation alone is not enough.
+  const blocks = new PDFBlockOverlay(host, vi.fn(), vi.fn(), focus);
+  blocks.setBlocks([block]);
+  try {
+    pointer("pointerdown");
+    layer.paint();
+    pointer("click");
+    expect(activate).toHaveBeenCalledTimes(1);
+    expect(focus).not.toHaveBeenCalled();
+
+    // Unmarked space in the same block must still focus normally.
+    pointer("pointerdown", { clientY: 185 });
+    pointer("click", { clientY: 185 });
+    expect(focus).toHaveBeenCalledExactlyOnceWith(block);
+    expect(activate).toHaveBeenCalledTimes(1);
+  } finally {
+    await act(async () => blocks.destroy());
+  }
+});
