@@ -1,4 +1,9 @@
-import { useState } from "react";
+import {
+  cloneElement,
+  useState,
+  type ReactElement,
+  type ComponentProps,
+} from "react";
 import type { Document, Processing } from "@reader/core";
 import { Button } from "@reader/ui/components/button";
 import {
@@ -110,20 +115,33 @@ function PaperTagFilter({ documents, jobs }: Props) {
   );
 }
 
-export function PaperTagFilterButton({ documents, jobs }: Props) {
+export function PaperTagFilterButton({
+  documents,
+  jobs,
+  trigger,
+}: Props & {
+  trigger?: ReactElement<ComponentProps<typeof Button>>;
+}) {
   const [open, setOpen] = useState(false);
   const count = usePaperUI((s) => s.tagFilter.tags.length);
   return (
     <Popover open={open} onOpenChange={setOpen}>
       <PopoverTrigger
         render={
-          <Button
-            variant={count ? "secondary" : "ghost"}
-            size="xs"
-            className="max-w-full min-w-0 px-1.5"
-            aria-label="按标签筛选"
-            title={count ? `筛选标签 · 已选 ${count} 个` : "筛选标签"}
-          />
+          trigger ? (
+            cloneElement(trigger, {
+              "aria-label": "按标签筛选",
+              variant: count ? "secondary" : "ghost",
+            })
+          ) : (
+            <Button
+              variant={count ? "secondary" : "ghost"}
+              size="xs"
+              className="max-w-full min-w-0 px-1.5"
+              aria-label="按标签筛选"
+              title={count ? `筛选标签 · 已选 ${count} 个` : "筛选标签"}
+            />
+          )
         }
       >
         <span className="truncate">标签</span>

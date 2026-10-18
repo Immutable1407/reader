@@ -180,6 +180,8 @@ export interface PaperLibraryPreferences {
   layout?: "list" | "table";
   /** Visible table columns in order. */
   columns?: PaperColumn[];
+  /** Order of all table columns, including hidden ones; the title remains visible. */
+  columnOrder?: ("title" | PaperColumn)[];
   /** Widths of resized table columns in CSS pixels; the title fills the rest. */
   columnWidths?: Partial<Record<PaperColumn, number>>;
   /** Width of the paper detail panel in CSS pixels. */

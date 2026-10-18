@@ -1,3 +1,5 @@
+import { PaperColumns, usePaperColumns } from "./PaperColumns";
+import type { TableColumn } from "./columns";
 import { PaperTagFilterButton } from "./PaperTagFilter";
 import { Badge } from "@reader/ui/components/badge";
 import {
@@ -15,7 +17,6 @@ import {
   ArrowUp,
   Check,
   CheckSquare,
-  Columns3,
   List,
   Table2,
   FolderMinus,
@@ -109,7 +110,6 @@ import {
   categoryTree,
   columnLabels,
   columnSort,
-  defaultColumns,
   defaultColumnWidths,
   descendingSorts,
   duplicateGroups,
@@ -123,7 +123,6 @@ import {
   paperColors,
   sortLabels,
   statusLabels,
-  toggleColumn,
   viewLabels,
   type BuiltinView,
 } from "./model";
@@ -172,7 +171,10 @@ export function PaperLibrary({
   const prefs = useReaderStore((s) => s.libraryPreferences.papers) || {};
   const sort: PaperSort = prefs.sort || "opened";
   const reverse = !!prefs.sortReverse;
-  const columns = prefs.columns || defaultColumns;
+  const columnControls = usePaperColumns(prefs);
+  const columns = columnControls.visible.filter(
+    (c): c is PaperColumn => c !== "title",
+  );
   const ui = usePaperUI();
   const {
     view,
@@ -364,7 +366,7 @@ export function PaperLibrary({
   const resizeColumn = (
     e: ReactPointerEvent<HTMLElement>,
     left: "title" | PaperColumn,
-    right: PaperColumn,
+    right: TableColumn,
   ) => {
     const start = headerWidths(e.currentTarget);
     let next: Partial<Record<PaperColumn, number>> = {};
@@ -383,7 +385,7 @@ export function PaperLibrary({
   const nudgeColumn = (
     e: ReactKeyboardEvent<HTMLElement>,
     left: "title" | PaperColumn,
-    right: PaperColumn,
+    right: TableColumn,
   ) => {
     const dx = { ArrowLeft: -resizeStep, ArrowRight: resizeStep }[e.key];
     if (!dx) return;
@@ -524,7 +526,7 @@ export function PaperLibrary({
         )}
     </div>
   );
-  const renderRow = (doc: Document, tableColumns?: PaperColumn[]) => (
+  const renderRow = (doc: Document, tableColumns?: TableColumn[]) => (
     <PaperRow
       columns={tableColumns}
       key={doc.id}
@@ -656,38 +658,7 @@ export function PaperLibrary({
                 ))}
               </SelectContent>
             </Select>
-            {table && (
-              <DropdownMenu>
-                <DropdownMenuTrigger
-                  render={
-                    <Button
-                      size="icon-sm"
-                      variant="outline"
-                      aria-label="显示的列"
-                      title="显示的列"
-                    />
-                  }
-                >
-                  <Columns3 />
-                </DropdownMenuTrigger>
-                <DropdownMenuContent align="end" className="w-40">
-                  {(Object.keys(columnLabels) as PaperColumn[]).map((c) => (
-                    <DropdownMenuCheckboxItem
-                      key={c}
-                      checked={columns.includes(c)}
-                      onCheckedChange={() =>
-                        void savePaperPreferences((p) => ({
-                          ...p,
-                          columns: toggleColumn(p.columns || defaultColumns, c),
-                        }))
-                      }
-                    >
-                      {columnLabels[c]}
-                    </DropdownMenuCheckboxItem>
-                  ))}
-                </DropdownMenuContent>
-              </DropdownMenu>
-            )}
+            {table && <PaperColumns controls={columnControls} />}
             <Tabs
               value={prefs.layout || "list"}
               onValueChange={(value) =>
@@ -972,6 +943,7 @@ export function PaperLibrary({
               ) : table ? (
                 <div className="paper-list paper-table" ref={listRef}>
                   <Table
+                    {...columnControls.target()}
                     style={{
                       minWidth:
                         240 +
@@ -983,8 +955,8 @@ export function PaperLibrary({
                     <TableHeader>
                       <TableRow>
                         {picking && <TableHead className="w-8" />}
-                        {(["title", ...columns] as const).map((c, i, order) => {
-                          const next = order[i + 1] as PaperColumn | undefined;
+                        {columnControls.visible.map((c, i, order) => {
+                          const next = order[i + 1];
                           const sortKey = columnSort[c];
                           const active = sort === sortKey;
                           const descending =
@@ -1008,26 +980,25 @@ export function PaperLibrary({
                                   : undefined
                               }
                             >
-                              {sortKey ? (
-                                <Button
-                                  size="xs"
-                                  variant="ghost"
-                                  className="paper-table-sort"
-                                  onClick={() => sortBy(sortKey)}
-                                >
-                                  {c === "title" ? "标题" : columnLabels[c]}
-                                  {active && <Arrow />}
-                                </Button>
-                              ) : c === "tags" ? (
-                                <PaperTagFilterButton
-                                  documents={documents}
-                                  jobs={jobs}
-                                />
-                              ) : (
-                                <span className="px-1.5">
-                                  {c === "title" ? "标题" : columnLabels[c]}
-                                </span>
-                              )}
+                              <div className="paper-column-heading">
+                                {c === "tags" ? (
+                                  <PaperTagFilterButton
+                                    documents={documents}
+                                    jobs={jobs}
+                                    trigger={columnControls.handle(c)}
+                                  />
+                                ) : (
+                                  columnControls.handle(
+                                    c,
+                                    false,
+                                    <>
+                                      {c === "title" ? "标题" : columnLabels[c]}
+                                      {active && <Arrow />}
+                                    </>,
+                                    sortKey ? () => sortBy(sortKey) : undefined,
+                                  )
+                                )}
+                              </div>
                               {/* The last column borders the menu column; the title absorbs its changes. */}
                               {next && (
                                 <span
@@ -1049,7 +1020,9 @@ export function PaperLibrary({
                       </TableRow>
                     </TableHeader>
                     <TableBody>
-                      {visible.map((doc) => renderRow(doc, columns))}
+                      {visible.map((doc) =>
+                        renderRow(doc, columnControls.visible),
+                      )}
                       {!visible.length && (
                         <TableRow>
                           <TableCell
@@ -1280,7 +1253,7 @@ function PaperRow({
   journalRankConfig: JournalRankConfig | null;
   journalRankRefresh: number;
   /** Table columns; the row renders as a list card without them. */
-  columns?: PaperColumn[];
+  columns?: TableColumn[];
   dragIds: () => string[];
   onActivate: (e: React.MouseEvent | React.KeyboardEvent) => void;
   onOpen: () => void;
@@ -1469,39 +1442,46 @@ function PaperRow({
         {columns ? (
           <>
             {picking && <TableCell className="w-8">{check}</TableCell>}
-            <TableCell className="paper-table-title">
-              <div className="paper-table-title-stack">
-                <div className="paper-table-title-content">
-                  {title}
-                  <PaperProcessing job={job} />
-                </div>
-                <JournalRankBadges
-                  id={doc.id}
-                  venue={doc.metadata.venue || ""}
-                  config={journalRankConfig}
-                  refreshRevision={journalRankRefresh}
-                />
-              </div>
-            </TableCell>
-            {columns.map((column) => (
-              <TableCell
-                key={column}
-                data-column={column}
-                title={
-                  column === "doi"
-                    ? doc.metadata.doi
-                    : column === "arxiv"
-                      ? doc.metadata.arxiv
-                      : column === "added"
-                        ? new Date(doc.createdAt).toLocaleString("zh-CN")
-                        : column === "opened" && wasOpened(doc)
-                          ? new Date(doc.lastOpenedAt).toLocaleString("zh-CN")
-                          : undefined
-                }
-              >
-                {cell(column)}
-              </TableCell>
-            ))}
+            {columns.map((column) =>
+              column === "title" ? (
+                <TableCell
+                  key="title"
+                  data-column="title"
+                  className="paper-table-title"
+                >
+                  <div className="paper-table-title-stack">
+                    <div className="paper-table-title-content">
+                      {title}
+                      <PaperProcessing job={job} />
+                    </div>
+                    <JournalRankBadges
+                      id={doc.id}
+                      venue={doc.metadata.venue || ""}
+                      config={journalRankConfig}
+                      refreshRevision={journalRankRefresh}
+                    />
+                  </div>
+                </TableCell>
+              ) : (
+                <TableCell
+                  key={column}
+                  data-column={column}
+                  title={
+                    column === "doi"
+                      ? doc.metadata.doi
+                      : column === "arxiv"
+                        ? doc.metadata.arxiv
+                        : column === "added"
+                          ? new Date(doc.createdAt).toLocaleString("zh-CN")
+                          : column === "opened" && wasOpened(doc)
+                            ? new Date(doc.lastOpenedAt).toLocaleString("zh-CN")
+                            : undefined
+                  }
+                >
+                  {cell(column)}
+                </TableCell>
+              ),
+            )}
             <TableCell className="w-8">{more}</TableCell>
           </>
         ) : (

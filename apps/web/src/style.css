@@ -3367,6 +3367,76 @@ textarea.paper-note-input {
   background: rgb(100 170 255 / 36%);
 }
 
+/* Column labels support dragging independently from resize boundaries. */
+.paper-column-heading {
+  display: flex;
+  align-items: center;
+  min-width: 0;
+}
+.paper-column-heading > :last-child {
+  min-width: 0;
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.paper-column-grip.paper-column-grip {
+  width: 16px;
+  min-width: 16px;
+  padding: 0;
+  color: var(--muted-foreground);
+  cursor: grab;
+  opacity: 0.45;
+}
+.paper-column-grip:hover,
+.paper-column-grip:focus-visible {
+  opacity: 1;
+}
+.paper-column-grip:active {
+  cursor: grabbing;
+}
+.paper-column-option {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 5px 2px;
+  border-radius: 4px;
+}
+.paper-columns-popover {
+  max-height: min(70vh, 440px);
+  overflow-y: auto;
+  scrollbar-width: none;
+}
+.paper-columns-popover::-webkit-scrollbar {
+  display: none;
+}
+@media (prefers-reduced-motion: no-preference) {
+  .paper-column-option,
+  .paper-table th,
+  .paper-column-grip {
+    transition:
+      opacity 140ms ease,
+      background-color 140ms ease;
+  }
+  .paper-column-grip:active svg {
+    transform: scale(0.9);
+  }
+}
+
+.paper-column-drag-preview {
+  z-index: 10000;
+  pointer-events: none;
+  overflow: hidden;
+  border-radius: 6px;
+  background: var(--popover);
+  color: var(--popover-foreground);
+  box-shadow: 0 3px 12px #0002;
+}
+.paper-column-source {
+  opacity: 0.4;
+}
+
 /* Temporary paper tags share the current category and text search. */
 .paper-tag-filter {
   display: flex;
