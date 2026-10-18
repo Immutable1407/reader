@@ -336,3 +336,102 @@ it("does not expose automatic chapter context", async () => {
   await act(async () => root.render(<Settings open onOpenChange={() => {}} />));
   expect(host.querySelector('[aria-label="提问时附带本章原文"]')).toBeNull();
 });
+
+it("rechecks a saved API model with a per-stage wait limit without changing configuration", async () => {
+  config.api = { url: "https://api.example.com", model: "", hasKey: true };
+  listed = { "slow-model": true };
+  config.capabilities = {
+    "api:slow-model": {
+      text: false,
+      vision: false,
+      checkedAt: "saved",
+      error: "检测超时",
+    },
+  };
+  await act(async () => root.render(<Settings open onOpenChange={() => {}} />));
+  await openAPI();
+  const retry = () =>
+    host.querySelector<HTMLButtonElement>('[aria-label="重新检测 slow-model"]');
+  expect(retry()).not.toBeNull();
+  await type("检测等待上限（秒）", "120");
+  await act(async () => retry()!.click());
+  expect(api.testAI).toHaveBeenCalledWith("api", "text", "slow-model", 120);
+  expect(api.testAI).toHaveBeenCalledWith("api", "vision", "slow-model", 120);
+  expect(retry()).not.toBeNull();
+  await type("检测等待上限（秒）", "601");
+  expect(retry()!.disabled).toBe(true);
+  await type("检测等待上限（秒）", "0");
+  vi.mocked(api.testAI).mockClear();
+  await act(async () => retry()!.click());
+  expect(api.testAI).toHaveBeenCalledWith("api", "text", "slow-model");
+  expect(api.saveAIConfig).not.toHaveBeenCalled();
+});
+
+it("shows the latest first-output observations including zero, without inventing missing timings", async () => {
+  config.api = { url: "https://api.example.com", model: "", hasKey: true };
+  listed = { observed: true, old: false };
+  config.capabilities = {
+    "api:observed": {
+      text: true,
+      vision: true,
+      checkedAt: "saved",
+      textFirstOutputMs: 0,
+      visionFirstOutputMs: 1250,
+    },
+    "api:old": {
+      text: false,
+      vision: false,
+      checkedAt: "saved",
+      error: "连接失败",
+    },
+  };
+  await act(async () => root.render(<Settings open onOpenChange={() => {}} />));
+  await openAPI();
+  const rows = host.querySelectorAll(".api-model-list li");
+  expect(rows[0].textContent).toContain("文本首输出 0.00 s");
+  expect(rows[0].textContent).toContain("图片首输出 1.25 s");
+  expect(rows[1].textContent).not.toContain("首输出");
+  expect(rows[1].textContent).toContain("连接失败");
+});
+
+it.each(["text", "vision"] as const)(
+  "does not show stale observations after a %s request fails",
+  async (failedStage) => {
+    config.api = { url: "https://api.example.com", model: "", hasKey: true };
+    listed = { observed: true };
+    config.capabilities = {
+      "api:observed": {
+        text: true,
+        vision: true,
+        checkedAt: "saved",
+        textFirstOutputMs: 1234,
+        visionFirstOutputMs: 2345,
+      },
+    };
+    vi.mocked(api.testAI).mockImplementation(async (_provider, stage) => {
+      if (stage === failedStage) throw new Error("Failed to fetch");
+      return {
+        text: true,
+        vision: false,
+        checkedAt: "new",
+        pendingVision: true,
+        textFirstOutputMs: 100,
+      };
+    });
+    await act(async () =>
+      root.render(<Settings open onOpenChange={() => {}} />),
+    );
+    await openAPI();
+    await act(async () =>
+      host
+        .querySelector<HTMLButtonElement>('[aria-label="重新检测 observed"]')!
+        .click(),
+    );
+    const row = host.querySelector(".api-model-list li")!;
+    expect(row.textContent).toContain("Failed to fetch");
+    expect(row.textContent).not.toContain("1.23 s");
+    expect(row.textContent).not.toContain("2.35 s");
+    if (failedStage === "text") expect(row.textContent).not.toContain("首输出");
+    else expect(row.textContent).toContain("文本首输出 0.10 s");
+  },
+);

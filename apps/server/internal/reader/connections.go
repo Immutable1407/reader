@@ -8,6 +8,7 @@ import (
 	"encoding/hex"
 	"encoding/json"
 	"errors"
+	"fmt"
 	"image"
 	"image/color"
 	"image/png"
@@ -18,6 +19,7 @@ import (
 	"path/filepath"
 	"regexp"
 	"slices"
+	"strconv"
 	"strings"
 	"time"
 	"unicode/utf8"
@@ -31,15 +33,17 @@ type APIConnection struct {
 	HasKey   bool   `json:"hasKey"`
 }
 type Capability struct {
-	Tools             string `json:"tools,omitempty"`
-	ToolSchemaVersion string `json:"toolSchemaVersion,omitempty"`
-	ToolError         string `json:"toolError,omitempty"`
-	PendingVision     bool   `json:"pendingVision,omitempty"`
-	Text              bool   `json:"text"`
-	Vision            bool   `json:"vision"`
-	CheckedAt         string `json:"checkedAt"`
-	Error             string `json:"error,omitempty"`
-	Fingerprint       string `json:"-"`
+	TextFirstOutputMs   *int64 `json:"textFirstOutputMs,omitempty"`
+	VisionFirstOutputMs *int64 `json:"visionFirstOutputMs,omitempty"`
+	Tools               string `json:"tools,omitempty"`
+	ToolSchemaVersion   string `json:"toolSchemaVersion,omitempty"`
+	ToolError           string `json:"toolError,omitempty"`
+	PendingVision       bool   `json:"pendingVision,omitempty"`
+	Text                bool   `json:"text"`
+	Vision              bool   `json:"vision"`
+	CheckedAt           string `json:"checkedAt"`
+	Error               string `json:"error,omitempty"`
+	Fingerprint         string `json:"-"`
 }
 type AIConfig struct {
 	Primary string                       `json:"primary"`
@@ -389,6 +393,17 @@ func (s *Server) testConnection(w http.ResponseWriter, r *http.Request) {
 		p = apiCapabilityKey(model)
 	}
 	mode := r.URL.Query().Get("capability")
+	textTimeout, visionTimeout := 45*time.Second, 90*time.Second
+	if raw := r.URL.Query().Get("timeoutSeconds"); raw != "" {
+		seconds, err := strconv.Atoi(raw)
+		if err != nil || seconds < 0 || seconds > 600 || !strings.HasPrefix(p, "api:") || mode == "tools" {
+			fail(w, 400, "检测等待上限须为 0–600 秒的整数，仅用于 API 模型的文本和图片检测")
+			return
+		}
+		if seconds > 0 {
+			textTimeout, visionTimeout = time.Duration(seconds)*time.Second, time.Duration(seconds)*time.Second
+		}
+	}
 	if mode == "tools" {
 		s.testDocumentToolConnection(w, r, p)
 		return
@@ -403,6 +418,9 @@ func (s *Server) testConnection(w http.ResponseWriter, r *http.Request) {
 	if previous := c.Capabilities[p]; previous.Fingerprint == fingerprint {
 		cap.Tools, cap.ToolError = previous.Tools, previous.ToolError
 		cap.ToolSchemaVersion = previous.ToolSchemaVersion
+		if mode == "vision" {
+			cap.TextFirstOutputMs = previous.TextFirstOutputMs
+		}
 	}
 	if mode == "vision" {
 		if !capable(c, p, false) {
@@ -413,7 +431,8 @@ func (s *Server) testConnection(w http.ResponseWriter, r *http.Request) {
 	} else {
 		// A completed, nonempty model response establishes text availability.
 		// Formatting and CLI subscription-login metadata are not capability gates.
-		answer, err := s.probeConnection(r.Context(), c, p, AIInput{Prompt: "Reply with exactly READER_OK. Do not use any tools."}, 45*time.Second)
+		answer, firstOutput, err := s.probeConnection(r.Context(), c, p, AIInput{Prompt: "Reply with exactly READER_OK. Do not use any tools."}, textTimeout)
+		cap.TextFirstOutputMs = firstOutput
 		if err != nil {
 			cap.Error = err.Error()
 		} else if strings.TrimSpace(answer) == "" {
@@ -429,7 +448,8 @@ func (s *Server) testConnection(w http.ResponseWriter, r *http.Request) {
 		if probeErr != nil {
 			cap.Error = "无法生成图片测试"
 		} else {
-			answer, err := s.probeConnection(r.Context(), c, p, AIInput{Prompt: visionPrompt, Image: data}, 90*time.Second)
+			answer, firstOutput, err := s.probeConnection(r.Context(), c, p, AIInput{Prompt: visionPrompt, Image: data}, visionTimeout)
+			cap.VisionFirstOutputMs = firstOutput
 			if err != nil {
 				cap.Error = "文字可用；识图测试失败：" + err.Error()
 			} else if !matchesVisionProbe(answer, expected) {
@@ -462,7 +482,7 @@ func (s *Server) testConnection(w http.ResponseWriter, r *http.Request) {
 
 // CLI probes use model defaults. API probes exercise saved reasoning settings;
 // catalog failures still allow a selected model to be tested.
-func (s *Server) probeConnection(parent context.Context, c AIConfig, p string, in AIInput, timeout time.Duration) (string, error) {
+func (s *Server) probeConnection(parent context.Context, c AIConfig, p string, in AIInput, timeout time.Duration) (string, *int64, error) {
 	ctx, cancel := context.WithTimeout(parent, timeout)
 	defer cancel()
 	model := c.Models[p]
@@ -496,11 +516,34 @@ func (s *Server) probeConnection(parent context.Context, c AIConfig, p string, i
 	if p == "image-api" {
 		adapter = apiAdapter{c.ImageAPI}
 	}
-	result, err := adapter.Stream(ctx, GenerateRequest{Input: in}, nil)
-	if ctx.Err() == context.DeadlineExceeded {
-		return "", errors.New("检测超时，请检查网络或模型后重试")
+	stream := adapter.Stream
+	var firstOutput *int64
+	if api, ok := adapter.(apiAgentAdapter); ok {
+		// Resolve catalog metadata before timing the actual completion request.
+		// Probes have no chat context or document tools.
+		stream = func(ctx context.Context, req GenerateRequest, _ func(ProviderEvent) error) (GenerateResult, error) {
+			completion, err := api.resolve(ctx, len(req.Input.images()) > 0)
+			if err != nil {
+				return GenerateResult{}, err
+			}
+			started := time.Now()
+			return streamCompletion(ctx, api.conn, completion, req.Input, func(event ProviderEvent) error {
+				if firstOutput == nil && strings.TrimSpace(event.Reasoning+event.Text) != "" {
+					elapsed := time.Since(started).Milliseconds()
+					firstOutput = &elapsed
+				}
+				return nil
+			})
+		}
 	}
-	return result.Text, err
+	result, err := stream(ctx, GenerateRequest{Input: in}, nil)
+	if ctx.Err() == context.DeadlineExceeded {
+		if strings.HasPrefix(p, "api:") {
+			return "", firstOutput, fmt.Errorf("检测超时（%g 秒），请检查网络或增加检测等待上限后重试", timeout.Seconds())
+		}
+		return "", nil, errors.New("检测超时，请检查网络或模型后重试")
+	}
+	return result.Text, firstOutput, err
 }
 
 var visionColorNames = regexp.MustCompile(`(?i)\b(?:red|blue|green|yellow)\b`)

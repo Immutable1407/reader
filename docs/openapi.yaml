@@ -2571,6 +2571,13 @@
                     "schema": { "type": "string" },
                   },
                   {
+                    "name": "timeoutSeconds",
+                    "in": "query",
+                    "description": "Per-stage wait limit for API model text/vision probes only. Omit or use 0 for defaults (text 45 seconds, vision 90 seconds). Does not change generation timeouts or saved connection settings.",
+                    "schema":
+                      { "type": "integer", "minimum": 0, "maximum": 600 },
+                  },
+                  {
                     "name": "provider",
                     "in": "path",
                     "required": true,
@@ -5236,6 +5243,18 @@
               "properties":
                 {
                   "text": { "type": "boolean" },
+                  "textFirstOutputMs":
+                    {
+                      "type": "integer",
+                      "minimum": 0,
+                      "description": "Last text probe's time to first nonempty reasoning or text output, excluding catalog lookup. Omitted if no output was observed. This is a single observation, not a provider benchmark.",
+                    },
+                  "visionFirstOutputMs":
+                    {
+                      "type": "integer",
+                      "minimum": 0,
+                      "description": "Last vision probe's time to first nonempty reasoning or text output, excluding catalog lookup. Omitted if no output was observed.",
+                    },
                   "pendingVision":
                     {
                       "type": "boolean",

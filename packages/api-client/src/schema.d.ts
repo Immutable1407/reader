@@ -2228,6 +2228,8 @@ export interface paths {
                     capability?: "text" | "vision" | "tools";
                     /** @description Required for the api provider, which is checked one model at a time; the result is stored under capabilities["api:<model>"]. */
                     model?: string;
+                    /** @description Per-stage wait limit for API model text/vision probes only. Omit or use 0 for defaults (text 45 seconds, vision 90 seconds). Does not change generation timeouts or saved connection settings. */
+                    timeoutSeconds?: number;
                 };
                 header?: never;
                 path: {
@@ -4038,6 +4040,10 @@ export interface components {
         };
         AICapability: {
             text: boolean;
+            /** @description Last text probe's time to first nonempty reasoning or text output, excluding catalog lookup. Omitted if no output was observed. This is a single observation, not a provider benchmark. */
+            textFirstOutputMs?: number;
+            /** @description Last vision probe's time to first nonempty reasoning or text output, excluding catalog lookup. Omitted if no output was observed. */
+            visionFirstOutputMs?: number;
             /** @description Text passed; vision has not finished. Resume vision on the next check. */
             pendingVision?: boolean;
             vision: boolean;

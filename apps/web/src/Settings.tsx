@@ -93,6 +93,10 @@ export function Settings({
   const [apiModels, setAPIModels] = useState<AgentModel[]>([]);
   const [apiModelsError, setAPIModelsError] = useState("");
   const [apiDetails, setAPIDetails] = useState(false);
+  const [probeWait, setProbeWait] = useState("");
+  const probeSeconds = Number(probeWait);
+  const validProbeWait =
+    Number.isInteger(probeSeconds) && probeSeconds >= 0 && probeSeconds <= 600;
   const [journalRank, setJournalRank] = useState<JournalRankConfig | null>(
     null,
   );
@@ -154,10 +158,15 @@ export function Settings({
     id: string,
     first: "text" | "vision",
     snapshot: AIConfig,
+    timeoutSeconds?: number,
   ) => {
     const model = id.startsWith("api:") ? id.slice(4) : undefined;
     const run = (stage: "text" | "vision") =>
-      model ? api.testAI("api", stage, model) : api.testAI(id, stage);
+      model
+        ? timeoutSeconds
+          ? api.testAI("api", stage, model, timeoutSeconds)
+          : api.testAI("api", stage, model)
+        : api.testAI(id, stage);
     let stage = first;
     const update = (capability: AICapability) => {
       const current = useReaderStore.getState().aiConfig;
@@ -199,6 +208,7 @@ export function Settings({
     ids: string[],
     firstStage: (id: string) => "text" | "vision",
     snapshot: AIConfig,
+    timeoutSeconds?: number,
   ) => {
     setTesting((current) => {
       const next = new Map(current);
@@ -212,7 +222,9 @@ export function Settings({
         ),
       ),
     );
-    await Promise.all(ids.map((id) => check(id, firstStage(id), snapshot)));
+    await Promise.all(
+      ids.map((id) => check(id, firstStage(id), snapshot, timeoutSeconds)),
+    );
   };
   const warnWithoutVision = (models: AgentModel[]) => {
     const capabilities = useReaderStore.getState().aiConfig?.capabilities;
@@ -298,9 +310,14 @@ export function Settings({
   }, [open]);
   const checkModel = async (model: AgentModel) => {
     const snapshot = useReaderStore.getState().aiConfig;
-    if (!snapshot) return;
+    if (!snapshot || !validProbeWait) return;
     checked.current.add(JSON.stringify(["api", model.id]));
-    await checkAll([`api:${model.id}`], () => "text", snapshot);
+    await checkAll(
+      [`api:${model.id}`],
+      () => "text",
+      snapshot,
+      probeSeconds || undefined,
+    );
     warnWithoutVision(apiModels);
   };
   const checkTools = async (model: AgentModel) => {
@@ -496,14 +513,60 @@ export function Settings({
                 providers.some((p) => p.id === "api" && p.installed) && (
                   <div className="mt-6">
                     <h3 className="mb-1 text-sm font-medium">模型</h3>
+                    <label className="mb-1 flex items-center gap-3 text-xs text-muted-foreground">
+                      检测等待上限（秒）
+                      <Input
+                        type="number"
+                        min={0}
+                        max={600}
+                        step={1}
+                        value={probeWait}
+                        onChange={(event) => setProbeWait(event.target.value)}
+                        aria-label="检测等待上限（秒）"
+                        aria-describedby="api-probe-wait-help"
+                        aria-invalid={!validProbeWait}
+                        placeholder="默认"
+                        className="h-7 w-24"
+                      />
+                    </label>
+                    <p
+                      id="api-probe-wait-help"
+                      className="mb-3 text-xs text-muted-foreground"
+                    >
+                      仅用于手动检测，每阶段最多 600 秒；留空或 0 使用文本 45
+                      秒、图片 90 秒
+                    </p>
+                    {!validProbeWait && (
+                      <p className="mb-2 text-xs text-destructive" role="alert">
+                        请输入 0–600 的整数
+                      </p>
+                    )}
                     <ul className="api-model-list">
                       {apiModels.map((model) => {
                         const id = `api:${model.id}`;
                         const result = config.capabilities[id];
+                        const error =
+                          errors[`${id}:vision`] ||
+                          errors[`${id}:text`] ||
+                          result?.error;
+                        const retry = result || error;
+                        const timings = [
+                          !errors[`${id}:text`] &&
+                          result?.textFirstOutputMs != null
+                            ? `文本首输出 ${(result.textFirstOutputMs / 1000).toFixed(2)} s`
+                            : "",
+                          !errors[`${id}:text`] &&
+                          !errors[`${id}:vision`] &&
+                          result?.visionFirstOutputMs != null
+                            ? `图片首输出 ${(result.visionFirstOutputMs / 1000).toFixed(2)} s`
+                            : "",
+                        ]
+                          .filter(Boolean)
+                          .join(" · ");
                         return (
                           <li
                             key={model.id}
-                            className="flex min-h-9 items-center gap-3"
+                            className="flex min-h-9 flex-wrap items-center gap-x-3 gap-y-1 py-1"
                           >
                             <span
                               className="min-w-0 flex-1 truncate text-sm"
@@ -511,20 +574,19 @@ export function Settings({
                             >
                               {model.name}
                             </span>
-                            {testing.has(id) ||
-                            result ||
-                            errors[`${id}:text`] ? (
-                              checkStatus(id, result)
-                            ) : (
-                              <Button
-                                variant="ghost"
-                                size="sm"
-                                disabled={saving}
-                                onClick={() => void checkModel(model)}
-                              >
-                                检测
-                              </Button>
-                            )}
+                            {(testing.has(id) || result || error) &&
+                              checkStatus(id, result)}
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              disabled={
+                                saving || testing.has(id) || !validProbeWait
+                              }
+                              aria-label={`${retry ? "重新检测" : "检测"} ${model.id}`}
+                              onClick={() => void checkModel(model)}
+                            >
+                              {retry ? "重新检测" : "检测"}
+                            </Button>
                             {result?.text && (
                               <Button
                                 variant="ghost"
@@ -553,6 +615,16 @@ export function Settings({
                               >
                                 <X />
                               </Button>
+                            )}
+                            {!testing.has(id) && (timings || error) && (
+                              <div className="w-full break-words text-xs text-muted-foreground">
+                                {timings && (
+                                  <p title="本次首次收到思考或正文的耗时，不含模型列表加载，受网络和服务负载影响">
+                                    {timings}
+                                  </p>
+                                )}
+                                {error && <p>{error}</p>}
+                              </div>
                             )}
                           </li>
                         );

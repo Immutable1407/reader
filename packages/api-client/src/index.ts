@@ -373,10 +373,13 @@ export const api = {
     provider: string,
     capability?: "text" | "vision" | "tools",
     model?: string,
+    timeoutSeconds?: number,
   ) => {
     const query = new URLSearchParams();
     if (capability) query.set("capability", capability);
     if (model) query.set("model", model);
+    if (timeoutSeconds !== undefined)
+      query.set("timeoutSeconds", String(timeoutSeconds));
     return request<AICapability>(
       `/api/ai/test/${provider}${query.size ? `?${query}` : ""}`,
       { method: "POST" },
