@@ -954,3 +954,89 @@ it("uses the tag column in tables and keeps a fallback when the column or result
   });
   expect(host.querySelector('[aria-label="打开标签筛选"]')).not.toBeNull();
 });
+
+it("filters matching row tags across categories and keeps the current search", async () => {
+  await act(async () =>
+    useReaderStore.setState({
+      documents: [
+        { ...docs[0], tags: ["RAG"], folders: ["ML"] },
+        { ...docs[1], tags: ["rag"], folders: ["Graphs"] },
+        paper({ id: "c", title: "Attention without tags" }),
+      ],
+      libraryPreferences: {
+        mode: "papers",
+        papers: { layout: "table", columns: ["tags"] },
+      },
+    }),
+  );
+  await act(async () => usePaperUI.getState().setQuery("Attention"));
+  const tag = row("Attention Is All You Need").querySelector<HTMLButtonElement>(
+    '[aria-label="按 AND 筛选标签 RAG"]',
+  );
+  expect(tag).not.toBeNull();
+  await act(async () => tag!.click());
+  expect(usePaperUI.getState().tagFilter).toEqual({
+    tags: ["RAG"],
+    match: "all",
+  });
+  expect(row("Graph Attention Networks")).not.toBeNull();
+  expect(row("Attention without tags")).toBeNull();
+  expect(host.querySelector(".paper-detail")).toBeNull();
+  await act(async () =>
+    row("Graph Attention Networks")
+      .querySelector<HTMLButtonElement>('[aria-label="按 AND 筛选标签 rag"]')!
+      .click(),
+  );
+  expect(usePaperUI.getState().tagFilter.tags).toEqual(["RAG"]);
+  await act(async () => usePaperUI.getState().setView("folder:ML"));
+  expect(row("Graph Attention Networks")).toBeNull();
+  await act(async () => usePaperUI.getState().setView("all"));
+  expect(row("Graph Attention Networks")).not.toBeNull();
+  expect(usePaperUI.getState().query).toBe("Attention");
+  expect(api.update).not.toHaveBeenCalled();
+  expect(api.saveLibraryPreferences).not.toHaveBeenCalled();
+});
+
+it("adds row tags with AND without opening papers or invoking list shortcuts", async () => {
+  await act(async () => {
+    useReaderStore.setState({
+      documents: [
+        { ...docs[0], tags: ["RAG", "Agent"] },
+        { ...docs[1], tags: ["RAG"] },
+      ],
+      libraryPreferences: {
+        mode: "papers",
+        papers: { layout: "table", columns: ["tags"] },
+      },
+    });
+    usePaperUI.getState().setTagFilter({ tags: ["RAG"], match: "any" });
+  });
+  const tag = row("Attention Is All You Need").querySelector<HTMLButtonElement>(
+    '[aria-label="按 AND 筛选标签 Agent"]',
+  );
+  expect(tag).not.toBeNull();
+  expect(tag!.tagName).toBe("BUTTON");
+  await act(async () => {
+    tag!.focus();
+    for (const key of ["Enter", " ", "ArrowDown", "1"])
+      tag!.dispatchEvent(new KeyboardEvent("keydown", { key, bubbles: true }));
+    tag!.dispatchEvent(
+      new KeyboardEvent("keydown", { key: "a", ctrlKey: true, bubbles: true }),
+    );
+  });
+  expect(usePaperUI.getState().selectedId).toBeNull();
+  expect(usePaperUI.getState().picking).toBe(false);
+  expect(document.activeElement).toBe(tag);
+  await act(async () => {
+    tag!.click();
+    tag!.dispatchEvent(new MouseEvent("dblclick", { bubbles: true }));
+  });
+  expect(usePaperUI.getState().tagFilter).toEqual({
+    tags: ["RAG", "Agent"],
+    match: "all",
+  });
+  expect(row("Graph Attention Networks")).toBeNull();
+  expect(host.querySelector(".paper-detail")).toBeNull();
+  expect(open).not.toHaveBeenCalled();
+  expect(api.update).not.toHaveBeenCalled();
+});

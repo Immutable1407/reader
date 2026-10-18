@@ -525,6 +525,16 @@ export function PaperLibrary({
         else ui.select(selectedId === doc.id ? null : doc.id);
       }}
       onOpen={() => openDocument(doc)}
+      onFilterTag={(tag) =>
+        ui.setTagFilter({
+          match: "all",
+          tags: tagFilter.tags.some(
+            (item) => item.toLowerCase() === tag.toLowerCase(),
+          )
+            ? tagFilter.tags
+            : [...tagFilter.tags, tag],
+        })
+      }
       menu={
         <PaperMenuItems kind="context" docs={menuDocs(doc)} actions={actions} />
       }
@@ -1250,6 +1260,7 @@ function PaperRow({
   dragIds,
   onActivate,
   onOpen,
+  onFilterTag,
   menu,
   moreMenu,
 }: {
@@ -1266,6 +1277,7 @@ function PaperRow({
   dragIds: () => string[];
   onActivate: (e: React.MouseEvent | React.KeyboardEvent) => void;
   onOpen: () => void;
+  onFilterTag: (tag: string) => void;
   menu: React.ReactNode;
   moreMenu: React.ReactNode;
 }) {
@@ -1380,7 +1392,16 @@ function PaperRow({
               <Badge
                 key={tag}
                 variant="secondary"
-                className="max-w-28 shrink-0"
+                render={<button type="button" />}
+                data-row-action
+                className="max-w-28 shrink-0 cursor-pointer hover:bg-secondary/80 active:scale-95"
+                aria-label={`按 AND 筛选标签 ${tag}`}
+                title={`加入 AND 筛选：${tag}`}
+                onClick={(event) => {
+                  event.stopPropagation();
+                  onFilterTag(tag);
+                }}
+                onKeyDown={(event) => event.stopPropagation()}
               >
                 <span className="truncate">{tag}</span>
               </Badge>
