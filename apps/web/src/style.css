@@ -3339,3 +3339,86 @@ textarea.paper-note-input {
 .pdf-container[data-theme="dark"] .reader-location-highlight > div {
   background: rgb(100 170 255 / 36%);
 }
+
+/* Temporary paper tags share the current category and text search. */
+.paper-tag-filter {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-top: auto;
+  padding: 12px 6px 4px;
+  border-top: 1px solid var(--border);
+}
+.paper-tag-match {
+  display: flex;
+  padding: 2px;
+  border-radius: 8px;
+  background: var(--muted);
+}
+.paper-tag-match > button {
+  flex: 1;
+}
+.paper-tag-match > button[aria-pressed="true"] {
+  background: var(--background);
+  box-shadow: 0 1px 3px #00000012;
+}
+.paper-tag-options {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  max-height: 200px;
+  overflow-y: auto;
+  scrollbar-width: thin;
+}
+.paper-tag-option {
+  width: 100%;
+  justify-content: flex-start;
+  gap: 8px;
+}
+.paper-tag-option[aria-pressed="true"] {
+  color: var(--primary);
+  background: color-mix(in oklch, var(--primary) 10%, transparent);
+}
+.paper-tag-summary {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 12px;
+  border-bottom: 1px solid var(--border);
+  font-size: 11px;
+  color: var(--muted-foreground);
+}
+@media (prefers-reduced-motion: no-preference) {
+  .paper-tag-filter,
+  .paper-tag-summary {
+    animation: paper-tag-enter 150ms ease-out;
+  }
+  .paper-tag-option,
+  .paper-tag-option svg {
+    transition:
+      background-color 150ms ease,
+      color 150ms ease,
+      opacity 150ms ease,
+      transform 150ms ease;
+  }
+  .paper-tag-option:active {
+    transform: scale(0.98);
+  }
+}
+.paper-tag-popover .paper-tag-filter {
+  margin: 0;
+  padding: 0;
+  border: 0;
+}
+
+@keyframes paper-tag-enter {
+  from {
+    opacity: 0;
+    transform: translateY(2px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}

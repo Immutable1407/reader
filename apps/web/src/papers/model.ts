@@ -3,10 +3,12 @@ import type {
   PaperColumn,
   PaperLibraryPreferences,
   SmartCategory,
+  TagBoard,
   PaperSort,
   Processing,
   ReadingStatus,
 } from "@reader/core";
+import { matchTagBoard } from "../library";
 import {
   paperCreators,
   creatorName,
@@ -304,7 +306,11 @@ export function filterPapers(
   query: string,
   sort: PaperSort,
   jobs: Map<string, Processing>,
-  options: ViewContext & { notDuplicates?: string[]; reverse?: boolean } = {},
+  options: ViewContext & {
+    notDuplicates?: string[];
+    reverse?: boolean;
+    tagFilter?: Pick<TagBoard, "tags" | "match">;
+  } = {},
 ) {
   const terms = query.trim().toLocaleLowerCase().split(/\s+/).filter(Boolean);
   const found = (doc: Document) => {
@@ -312,13 +318,18 @@ export function filterPapers(
     const text = searchText(doc);
     return terms.every((term) => text.includes(term));
   };
-  if (view === "duplicates")
-    return duplicateGroups(docs, options.notDuplicates).flat().filter(found);
-  return sortPapers(
-    docs.filter((doc) => matchesView(doc, view, jobs, options) && found(doc)),
-    sort,
-    options.reverse,
-  );
+  const matching =
+    view === "duplicates"
+      ? duplicateGroups(docs, options.notDuplicates).flat().filter(found)
+      : docs.filter(
+          (doc) => matchesView(doc, view, jobs, options) && found(doc),
+        );
+  const tagged = options.tagFilter
+    ? matchTagBoard(matching, options.tagFilter)
+    : matching;
+  return view === "duplicates"
+    ? tagged
+    : sortPapers(tagged, sort, options.reverse);
 }
 
 const comparableTitle = (title: string) =>

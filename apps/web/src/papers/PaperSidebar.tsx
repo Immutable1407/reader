@@ -94,6 +94,7 @@ import {
   type PaperView,
 } from "./model";
 import { usePaperUI } from "./state";
+import { PaperTagFilter } from "./PaperTagFilter";
 import { exportCitations } from "./CitationMenu";
 
 /** Drag payload for papers moved onto sidebar targets. */
@@ -797,6 +798,7 @@ export function PaperSidebar({
           />
         </nav>
       )}
+      {view !== "trash" && <PaperTagFilter documents={documents} jobs={jobs} />}
       <AlertDialog
         open={!!deleting}
         onOpenChange={(open) => !open && setDeleting(null)}

@@ -1,3 +1,4 @@
+import { PaperTagFilterButton } from "./PaperTagFilter";
 import { Badge } from "@reader/ui/components/badge";
 import {
   useEffect,
@@ -9,6 +10,7 @@ import {
   type PointerEvent as ReactPointerEvent,
 } from "react";
 import {
+  X,
   ArrowDown,
   ArrowUp,
   Check,
@@ -172,7 +174,16 @@ export function PaperLibrary({
   const reverse = !!prefs.sortReverse;
   const columns = prefs.columns || defaultColumns;
   const ui = usePaperUI();
-  const { view, query, selectedId, picking, picked, naming, exporting } = ui;
+  const {
+    view,
+    query,
+    tagFilter,
+    selectedId,
+    picking,
+    picked,
+    naming,
+    exporting,
+  } = ui;
   const listRef = useRef<HTMLDivElement>(null);
   const visible = useMemo(
     () =>
@@ -182,12 +193,14 @@ export function PaperLibrary({
             subcategories: prefs.subcategoryItems !== false,
             smart: prefs.smartCategories,
             notDuplicates: prefs.notDuplicates,
+            tagFilter,
             reverse,
           }),
     [
       documents,
       view,
       query,
+      tagFilter,
       sort,
       jobs,
       prefs.subcategoryItems,
@@ -439,7 +452,12 @@ export function PaperLibrary({
         ?.focus(),
     );
   const onListKey = (e: React.KeyboardEvent) => {
-    if ((e.target as Element).closest("input, textarea, [role=menu]")) return;
+    if (
+      (e.target as Element).closest(
+        "input, textarea, [role=menu], [role=dialog]",
+      )
+    )
+      return;
     if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === "a") {
       e.preventDefault();
       ui.startPicking(visibleIds);
@@ -545,11 +563,13 @@ export function PaperLibrary({
               <Search className="size-4" />
               <Input
                 aria-label="搜索论文"
-                placeholder="标题、作者、出处、DOI、摘要…"
+                placeholder="标题、作者、出处、DOI、摘要、标签…"
+                title="空格分隔的词需全部命中，不支持 AND/OR 表达式；标签组合可在左侧筛选"
                 value={query}
                 onChange={(e) => ui.setQuery(e.target.value)}
               />
             </div>
+            <PaperTagFilterButton documents={documents} jobs={jobs} />
             <Select
               value={sort}
               onValueChange={(value) => {
@@ -655,6 +675,44 @@ export function PaperLibrary({
             aria-label="论文列表"
             onKeyDown={onListKey}
           >
+            {tagFilter.tags.length > 0 && (
+              <div
+                className="paper-tag-summary"
+                role="region"
+                aria-label="当前标签条件"
+              >
+                <span>
+                  {tagFilter.match === "all" ? "全部 AND" : "任一 OR"}
+                </span>
+                {tagFilter.tags.map((tag) => (
+                  <Button
+                    key={tag.toLowerCase()}
+                    variant="secondary"
+                    size="xs"
+                    title={tag}
+                    aria-label={`取消标签筛选 ${tag}`}
+                    onClick={() =>
+                      ui.setTagFilter({
+                        ...tagFilter,
+                        tags: tagFilter.tags.filter((item) => item !== tag),
+                      })
+                    }
+                  >
+                    <span className="max-w-40 truncate">{tag}</span>
+                    <X className="size-3" />
+                  </Button>
+                ))}
+                <span className="tabular-nums">{visible.length} 篇</span>
+                <Button
+                  variant="ghost"
+                  size="xs"
+                  aria-label="清除当前标签条件"
+                  onClick={() => ui.setTagFilter({ ...tagFilter, tags: [] })}
+                >
+                  清除
+                </Button>
+              </div>
+            )}
             {picking && (
               <div
                 className="paper-batch-bar"
@@ -934,6 +992,12 @@ export function PaperLibrary({
                                   {c === "title" ? "标题" : columnLabels[c]}
                                   {active && <Arrow />}
                                 </Button>
+                              ) : c === "tags" ? (
+                                <PaperTagFilterButton
+                                  documents={documents}
+                                  jobs={jobs}
+                                  column
+                                />
                               ) : (
                                 <span className="px-1.5">
                                   {c === "title" ? "标题" : columnLabels[c]}
@@ -972,17 +1036,19 @@ export function PaperLibrary({
             ) : (
               <div className="empty-state">
                 <h2>{documents.length ? "没有符合条件的论文" : "暂无论文"}</h2>
-                {documents.length > 0 && (query || view !== "all") && (
-                  <Button
-                    variant="outline"
-                    onClick={() => {
-                      ui.setQuery("");
-                      ui.setView("all");
-                    }}
-                  >
-                    显示全部论文
-                  </Button>
-                )}
+                {documents.length > 0 &&
+                  (query || view !== "all" || tagFilter.tags.length > 0) && (
+                    <Button
+                      variant="outline"
+                      onClick={() => {
+                        ui.setQuery("");
+                        ui.setView("all");
+                        ui.setTagFilter({ ...tagFilter, tags: [] });
+                      }}
+                    >
+                      显示全部论文
+                    </Button>
+                  )}
               </div>
             )}
           </section>
@@ -1015,6 +1081,7 @@ export function PaperLibrary({
             ui.stopPicking();
             ui.setView("all");
             ui.setQuery("");
+            ui.setTagFilter({ ...tagFilter, tags: [] });
             ui.select(doc.id);
           }}
         />
