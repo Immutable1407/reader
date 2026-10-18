@@ -1,8 +1,12 @@
 import { useState } from "react";
-import { Check, Search } from "lucide-react";
+import { Search } from "lucide-react";
 import type { Document, Processing } from "@reader/core";
 import { Button } from "@reader/ui/components/button";
 import { Input } from "@reader/ui/components/input";
+import {
+  ToggleGroup,
+  ToggleGroupItem,
+} from "@reader/ui/components/toggle-group";
 import { matchTagBoard } from "../library";
 import { filterPapers, paperTags } from "./model";
 import { useReaderStore } from "../store";
@@ -71,34 +75,36 @@ function PaperTagFilter({ documents, jobs }: Props) {
           className="h-8 pl-7 text-xs"
         />
       </div>
-      <div className="paper-tag-options" aria-label="可选标签">
+      <ToggleGroup
+        multiple
+        size="sm"
+        variant="outline"
+        className="paper-tag-options flex-wrap justify-start"
+        aria-label="可选标签"
+        value={[...selected]}
+        onValueChange={(value: string[]) =>
+          setTagFilter({
+            ...tagFilter,
+            tags: value.map((key) =>
+              options.find((tag) => tag.toLowerCase() === key)!,
+            ),
+          })
+        }
+      >
         {shown.map((tag) => {
           const key = tag.toLowerCase();
           const active = selected.has(key);
           const count = counts.get(key) || 0;
           return (
-            <Button
+            <ToggleGroupItem
               key={key}
-              variant="ghost"
-              size="sm"
-              className="paper-tag-option"
+              value={key}
+              className="paper-tag-option max-w-full px-2 text-xs aria-pressed:border-emerald-300 aria-pressed:bg-emerald-100 aria-pressed:text-emerald-900 dark:aria-pressed:border-emerald-500/40 dark:aria-pressed:bg-emerald-500/20 dark:aria-pressed:text-emerald-200"
               aria-label={`筛选标签 ${tag}`}
-              aria-pressed={active}
               disabled={!active && !count}
               title={tag}
-              onClick={() =>
-                setTagFilter({
-                  ...tagFilter,
-                  tags: active
-                    ? tagFilter.tags.filter(
-                        (item) => item.toLowerCase() !== key,
-                      )
-                    : [...tagFilter.tags, tag],
-                })
-              }
             >
-              <Check className="size-3.5" style={{ opacity: active ? 1 : 0 }} />
-              <span className="min-w-0 flex-1 truncate text-left">{tag}</span>
+              <span className="min-w-0 truncate">#{tag}</span>
               <span
                 className="tabular-nums text-muted-foreground"
                 title={
@@ -109,15 +115,15 @@ function PaperTagFilter({ documents, jobs }: Props) {
               >
                 {count}
               </span>
-            </Button>
+            </ToggleGroupItem>
           );
         })}
-        {!shown.length && (
-          <p className="px-1 py-2 text-xs text-muted-foreground">
-            {options.length ? "没有匹配的标签" : "当前范围暂无标签"}
-          </p>
-        )}
-      </div>
+      </ToggleGroup>
+      {!shown.length && (
+        <p className="px-1 py-2 text-xs text-muted-foreground">
+          {options.length ? "没有匹配的标签" : "当前范围暂无标签"}
+        </p>
+      )}
     </section>
   );
 }

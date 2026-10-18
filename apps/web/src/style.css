@@ -3360,24 +3360,13 @@ textarea.paper-note-input {
   box-shadow: 0 1px 3px #00000012;
 }
 .paper-tag-options {
-  display: flex;
-  flex-direction: column;
-  gap: 2px;
+  align-content: flex-start;
   max-height: 200px;
   overflow-y: auto;
   scrollbar-width: none;
 }
 .paper-tag-options::-webkit-scrollbar {
   display: none;
-}
-.paper-tag-option {
-  width: 100%;
-  justify-content: flex-start;
-  gap: 8px;
-}
-.paper-tag-option[aria-pressed="true"] {
-  color: var(--primary);
-  background: color-mix(in oklch, var(--primary) 10%, transparent);
 }
 .paper-tag-summary {
   -webkit-app-region: no-drag;
@@ -3395,8 +3384,7 @@ textarea.paper-note-input {
   .paper-tag-summary {
     animation: paper-tag-enter 150ms ease-out;
   }
-  .paper-tag-option,
-  .paper-tag-option svg {
+  .paper-tag-option {
     transition:
       background-color 150ms ease,
       color 150ms ease,
