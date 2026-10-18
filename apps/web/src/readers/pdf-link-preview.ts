@@ -61,7 +61,7 @@ export class PDFLinkPreview {
   private timer?: ReturnType<typeof setTimeout>;
   private hovered?: HTMLAnchorElement;
   private request = 0;
-  private pages = new Map<number, Promise<HTMLCanvasElement>>();
+  private pages = new Map<string, Promise<HTMLCanvasElement>>();
   constructor(
     private container: HTMLElement,
     private pdf: () => pdfjs.PDFDocumentProxy | undefined,
@@ -125,15 +125,15 @@ export class PDFLinkPreview {
         : await pdf.getPageIndex(ref as { num: number; gen: number });
     return { pageIndex, ...destinationPoint(explicit) };
   }
-  private render(pageIndex: number) {
-    let page = this.pages.get(pageIndex);
+  private render(pageIndex: number, pageWidth: number) {
+    const key = `${pageIndex}:${pageWidth}:${window.devicePixelRatio || 1}`;
+    let page = this.pages.get(key);
     if (!page) {
       page = (async () => {
         const proxy = await this.pdf()!.getPage(pageIndex + 1);
         const base = proxy.getViewport({ scale: 1 });
         const scale =
-          (PREVIEW_WIDTH / base.width) *
-          Math.min(2, window.devicePixelRatio || 1);
+          (pageWidth / base.width) * Math.min(2, window.devicePixelRatio || 1);
         const viewport = proxy.getViewport({ scale });
         const canvas = document.createElement("canvas");
         canvas.width = Math.ceil(viewport.width);
@@ -177,11 +177,13 @@ export class PDFLinkPreview {
         }
         return canvas;
       })();
-      this.pages.set(pageIndex, page);
+      this.pages.set(key, page);
       // Keep a few recently previewed pages.
       if (this.pages.size > 4)
         this.pages.delete(this.pages.keys().next().value!);
-      page.catch(() => this.pages.delete(pageIndex));
+      page.catch(() => {
+        if (this.pages.get(key) === page) this.pages.delete(key);
+      });
     }
     return page;
   }
@@ -233,9 +235,6 @@ export class PDFLinkPreview {
     const pdf = this.pdf()!;
     const proxy = await pdf.getPage(target.pageIndex + 1);
     const base = proxy.getViewport({ scale: 1 });
-    const canvas = await this.render(target.pageIndex);
-    if (request !== this.request || !link.isConnected) return;
-    const ratio = canvas.width / base.width;
     const top =
       target.top === null
         ? 0
@@ -245,6 +244,13 @@ export class PDFLinkPreview {
     const left = right ? base.width / 2 : 0;
     const width = right ? base.width / 2 : base.width;
     const height = Math.min(base.height - top, base.height * 0.3);
+    // The crop fills the preview even when it contains only half a page.
+    const canvas = await this.render(
+      target.pageIndex,
+      PREVIEW_WIDTH * (base.width / width),
+    );
+    if (request !== this.request || !link.isConnected) return;
+    const ratio = canvas.width / base.width;
     const crop = document.createElement("canvas");
     crop.width = Math.round(width * ratio);
     crop.height = Math.round(height * ratio);
