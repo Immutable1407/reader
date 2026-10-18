@@ -230,3 +230,35 @@ it("pins the shortcuts tab and cancels recording without closing the guide", asy
   expect(close).not.toHaveBeenCalled();
   expect(edit.getAttribute("aria-pressed")).toBe("false");
 });
+
+it("allows reading shortcuts beside a pinned preview but not from its controls", async () => {
+  const run = vi.fn();
+  function Harness() {
+    useShortcut("readerLeft", run);
+    return (
+      <div role="dialog" data-reader-floating-preview="">
+        <button>Preview</button>
+      </div>
+    );
+  }
+  await act(async () => root.render(<Harness />));
+  const fire = (target: EventTarget) =>
+    target.dispatchEvent(
+      new KeyboardEvent("keydown", {
+        key: "l",
+        ctrlKey: true,
+        bubbles: true,
+        cancelable: true,
+      }),
+    );
+  fire(window);
+  expect(run).toHaveBeenCalledOnce();
+  fire(host.querySelector("button")!);
+  expect(run).toHaveBeenCalledOnce();
+  const modal = document.createElement("div");
+  modal.setAttribute("role", "dialog");
+  document.body.append(modal);
+  fire(window);
+  expect(run).toHaveBeenCalledOnce();
+  modal.remove();
+});

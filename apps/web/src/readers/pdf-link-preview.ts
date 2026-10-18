@@ -6,6 +6,7 @@ import {
   type ReaderTheme,
 } from "@reader/core";
 import {
+  cropPDFRegions,
   imageRegions,
   processPDFPagePixels,
   type PDFDarkRegion,
@@ -62,6 +63,8 @@ export class PDFLinkPreview {
   private hovered?: HTMLAnchorElement;
   private request = 0;
   private pages = new Map<string, Promise<HTMLCanvasElement>>();
+  private renders = new Set<() => void>();
+  private disposed = false;
   constructor(
     private container: HTMLElement,
     private pdf: () => pdfjs.PDFDocumentProxy | undefined,
@@ -189,6 +192,7 @@ export class PDFLinkPreview {
   }
   invalidate() {
     this.request++;
+    for (const cancel of this.renders) cancel();
     for (const page of this.pages.values())
       void page
         .then((canvas) => {
@@ -197,6 +201,87 @@ export class PDFLinkPreview {
         })
         .catch(() => {});
     this.pages.clear();
+  }
+  private async renderCrop(
+    pdf: pdfjs.PDFDocumentProxy,
+    page: number,
+    bounds: PDFDarkRegion,
+    width: number,
+    signal: AbortSignal,
+  ) {
+    signal.throwIfAborted();
+    if (this.disposed || this.pdf() !== pdf) throw new Error("文档已关闭");
+    const proxy = await pdf.getPage(page);
+    signal.throwIfAborted();
+    if (this.disposed || this.pdf() !== pdf) throw new Error("文档已关闭");
+    const base = proxy.getViewport({ scale: 1 });
+    const cropWidth = base.width * bounds.width;
+    const cropHeight = base.height * bounds.height;
+    // Bound both memory and canvas dimensions when a window is enlarged.
+    const scale = Math.min(
+      Math.max(1, width) / cropWidth,
+      Math.sqrt(8_000_000 / (cropWidth * cropHeight)),
+      8192 / Math.max(cropWidth, cropHeight),
+    );
+    const viewport = proxy.getViewport({ scale });
+    const canvas = document.createElement("canvas");
+    canvas.width = Math.max(1, Math.floor(cropWidth * scale));
+    canvas.height = Math.max(1, Math.floor(cropHeight * scale));
+    const context = canvas.getContext("2d")!;
+    const task = proxy.render({
+      canvas,
+      canvasContext: context,
+      viewport,
+      transform: [
+        1,
+        0,
+        0,
+        1,
+        -viewport.width * bounds.x,
+        -viewport.height * bounds.y,
+      ],
+      background: "white",
+    });
+    let cancelled = false;
+    const cancel = () => {
+      cancelled = true;
+      task.cancel();
+    };
+    this.renders.add(cancel);
+    signal.addEventListener("abort", cancel, { once: true });
+    try {
+      await task.promise;
+      signal.throwIfAborted();
+      if (cancelled || this.disposed) throw new Error("预览渲染已取消");
+      const theme = this.theme();
+      if (theme.mode === "dark") {
+        const pixels = context.getImageData(0, 0, canvas.width, canvas.height);
+        const transformed = processPDFPagePixels(
+          pixels.data,
+          canvas.width,
+          canvas.height,
+          cropPDFRegions(
+            imageRegions({ coordinates: proxy.imageCoordinates }),
+            bounds,
+          ),
+          cropPDFRegions(this.figureRegions(page), bounds),
+          theme.pdfDarkImageMode ?? "adaptive",
+          theme.pdfDarkContrast ?? "soft",
+        );
+        const output = new Uint8ClampedArray(transformed.length);
+        output.set(transformed);
+        context.putImageData(
+          new ImageData(output, canvas.width, canvas.height),
+          0,
+          0,
+        );
+      }
+      return canvas.toDataURL("image/png");
+    } finally {
+      signal.removeEventListener("abort", cancel);
+      this.renders.delete(cancel);
+      canvas.width = canvas.height = 0;
+    }
   }
   private async preview(link: HTMLAnchorElement) {
     const request = ++this.request;
@@ -238,7 +323,10 @@ export class PDFLinkPreview {
     const top =
       target.top === null
         ? 0
-        : Math.max(0, base.convertToViewportPoint(0, target.top)[1] - 10);
+        : Math.min(
+            base.height - 1,
+            Math.max(0, base.convertToViewportPoint(0, target.top)[1] - 10),
+          );
     // A target in the right half starts a right column: show only that column.
     const right = target.left !== null && target.left > base.width / 2 - 10;
     const left = right ? base.width / 2 : 0;
@@ -268,6 +356,10 @@ export class PDFLinkPreview {
         crop.height,
       );
     const rect = link.getBoundingClientRect();
+    const destination = base.convertToViewportPoint(
+      target.left ?? 0,
+      target.top ?? 0,
+    );
     this.show({
       anchor: {
         left: rect.left,
@@ -278,9 +370,35 @@ export class PDFLinkPreview {
       page: target.pageIndex + 1,
       image: crop.toDataURL("image/png"),
       ratio: crop.width / crop.height,
+      location: {
+        type: "pdf",
+        page: target.pageIndex + 1,
+        x:
+          target.left === null
+            ? 0
+            : Math.max(0, Math.min(1, destination[0] / base.width)),
+        y:
+          target.top === null
+            ? 0
+            : Math.max(0, Math.min(1, destination[1] / base.height)),
+      },
+      renderImage: (pixels, signal) =>
+        this.renderCrop(
+          pdf,
+          target.pageIndex + 1,
+          {
+            x: left / base.width,
+            y: top / base.height,
+            width: width / base.width,
+            height: height / base.height,
+          },
+          pixels,
+          signal,
+        ),
     });
   }
   destroy() {
+    this.disposed = true;
     this.hide();
     this.invalidate();
     this.container.removeEventListener("pointerover", this.over);

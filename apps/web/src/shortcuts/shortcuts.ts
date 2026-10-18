@@ -127,7 +127,11 @@ export function useShortcut(
         event.defaultPrevented ||
         event.isComposing ||
         event.repeat ||
-        document.querySelector('[role="dialog"], [role="alertdialog"]')
+        (event.target instanceof Element &&
+          event.target.closest("[data-reader-floating-preview]")) ||
+        document.querySelector(
+          '[role="dialog"]:not([data-reader-floating-preview]), [role="alertdialog"]',
+        )
       )
         return;
       if (!matches(event, id)) return;

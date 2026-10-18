@@ -378,6 +378,10 @@ export interface LinkPreview {
   image: string;
   /** Image width divided by height. */
   ratio: number;
+  /** Exact target for the preview's explicit navigation control. */
+  location?: PDFLocation;
+  /** Re-render the crop from the PDF at the requested physical pixel width. */
+  renderImage?: (width: number, signal: AbortSignal) => Promise<string>;
 }
 export interface ReaderEvents {
   /** Show (or hide with null) a preview of an internal link's target. */

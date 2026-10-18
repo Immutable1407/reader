@@ -1,5 +1,6 @@
 import { useShortcut } from "./shortcuts/shortcuts";
 import { SelectionTranslation } from "./SelectionTranslation";
+import { LinkPreviewPanel } from "./LinkPreviewPanel";
 import { AnnotationHoverCard } from "./AnnotationHoverCard";
 import { AnnotationQuote } from "./AnnotationQuote";
 import {
@@ -1659,37 +1660,17 @@ export function Workspace({
         annotations={annotations}
         onEdit={editAnnotationNote}
       />
-      <Popover
-        open={!!linkPreview}
-        onOpenChange={(open) => !open && setLinkPreview(null)}
-      >
-        {linkPreview && (
-          <PopoverContent
-            anchor={{
-              getBoundingClientRect: () =>
-                DOMRect.fromRect({
-                  x: linkPreview.anchor.left,
-                  y: linkPreview.anchor.top,
-                  width: linkPreview.anchor.width,
-                  height: linkPreview.anchor.height,
-                }),
-            }}
-            side="bottom"
-            initialFocus={false}
-            finalFocus={false}
-            className="link-preview"
-          >
-            <img
-              src={linkPreview.image}
-              alt={`第 ${linkPreview.page} 页链接目标`}
-              style={{ aspectRatio: linkPreview.ratio }}
-            />
-            <span className="text-xs text-muted-foreground">
-              第 {linkPreview.page} 页 · 点击跳转
-            </span>
-          </PopoverContent>
-        )}
-      </Popover>
+      <LinkPreviewPanel
+        key={doc.id}
+        preview={linkPreview}
+        onDismiss={() => setLinkPreview(null)}
+        onNavigate={(location) =>
+          void visitReference(location, "").catch((error) =>
+            toast.error(String(error)),
+          )
+        }
+        renderKey={`${theme.mode}:${theme.pdfDarkImageMode}:${theme.pdfDarkContrast}`}
+      />
       {previewImage && (
         <ImagePreview
           key={previewImage.id}

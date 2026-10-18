@@ -56,3 +56,70 @@ it("renders a right-column crop at the displayed width times the screen density"
   expect(width).toBeGreaterThanOrEqual(580 * 2);
   preview.destroy();
 });
+
+it("re-renders the pinned crop at the requested density and bounds large canvases", async () => {
+  const { preview, anchor, shown, render } = fixture();
+  await preview.previewLocation(
+    { type: "pdf", page: 7, x: 0.6, y: 0.3 },
+    anchor,
+  );
+  const target = shown();
+  expect(target.location).toEqual({ type: "pdf", page: 7, x: 0.6, y: 0.3 });
+  expect(await target.renderImage!(2400, new AbortController().signal)).toBe(
+    "pixels:2400x1920",
+  );
+  const large = await target.renderImage!(20000, new AbortController().signal);
+  const [, width, height] = large.match(/pixels:(\d+)x(\d+)/)!;
+  expect(Number(width) * Number(height)).toBeLessThanOrEqual(8_000_000);
+  expect(render).toHaveBeenCalledTimes(3);
+  preview.destroy();
+  await expect(
+    target.renderImage!(2400, new AbortController().signal),
+  ).rejects.toThrow("文档已关闭");
+});
+
+it("cancels a pinned render on abort and releases its canvas", async () => {
+  const { preview, anchor, shown, render } = fixture();
+  await preview.previewLocation(
+    { type: "pdf", page: 7, x: 0.6, y: 0.3 },
+    anchor,
+  );
+  let finish!: () => void;
+  const cancel = vi.fn(() => finish());
+  render.mockReturnValueOnce({
+    promise: new Promise<void>((resolve) => {
+      finish = resolve;
+    }),
+    cancel,
+  });
+  const controller = new AbortController();
+  const pending = shown().renderImage!(2400, controller.signal);
+  await Promise.resolve();
+  const rejected = expect(pending).rejects.toThrow();
+  controller.abort();
+  await rejected;
+  expect(cancel).toHaveBeenCalledOnce();
+  preview.destroy();
+});
+
+it("cancels in-flight high-resolution work when the reader is destroyed", async () => {
+  const { preview, anchor, shown, render } = fixture();
+  await preview.previewLocation(
+    { type: "pdf", page: 7, x: 0.6, y: 0.3 },
+    anchor,
+  );
+  let finish!: () => void;
+  const cancel = vi.fn(() => finish());
+  render.mockReturnValueOnce({
+    promise: new Promise<void>((resolve) => {
+      finish = resolve;
+    }),
+    cancel,
+  });
+  const pending = shown().renderImage!(2400, new AbortController().signal);
+  await Promise.resolve();
+  const rejected = expect(pending).rejects.toThrow("预览渲染已取消");
+  preview.destroy();
+  await rejected;
+  expect(cancel).toHaveBeenCalledOnce();
+});
