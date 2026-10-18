@@ -213,3 +213,27 @@ it("keeps block and annotation hover active together, with independent hit regio
     await act(async () => blocks.destroy());
   }
 });
+
+// PDFReadingView filters the source annotations on every render. Hover/selection
+// updates can therefore repaint the layer between pointerdown and click.
+it.each(["highlight", "underline"] as const)(
+  "opens a source %s even when React refreshes annotations during the click",
+  (kind) => {
+    const marks = [annotation("source", kind)];
+    layer.setAnnotations(marks);
+    pointer("pointerdown");
+    layer.setAnnotations([...marks]);
+    expect(pointer("click").defaultPrevented).toBe(true);
+    expect(activate).toHaveBeenCalledExactlyOnceWith({
+      ids: ["source"],
+      anchor: { x: 100, top: 120, bottom: 160 },
+    });
+  },
+);
+
+it("does not open an annotation deleted during a click", () => {
+  pointer("pointerdown");
+  layer.setAnnotations([]);
+  expect(pointer("click").defaultPrevented).toBe(false);
+  expect(activate).not.toHaveBeenCalled();
+});
