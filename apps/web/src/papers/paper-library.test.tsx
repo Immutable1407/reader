@@ -771,7 +771,7 @@ it.each(["list", "table"] as const)(
     expect(row("Graph Attention Networks")).not.toBeNull();
     await act(async () =>
       host
-        .querySelector<HTMLButtonElement>('[aria-label="清除标签筛选"]')!
+        .querySelector<HTMLButtonElement>('[aria-label="清除当前标签条件"]')!
         .click(),
     );
     expect(usePaperUI.getState().tagFilter.tags).toEqual([]);
@@ -791,7 +791,7 @@ it("can recover from an empty tag result using the list reset action", async () 
   expect(row("Attention Is All You Need")).not.toBeNull();
 });
 
-it("selects tags in the sidebar, switches AND/OR and keeps zero-result selections removable", async () => {
+it("selects tags in the popover, switches AND/OR and keeps zero-result selections removable", async () => {
   await act(async () =>
     useReaderStore.setState({
       documents: [
@@ -801,25 +801,42 @@ it("selects tags in the sidebar, switches AND/OR and keeps zero-result selection
       ],
     }),
   );
+  expect(
+    host.querySelector('.paper-sidebar [aria-label="标签筛选"]'),
+  ).toBeNull();
+  await act(async () =>
+    host
+      .querySelector<HTMLButtonElement>('[aria-label="打开标签筛选"]')!
+      .click(),
+  );
+  const popover = document.querySelector('[data-slot="popover-content"]')!;
+  const matchButton = (label: string) =>
+    [...popover.querySelectorAll<HTMLButtonElement>("button")].find(
+      (item) => item.textContent === label,
+    )!;
   const tag = (name: string) =>
-    host.querySelector<HTMLButtonElement>(`[aria-label="筛选标签 ${name}"]`)!;
-  expect(host.querySelectorAll('[aria-label="筛选标签 rag"]')).toHaveLength(0);
+    popover.querySelector<HTMLButtonElement>(
+      `[aria-label="筛选标签 ${name}"]`,
+    )!;
+  expect(popover.querySelectorAll('[aria-label="筛选标签 rag"]')).toHaveLength(
+    0,
+  );
   await act(async () => tag("RAG").click());
   expect(row("Agent Survey")).toBeNull();
   expect(tag("Agent").textContent).toContain("1");
   await act(async () => tag("Agent").click());
   expect(row("Graph Attention Networks")).toBeNull();
-  await act(async () => button("任一 OR").click());
+  await act(async () => matchButton("任一 OR").click());
   expect(row("Graph Attention Networks")).not.toBeNull();
   expect(row("Agent Survey")).not.toBeNull();
   await act(async () => {
-    button("全部 AND").click();
+    matchButton("全部 AND").click();
     usePaperUI.getState().setQuery("Graph");
   });
   expect(host.textContent).toContain("没有符合条件的论文");
   expect(tag("Agent").disabled).toBe(false);
   expect(tag("Agent").textContent).toContain("0");
-  const search = host.querySelector<HTMLInputElement>(
+  const search = popover.querySelector<HTMLInputElement>(
     '[aria-label="查找标签"]',
   )!;
   await act(async () => {
@@ -904,4 +921,36 @@ it("does not run paper-list shortcuts from the tag column popover", async () => 
   expect(usePaperUI.getState().picking).toBe(false);
   expect(document.activeElement).toBe(target);
   expect(api.update).not.toHaveBeenCalled();
+});
+
+it("uses the tag column in tables and keeps a fallback when the column or results are absent", async () => {
+  await act(async () =>
+    useReaderStore.setState({
+      libraryPreferences: {
+        mode: "papers",
+        papers: { layout: "table", columns: ["tags"] },
+      },
+    }),
+  );
+  expect(host.querySelector('[aria-label="按标签筛选"]')).not.toBeNull();
+  expect(host.querySelector('[aria-label="打开标签筛选"]')).toBeNull();
+  await act(async () =>
+    useReaderStore.setState({
+      libraryPreferences: {
+        mode: "papers",
+        papers: { layout: "table", columns: ["authors"] },
+      },
+    }),
+  );
+  expect(host.querySelector('[aria-label="打开标签筛选"]')).not.toBeNull();
+  await act(async () => {
+    useReaderStore.setState({
+      libraryPreferences: {
+        mode: "papers",
+        papers: { layout: "table", columns: ["tags"] },
+      },
+    });
+    usePaperUI.getState().setTagFilter({ tags: ["missing"], match: "all" });
+  });
+  expect(host.querySelector('[aria-label="打开标签筛选"]')).not.toBeNull();
 });

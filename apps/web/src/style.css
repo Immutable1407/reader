@@ -3345,9 +3345,6 @@ textarea.paper-note-input {
   display: flex;
   flex-direction: column;
   gap: 8px;
-  margin-top: auto;
-  padding: 12px 6px 4px;
-  border-top: 1px solid var(--border);
 }
 .paper-tag-match {
   display: flex;
@@ -3368,7 +3365,10 @@ textarea.paper-note-input {
   gap: 2px;
   max-height: 200px;
   overflow-y: auto;
-  scrollbar-width: thin;
+  scrollbar-width: none;
+}
+.paper-tag-options::-webkit-scrollbar {
+  display: none;
 }
 .paper-tag-option {
   width: 100%;
@@ -3405,11 +3405,6 @@ textarea.paper-note-input {
   .paper-tag-option:active {
     transform: scale(0.98);
   }
-}
-.paper-tag-popover .paper-tag-filter {
-  margin: 0;
-  padding: 0;
-  border: 0;
 }
 
 @keyframes paper-tag-enter {

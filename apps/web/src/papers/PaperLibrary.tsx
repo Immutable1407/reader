@@ -564,12 +564,14 @@ export function PaperLibrary({
               <Input
                 aria-label="搜索论文"
                 placeholder="标题、作者、出处、DOI、摘要、标签…"
-                title="空格分隔的词需全部命中，不支持 AND/OR 表达式；标签组合可在左侧筛选"
+                title="空格分隔的词需全部命中，不支持 AND/OR 表达式；标签组合可通过标签按钮筛选"
                 value={query}
                 onChange={(e) => ui.setQuery(e.target.value)}
               />
             </div>
-            <PaperTagFilterButton documents={documents} jobs={jobs} />
+            {(!table || !columns.includes("tags") || !visible.length) && (
+              <PaperTagFilterButton documents={documents} jobs={jobs} />
+            )}
             <Select
               value={sort}
               onValueChange={(value) => {

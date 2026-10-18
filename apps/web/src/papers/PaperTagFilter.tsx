@@ -18,8 +18,8 @@ interface Props {
   jobs: Map<string, Processing>;
 }
 
-/** Temporary conditions shared by the sidebar and compact table/toolbar popovers. */
-export function PaperTagFilter({ documents, jobs }: Props) {
+/** Temporary conditions shared by the table and list filter popovers. */
+function PaperTagFilter({ documents, jobs }: Props) {
   const { tagFilter, setTagFilter, view, query: textQuery } = usePaperUI();
   const prefs = useReaderStore((s) => s.libraryPreferences.papers) || {};
   const scope = filterPapers(documents, view, textQuery, "title", jobs, {
@@ -112,7 +112,14 @@ export function PaperTagFilter({ documents, jobs }: Props) {
             >
               <Check className="size-3.5" style={{ opacity: active ? 1 : 0 }} />
               <span className="min-w-0 flex-1 truncate text-left">{tag}</span>
-              <span className="tabular-nums text-muted-foreground">
+              <span
+                className="tabular-nums text-muted-foreground"
+                title={
+                  tagFilter.match === "all"
+                    ? "当前结果篇数"
+                    : "当前分类与搜索中的篇数"
+                }
+              >
                 {count}
               </span>
             </Button>
@@ -124,11 +131,6 @@ export function PaperTagFilter({ documents, jobs }: Props) {
           </p>
         )}
       </div>
-      <p className="text-[11px] text-muted-foreground">
-        {tagFilter.match === "all"
-          ? "同时包含全部标签 · 数字为当前结果篇数"
-          : "包含任一标签 · 数字为当前分类与搜索中的篇数"}
-      </p>
     </section>
   );
 }
@@ -146,19 +148,17 @@ export function PaperTagFilterButton({
           <Button
             variant={count ? "secondary" : "ghost"}
             size={column ? "xs" : "sm"}
+            className={column ? "max-w-full min-w-0 px-1.5" : undefined}
             aria-label={column ? "按标签筛选" : "打开标签筛选"}
-            title="筛选标签"
+            title={count ? `筛选标签 · 已选 ${count} 个` : "筛选标签"}
           />
         }
       >
-        <Tag className="size-3.5" />
-        标签{count > 0 && <span className="tabular-nums">{count}</span>}
+        {!column && <Tag className="size-3.5" />}
+        <span className="truncate">标签</span>
+        {!column && count > 0 && <span className="tabular-nums">{count}</span>}
       </PopoverTrigger>
-      <PopoverContent
-        align="start"
-        className="paper-tag-popover w-64"
-        aria-label="标签筛选条件"
-      >
+      <PopoverContent align="start" className="w-64" aria-label="标签筛选条件">
         <PaperTagFilter documents={documents} jobs={jobs} />
       </PopoverContent>
     </Popover>
