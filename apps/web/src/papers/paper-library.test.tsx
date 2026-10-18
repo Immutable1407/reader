@@ -857,7 +857,7 @@ it("selects tags in the popover, switches AND/OR and keeps zero-result selection
   expect(api.saveLibraryPreferences).not.toHaveBeenCalled();
 });
 
-it("closes the tag popover with its cross without clearing selected tags", async () => {
+it("closes the tag popover with its trigger without clearing selected tags", async () => {
   await act(async () => {
     useReaderStore.setState({
       documents: [{ ...docs[0], tags: ["RAG"] }, docs[1]],
@@ -869,11 +869,7 @@ it("closes the tag popover with its cross without clearing selected tags", async
     '[aria-label="按标签筛选"]',
   )!;
   await act(async () => trigger.click());
-  const close = () =>
-    document.querySelector<HTMLButtonElement>('[aria-label="关闭标签筛选"]')!;
-  expect(close()).not.toBeNull();
-  expect(close().disabled).toBe(false);
-  await act(async () => close().click());
+  await act(async () => trigger.click());
   expect(trigger.getAttribute("aria-expanded")).toBe("false");
   await act(async () => trigger.click());
   await act(async () =>
@@ -881,7 +877,7 @@ it("closes the tag popover with its cross without clearing selected tags", async
       .querySelector<HTMLButtonElement>('[aria-label="筛选标签 RAG"]')!
       .click(),
   );
-  await act(async () => close().click());
+  await act(async () => trigger.click());
   expect(trigger.getAttribute("aria-expanded")).toBe("false");
   expect(usePaperUI.getState().tagFilter.tags).toEqual(["RAG"]);
 });

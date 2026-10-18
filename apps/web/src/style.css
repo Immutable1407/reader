@@ -3380,12 +3380,13 @@ textarea.paper-note-input {
   background: color-mix(in oklch, var(--primary) 10%, transparent);
 }
 .paper-tag-summary {
+  -webkit-app-region: no-drag;
   display: flex;
-  flex-wrap: wrap;
+  min-width: 0;
   align-items: center;
   gap: 6px;
-  padding: 8px 12px;
-  border-bottom: 1px solid var(--border);
+  overflow-x: auto;
+  white-space: nowrap;
   font-size: 11px;
   color: var(--muted-foreground);
 }

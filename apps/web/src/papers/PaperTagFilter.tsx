@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Check, Search, X } from "lucide-react";
+import { Check, Search } from "lucide-react";
 import type { Document, Processing } from "@reader/core";
 import { Button } from "@reader/ui/components/button";
 import { Input } from "@reader/ui/components/input";
@@ -19,11 +19,7 @@ interface Props {
 }
 
 /** Temporary conditions opened from the table tag column. */
-function PaperTagFilter({
-  documents,
-  jobs,
-  onClose,
-}: Props & { onClose: () => void }) {
+function PaperTagFilter({ documents, jobs }: Props) {
   const { tagFilter, setTagFilter, view, query: textQuery } = usePaperUI();
   const prefs = useReaderStore((s) => s.libraryPreferences.papers) || {};
   const scope = filterPapers(documents, view, textQuery, "title", jobs, {
@@ -47,18 +43,6 @@ function PaperTagFilter({
   );
   return (
     <section className="paper-tag-filter" aria-label="标签筛选">
-      <div className="flex h-7 items-center justify-between">
-        <h3 className="text-xs font-medium">标签</h3>
-        <Button
-          variant="ghost"
-          size="icon-xs"
-          aria-label="关闭标签筛选"
-          title="关闭标签筛选"
-          onClick={onClose}
-        >
-          <X />
-        </Button>
-      </div>
       <div className="paper-tag-match" role="group" aria-label="标签匹配方式">
         {(
           [
@@ -157,11 +141,7 @@ export function PaperTagFilterButton({ documents, jobs }: Props) {
         <span className="truncate">标签</span>
       </PopoverTrigger>
       <PopoverContent align="start" className="w-64" aria-label="标签筛选条件">
-        <PaperTagFilter
-          documents={documents}
-          jobs={jobs}
-          onClose={() => setOpen(false)}
-        />
+        <PaperTagFilter documents={documents} jobs={jobs} />
       </PopoverContent>
     </Popover>
   );

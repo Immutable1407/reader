@@ -579,7 +579,43 @@ export function PaperLibrary({
             <PanelLeft />
           </Button>
           <h1 className="library-title truncate">{title}</h1>
-          {view !== "trash" && (
+          {view !== "trash" && tagFilter.tags.length > 0 && (
+            <div
+              className="paper-tag-summary"
+              role="region"
+              aria-label="当前标签条件"
+            >
+              <span>{tagFilter.match === "all" ? "全部 AND" : "任一 OR"}</span>
+              {tagFilter.tags.map((tag) => (
+                <Button
+                  key={tag.toLowerCase()}
+                  variant="secondary"
+                  size="xs"
+                  title={tag}
+                  aria-label={`取消标签筛选 ${tag}`}
+                  onClick={() =>
+                    ui.setTagFilter({
+                      ...tagFilter,
+                      tags: tagFilter.tags.filter((item) => item !== tag),
+                    })
+                  }
+                >
+                  <span className="max-w-40 truncate">{tag}</span>
+                  <X className="size-3" />
+                </Button>
+              ))}
+              <span className="tabular-nums">{visible.length} 篇</span>
+              <Button
+                variant="ghost"
+                size="xs"
+                aria-label="清除当前标签条件"
+                onClick={() => ui.setTagFilter({ ...tagFilter, tags: [] })}
+              >
+                清除
+              </Button>
+            </div>
+          )}
+          {view !== "trash" && tagFilter.tags.length === 0 && (
             <span className="text-xs text-muted-foreground">
               {visible.length}
             </span>
@@ -702,44 +738,6 @@ export function PaperLibrary({
             aria-label="论文列表"
             onKeyDown={onListKey}
           >
-            {tagFilter.tags.length > 0 && (
-              <div
-                className="paper-tag-summary"
-                role="region"
-                aria-label="当前标签条件"
-              >
-                <span>
-                  {tagFilter.match === "all" ? "全部 AND" : "任一 OR"}
-                </span>
-                {tagFilter.tags.map((tag) => (
-                  <Button
-                    key={tag.toLowerCase()}
-                    variant="secondary"
-                    size="xs"
-                    title={tag}
-                    aria-label={`取消标签筛选 ${tag}`}
-                    onClick={() =>
-                      ui.setTagFilter({
-                        ...tagFilter,
-                        tags: tagFilter.tags.filter((item) => item !== tag),
-                      })
-                    }
-                  >
-                    <span className="max-w-40 truncate">{tag}</span>
-                    <X className="size-3" />
-                  </Button>
-                ))}
-                <span className="tabular-nums">{visible.length} 篇</span>
-                <Button
-                  variant="ghost"
-                  size="xs"
-                  aria-label="清除当前标签条件"
-                  onClick={() => ui.setTagFilter({ ...tagFilter, tags: [] })}
-                >
-                  清除
-                </Button>
-              </div>
-            )}
             {picking && (
               <div
                 className="paper-batch-bar"
