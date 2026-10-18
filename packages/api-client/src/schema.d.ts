@@ -2318,7 +2318,52 @@ export interface paths {
             };
         };
         put?: never;
-        post?: never;
+        /**
+         * Export translations together with selected notes and annotations
+         * @description Appends client-rendered Markdown for the selected notes, annotations, bookmarks or chat to the same document. This is a download only; it does not save the supplied content.
+         */
+        post: {
+            parameters: {
+                query?: {
+                    format?: "markdown" | "zip";
+                };
+                header?: never;
+                path: {
+                    id: string;
+                };
+                cookie?: never;
+            };
+            /** @description JSON body limited to 16 MiB */
+            requestBody: {
+                content: {
+                    "application/json": {
+                        /** @description Selected content without a document title; appended after the translation */
+                        notesMarkdown?: string;
+                    };
+                };
+            };
+            responses: {
+                /** @description Markdown or ZIP containing the combined Markdown and local images */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "text/markdown": string;
+                        "application/zip": string;
+                    };
+                };
+                /** @description Error */
+                default: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["Error"];
+                    };
+                };
+            };
+        };
         delete?: never;
         options?: never;
         head?: never;

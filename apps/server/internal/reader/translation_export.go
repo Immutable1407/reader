@@ -2,6 +2,7 @@ package reader
 
 import (
 	"archive/zip"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"io"
@@ -38,7 +39,7 @@ func translationExportMarkdown(title string, source translationInput, items []Tr
 		return "", nil, errors.New("还没有可导出的已完成译文")
 	}
 	var out strings.Builder
-	fmt.Fprintf(&out, "# %s · 译文\n\n> 已完成 %d / %d 个翻译单元。导出内容为当前已保存的译文。\n\n", exportMarkdownLabel(title), complete, len(items))
+	fmt.Fprintf(&out, "# %s\n\n> 已完成 %d / %d 个翻译单元。导出内容为当前已保存的译文。\n\n", exportMarkdownLabel(title), complete, len(items))
 	assets := []translationExportAsset{}
 	assetNames := map[string]string{}
 	writeImage := func(source, label string) {
@@ -146,6 +147,18 @@ func translationExportMarkdown(title string, source translationInput, items []Tr
 }
 
 func (s *Server) exportTranslation(w http.ResponseWriter, r *http.Request) {
+	var extra struct {
+		NotesMarkdown string `json:"notesMarkdown"`
+	}
+	if r.Method == http.MethodPost {
+		// Long notes and chat histories can exceed the normal API body limit.
+		decoder := json.NewDecoder(http.MaxBytesReader(w, r.Body, 16<<20))
+		decoder.DisallowUnknownFields()
+		if err := decoder.Decode(&extra); err != nil {
+			fail(w, 400, "导出内容无效或超过 16 MB")
+			return
+		}
+	}
 	format := r.URL.Query().Get("format")
 	if format == "" {
 		format = "markdown"
@@ -173,6 +186,9 @@ func (s *Server) exportTranslation(w http.ResponseWriter, r *http.Request) {
 	if err != nil {
 		fail(w, 409, err.Error())
 		return
+	}
+	if notes := strings.TrimSpace(extra.NotesMarkdown); notes != "" {
+		markdown += "---\n\n" + notes + "\n"
 	}
 	w.Header().Set("Cache-Control", "no-store")
 	if format == "markdown" {

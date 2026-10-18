@@ -269,10 +269,19 @@ export const api = {
     id: string,
     format: "markdown" | "zip",
     signal?: AbortSignal,
+    notesMarkdown = "",
   ): Promise<Blob> => {
     const response = await diagnosticFetch(
       `/api/documents/${encodeURIComponent(id)}/translations/export?format=${format}`,
-      { headers: { Authorization: `Bearer ${sessionToken}` }, signal },
+      {
+        method: notesMarkdown ? "POST" : "GET",
+        headers: {
+          Authorization: `Bearer ${sessionToken}`,
+          ...(notesMarkdown && { "Content-Type": "application/json" }),
+        },
+        ...(notesMarkdown && { body: JSON.stringify({ notesMarkdown }) }),
+        signal,
+      },
     );
     if (!response.ok) {
       const data = await response.json().catch(() => ({}));

@@ -97,6 +97,34 @@ func TestTranslationExportRetainsPreviousResultsDuringRetranslation(t *testing.T
 	}
 }
 
+func TestTranslationExportCombinesSelectedNotesWithoutSavingThem(t *testing.T) {
+	s, _, m := translationFixture(t)
+	saveExportTranslation(t, s, m.Blocks[0], "正文译文")
+	const notes = "## 论文笔记\n\n所选笔记\n\n## 批注\n\n> 所选摘录\n\n批注内容"
+	body := jsonText(map[string]string{"notesMarkdown": notes})
+	for _, format := range []string{"markdown", "zip"} {
+		w := request(t, s, "POST", "/api/documents/doc/translations/export?format="+format, strings.NewReader(body))
+		if w.Code != 200 {
+			t.Fatal(w.Code, w.Body.String())
+		}
+		text := w.Body.String()
+		if format == "zip" {
+			text = unzipExport(t, w.Body.Bytes())["translation.md"]
+		}
+		if !strings.Contains(text, "正文译文") || !strings.HasSuffix(text, "---\n\n"+notes+"\n") || strings.Count(text, "# test\n") != 1 {
+			t.Fatal("selected content missing or repeated", text)
+		}
+	}
+	var count int
+	if err := s.Store.DB.QueryRow("SELECT COUNT(*) FROM document_notes WHERE document_id='doc'").Scan(&count); err != nil || count != 0 {
+		t.Fatal("download changed notes", count, err)
+	}
+	w := request(t, s, "POST", "/api/documents/doc/translations/export", strings.NewReader(`{"unknown":true}`))
+	if w.Code != 400 {
+		t.Fatal("accepted unknown export fields", w.Code)
+	}
+}
+
 func unzipExport(t *testing.T, data []byte) map[string]string {
 	t.Helper()
 	z, err := zip.NewReader(bytes.NewReader(data), int64(len(data)))

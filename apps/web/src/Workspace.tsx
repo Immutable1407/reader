@@ -13,7 +13,6 @@ import {
 } from "react";
 import {
   Languages,
-  Download,
   ChartColumn,
   ArrowLeft,
   BookOpen,
@@ -116,8 +115,7 @@ import { ColorSwatches } from "./ColorSwatches";
 import { useSelectionClipboard } from "./useSelectionClipboard";
 import { copyImage, copyText } from "./chat/clipboard";
 import { NotesPanel } from "./NotesPanel";
-import { ExportNotesDialog } from "./ExportNotesDialog";
-import { ExportTranslationDialog } from "./translation/ExportTranslationDialog";
+import { ExportDocumentDialog } from "./ExportDocumentDialog";
 import { EPUBReadingView } from "./translation/EPUBReadingView";
 import { PDFReadingView } from "./translation/PDFReadingView";
 import { useReaderStore } from "./store";
@@ -359,7 +357,6 @@ export function Workspace({
   };
   const [answering, setAnswering] = useState<Set<string>>(new Set());
   const [exportingNotes, setExportingNotes] = useState(false);
-  const [exportingTranslation, setExportingTranslation] = useState(false);
   const [editingAnnotation, setEditingAnnotation] = useState<Annotation | null>(
     null,
   );
@@ -950,12 +947,6 @@ export function Workspace({
             <BookOpen />
           </IconButton>
           <div ref={setReadingToolbar} />
-          <IconButton
-            label="导出译文"
-            onClick={() => setExportingTranslation(true)}
-          >
-            <Download />
-          </IconButton>
           <span className="toolbar-divider" />
           <div ref={setSourceAutoCenterToolbar} />
           <IconButton
@@ -1791,15 +1782,9 @@ export function Workspace({
           )}
         </DialogContent>
       </Dialog>
-      {exportingTranslation && (
-        <ExportTranslationDialog
-          key={doc.id}
-          document={doc}
-          onClose={() => setExportingTranslation(false)}
-        />
-      )}
       {exportingNotes && (
-        <ExportNotesDialog
+        <ExportDocumentDialog
+          key={doc.id}
           document={doc}
           annotations={annotations}
           messages={chat.messages}

@@ -106,6 +106,23 @@ it("reports a PDF without annotations instead of saving a copy", async () => {
   expect(mocks.downloadBlob).not.toHaveBeenCalled();
 });
 
+it("filters the PDF annotations by the selected content kinds", async () => {
+  mocks.annotations.mockResolvedValue([
+    mark("h", {}),
+    mark("n", { kind: "note" }),
+    mark("q", { kind: "question", answerId: "m1" }),
+  ]);
+  await exportAnnotatedPDF(doc, ["note"]);
+  expect(
+    mocks.annotatedPDF.mock.calls[0][2].map((a: Annotation) => a.id),
+  ).toEqual(["n"]);
+  mocks.downloadBlob.mockClear();
+  await expect(exportAnnotatedPDF(doc, [])).rejects.toThrow(
+    "还没有可导出的批注",
+  );
+  expect(mocks.downloadBlob).not.toHaveBeenCalled();
+});
+
 it("does not save when nothing could be placed", async () => {
   mocks.annotations.mockResolvedValue([mark("h", {})]);
   mocks.annotatedPDF.mockResolvedValue({
