@@ -268,6 +268,7 @@ export async function importReference(ref: string) {
   if (doc.library === "papers") {
     ui.setView("all");
     ui.setQuery("");
+    ui.setTagFilter({ ...ui.tagFilter, tags: [] });
     ui.select(doc.id);
   }
   return doc;

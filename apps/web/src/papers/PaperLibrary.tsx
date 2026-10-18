@@ -1,3 +1,4 @@
+import { PaperTagFilterButton } from "./PaperTagFilter";
 import { Badge } from "@reader/ui/components/badge";
 import {
   useEffect,
@@ -9,6 +10,7 @@ import {
   type PointerEvent as ReactPointerEvent,
 } from "react";
 import {
+  X,
   ArrowDown,
   ArrowUp,
   Check,
@@ -172,7 +174,16 @@ export function PaperLibrary({
   const reverse = !!prefs.sortReverse;
   const columns = prefs.columns || defaultColumns;
   const ui = usePaperUI();
-  const { view, query, selectedId, picking, picked, naming, exporting } = ui;
+  const {
+    view,
+    query,
+    tagFilter,
+    selectedId,
+    picking,
+    picked,
+    naming,
+    exporting,
+  } = ui;
   const listRef = useRef<HTMLDivElement>(null);
   const visible = useMemo(
     () =>
@@ -182,12 +193,14 @@ export function PaperLibrary({
             subcategories: prefs.subcategoryItems !== false,
             smart: prefs.smartCategories,
             notDuplicates: prefs.notDuplicates,
+            tagFilter,
             reverse,
           }),
     [
       documents,
       view,
       query,
+      tagFilter,
       sort,
       jobs,
       prefs.subcategoryItems,
@@ -439,7 +452,12 @@ export function PaperLibrary({
         ?.focus(),
     );
   const onListKey = (e: React.KeyboardEvent) => {
-    if ((e.target as Element).closest("input, textarea, [role=menu]")) return;
+    if (
+      (e.target as Element).closest(
+        "input, textarea, [role=menu], [role=dialog]",
+      )
+    )
+      return;
     if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === "a") {
       e.preventDefault();
       ui.startPicking(visibleIds);
@@ -488,6 +506,24 @@ export function PaperLibrary({
       }
     }
   };
+  const emptyState = (
+    <div className="empty-state">
+      <h2>{documents.length ? "没有符合条件的论文" : "暂无论文"}</h2>
+      {documents.length > 0 &&
+        (query || view !== "all" || tagFilter.tags.length > 0) && (
+          <Button
+            variant="outline"
+            onClick={() => {
+              ui.setQuery("");
+              ui.setView("all");
+              ui.setTagFilter({ ...tagFilter, tags: [] });
+            }}
+          >
+            显示全部论文
+          </Button>
+        )}
+    </div>
+  );
   const renderRow = (doc: Document, tableColumns?: PaperColumn[]) => (
     <PaperRow
       columns={tableColumns}
@@ -507,6 +543,16 @@ export function PaperLibrary({
         else ui.select(selectedId === doc.id ? null : doc.id);
       }}
       onOpen={() => openDocument(doc)}
+      onFilterTag={(tag) =>
+        ui.setTagFilter({
+          match: "all",
+          tags: tagFilter.tags.some(
+            (item) => item.toLowerCase() === tag.toLowerCase(),
+          )
+            ? tagFilter.tags
+            : [...tagFilter.tags, tag],
+        })
+      }
       menu={
         <PaperMenuItems kind="context" docs={menuDocs(doc)} actions={actions} />
       }
@@ -533,7 +579,44 @@ export function PaperLibrary({
             <PanelLeft />
           </Button>
           <h1 className="library-title truncate">{title}</h1>
-          {view !== "trash" && (
+          {view !== "trash" && tagFilter.tags.length > 0 && (
+            <div
+              className="paper-tag-summary"
+              role="region"
+              aria-label="当前标签条件"
+            >
+              <span>{tagFilter.match === "all" ? "全部 AND" : "任一 OR"}</span>
+              {tagFilter.tags.map((tag) => (
+                <Button
+                  key={tag.toLowerCase()}
+                  variant="secondary"
+                  size="xs"
+                  title={tag}
+                  aria-label={`取消标签筛选 ${tag}`}
+                  onClick={() =>
+                    ui.setTagFilter({
+                      ...tagFilter,
+                      tags: tagFilter.tags.filter((item) => item !== tag),
+                    })
+                  }
+                >
+                  <span className="max-w-40 truncate">{tag}</span>
+                  <X className="size-3" />
+                </Button>
+              ))}
+              <span className="tabular-nums">{visible.length} 篇</span>
+              <Button
+                variant="ghost"
+                size="icon-xs"
+                aria-label="清除当前标签条件"
+                title="清除当前标签条件"
+                onClick={() => ui.setTagFilter({ ...tagFilter, tags: [] })}
+              >
+                <Trash2 />
+              </Button>
+            </div>
+          )}
+          {view !== "trash" && tagFilter.tags.length === 0 && (
             <span className="text-xs text-muted-foreground">
               {visible.length}
             </span>
@@ -545,7 +628,8 @@ export function PaperLibrary({
               <Search className="size-4" />
               <Input
                 aria-label="搜索论文"
-                placeholder="标题、作者、出处、DOI、摘要…"
+                placeholder="标题、作者、出处、DOI、摘要、标签…"
+                title="空格分隔的词需全部命中，不支持 AND/OR 表达式；标签组合可点击表格标签列筛选"
                 value={query}
                 onChange={(e) => ui.setQuery(e.target.value)}
               />
@@ -837,7 +921,7 @@ export function PaperLibrary({
               <div className="empty-state">
                 <Loader2 className="animate-spin text-muted-foreground" />
               </div>
-            ) : visible.length ? (
+            ) : visible.length || table ? (
               view === "duplicates" ? (
                 <div className="paper-list" ref={listRef}>
                   {groups.map((group) => (
@@ -934,6 +1018,11 @@ export function PaperLibrary({
                                   {c === "title" ? "标题" : columnLabels[c]}
                                   {active && <Arrow />}
                                 </Button>
+                              ) : c === "tags" ? (
+                                <PaperTagFilterButton
+                                  documents={documents}
+                                  jobs={jobs}
+                                />
                               ) : (
                                 <span className="px-1.5">
                                   {c === "title" ? "标题" : columnLabels[c]}
@@ -961,6 +1050,15 @@ export function PaperLibrary({
                     </TableHeader>
                     <TableBody>
                       {visible.map((doc) => renderRow(doc, columns))}
+                      {!visible.length && (
+                        <TableRow>
+                          <TableCell
+                            colSpan={columns.length + 2 + (picking ? 1 : 0)}
+                          >
+                            {emptyState}
+                          </TableCell>
+                        </TableRow>
+                      )}
                     </TableBody>
                   </Table>
                 </div>
@@ -970,20 +1068,7 @@ export function PaperLibrary({
                 </div>
               )
             ) : (
-              <div className="empty-state">
-                <h2>{documents.length ? "没有符合条件的论文" : "暂无论文"}</h2>
-                {documents.length > 0 && (query || view !== "all") && (
-                  <Button
-                    variant="outline"
-                    onClick={() => {
-                      ui.setQuery("");
-                      ui.setView("all");
-                    }}
-                  >
-                    显示全部论文
-                  </Button>
-                )}
-              </div>
+              emptyState
             )}
           </section>
           {selected && !picking && (
@@ -1015,6 +1100,7 @@ export function PaperLibrary({
             ui.stopPicking();
             ui.setView("all");
             ui.setQuery("");
+            ui.setTagFilter({ ...tagFilter, tags: [] });
             ui.select(doc.id);
           }}
         />
@@ -1181,6 +1267,7 @@ function PaperRow({
   dragIds,
   onActivate,
   onOpen,
+  onFilterTag,
   menu,
   moreMenu,
 }: {
@@ -1197,6 +1284,7 @@ function PaperRow({
   dragIds: () => string[];
   onActivate: (e: React.MouseEvent | React.KeyboardEvent) => void;
   onOpen: () => void;
+  onFilterTag: (tag: string) => void;
   menu: React.ReactNode;
   moreMenu: React.ReactNode;
 }) {
@@ -1311,7 +1399,16 @@ function PaperRow({
               <Badge
                 key={tag}
                 variant="secondary"
-                className="max-w-28 shrink-0"
+                render={<button type="button" />}
+                data-row-action
+                className="max-w-28 shrink-0 cursor-pointer hover:bg-secondary/80 motion-safe:active:scale-95"
+                aria-label={`按 AND 筛选标签 ${tag}`}
+                title={`加入 AND 筛选：${tag}`}
+                onClick={(event) => {
+                  event.stopPropagation();
+                  onFilterTag(tag);
+                }}
+                onKeyDown={(event) => event.stopPropagation()}
               >
                 <span className="truncate">{tag}</span>
               </Badge>
