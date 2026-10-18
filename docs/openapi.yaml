@@ -2606,6 +2606,73 @@
                 },
             },
         },
+      "/api/documents/{id}/translations/export":
+        {
+          "get":
+            {
+              "summary": "Export saved PDF or EPUB translations as Markdown or a ZIP with local images",
+              "description": "Uses completed visible translations, including previous results during retranslation. Marks untranslated or unparsed content. Does not start translation.",
+              "parameters":
+                [
+                  {
+                    "name": "id",
+                    "in": "path",
+                    "required": true,
+                    "schema": { "type": "string" },
+                  },
+                  {
+                    "name": "format",
+                    "in": "query",
+                    "schema":
+                      {
+                        "type": "string",
+                        "enum": ["markdown", "zip"],
+                        "default": "markdown",
+                      },
+                  },
+                ],
+              "responses":
+                {
+                  "200":
+                    {
+                      "description": "Download; Markdown excludes images, ZIP includes translation.md and assets/",
+                      "content":
+                        {
+                          "text/markdown": { "schema": { "type": "string" } },
+                          "application/zip":
+                            {
+                              "schema":
+                                { "type": "string", "format": "binary" },
+                            },
+                        },
+                    },
+                  "409":
+                    {
+                      "description": "No completed translation or source not ready",
+                      "content":
+                        {
+                          "application/json":
+                            {
+                              "schema":
+                                { "$ref": "#/components/schemas/Error" },
+                            },
+                        },
+                    },
+                  "default":
+                    {
+                      "description": "Error",
+                      "content":
+                        {
+                          "application/json":
+                            {
+                              "schema":
+                                { "$ref": "#/components/schemas/Error" },
+                            },
+                        },
+                    },
+                },
+            },
+        },
       "/api/documents/{id}/translations":
         {
           "get":

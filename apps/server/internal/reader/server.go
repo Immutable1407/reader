@@ -143,6 +143,7 @@ func (s *Server) Handler() http.Handler {
 	mux.HandleFunc("GET /api/documents/{id}/epub-chapters", s.epubChapters)
 	mux.HandleFunc("GET /api/documents/{id}/epub-chapter", s.epubChapterHTML)
 	mux.HandleFunc("GET /api/documents/{id}/translations", s.documentTranslations)
+	mux.HandleFunc("GET /api/documents/{id}/translations/export", s.exportTranslation)
 	mux.HandleFunc("GET /api/documents/{id}/translations/stream", s.streamTranslations)
 	mux.HandleFunc("POST /api/documents/{id}/translations", s.requestTranslation)
 	mux.HandleFunc("PATCH /api/documents/{id}", s.updateDocument)

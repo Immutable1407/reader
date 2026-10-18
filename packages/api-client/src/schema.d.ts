@@ -2263,6 +2263,68 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/documents/{id}/translations/export": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Export saved PDF or EPUB translations as Markdown or a ZIP with local images
+         * @description Uses completed visible translations, including previous results during retranslation. Marks untranslated or unparsed content. Does not start translation.
+         */
+        get: {
+            parameters: {
+                query?: {
+                    format?: "markdown" | "zip";
+                };
+                header?: never;
+                path: {
+                    id: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description Download; Markdown excludes images, ZIP includes translation.md and assets/ */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "text/markdown": string;
+                        "application/zip": string;
+                    };
+                };
+                /** @description No completed translation or source not ready */
+                409: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["Error"];
+                    };
+                };
+                /** @description Error */
+                default: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["Error"];
+                    };
+                };
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/documents/{id}/translations": {
         parameters: {
             query?: never;
