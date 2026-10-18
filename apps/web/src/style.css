@@ -149,6 +149,12 @@
     cursor: default;
   }
 }
+svg:is(.lucide-trash, .lucide-trash-2) {
+  color: var(--destructive);
+}
+.dark svg:is(.lucide-trash, .lucide-trash-2) {
+  color: #f87171;
+}
 kbd {
   font-size: 10px;
   font-family: inherit;
