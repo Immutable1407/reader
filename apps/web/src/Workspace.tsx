@@ -115,7 +115,7 @@ import { ColorSwatches } from "./ColorSwatches";
 import { useSelectionClipboard } from "./useSelectionClipboard";
 import { copyImage, copyText } from "./chat/clipboard";
 import { NotesPanel } from "./NotesPanel";
-import { ExportNotesDialog } from "./ExportNotesDialog";
+import { ExportDocumentDialog } from "./ExportDocumentDialog";
 import { EPUBReadingView } from "./translation/EPUBReadingView";
 import { PDFReadingView } from "./translation/PDFReadingView";
 import { useReaderStore } from "./store";
@@ -1789,7 +1789,8 @@ export function Workspace({
         </DialogContent>
       </Dialog>
       {exportingNotes && (
-        <ExportNotesDialog
+        <ExportDocumentDialog
+          key={`export-${doc.id}`}
           document={doc}
           annotations={annotations}
           messages={chat.messages}

@@ -269,6 +269,30 @@ export const api = {
     request<import("@reader/core").TranslationBlock[]>(
       `/api/documents/${id}/translations`,
     ),
+  exportTranslation: async (
+    id: string,
+    format: "markdown" | "zip",
+    signal?: AbortSignal,
+    notesMarkdown = "",
+  ): Promise<Blob> => {
+    const response = await diagnosticFetch(
+      `/api/documents/${encodeURIComponent(id)}/translations/export?format=${format}`,
+      {
+        method: notesMarkdown ? "POST" : "GET",
+        headers: {
+          Authorization: `Bearer ${sessionToken}`,
+          ...(notesMarkdown && { "Content-Type": "application/json" }),
+        },
+        ...(notesMarkdown && { body: JSON.stringify({ notesMarkdown }) }),
+        signal,
+      },
+    );
+    if (!response.ok) {
+      const data = await response.json().catch(() => ({}));
+      throw new RequestError(data.error || `导出失败 (${response.status})`);
+    }
+    return response.blob();
+  },
   translate: (id: string, blockId = "") =>
     request<{ queued: boolean }>(`/api/documents/${id}/translations`, {
       method: "POST",
