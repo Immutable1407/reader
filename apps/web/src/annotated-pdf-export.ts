@@ -21,17 +21,6 @@ export async function exportAnnotatedPDF(
       (!kinds || kinds.includes(a.kind)),
   );
   if (!marks.length) throw new Error("这份 PDF 还没有可导出的批注");
-  // Marks made on the translation are placed through their source blocks.
-  const blocks = marks.some(
-    (a) => "translation" in a.location && a.location.translation,
-  )
-    ? Object.fromEntries(
-        (await api.blocks(doc.id)).map((b) => [
-          b.id,
-          { page: b.page, bounds: b.bounds },
-        ]),
-      )
-    : {};
   // Loaded on demand so the library does not carry the PDF engine.
   const pdfjs = await import("pdfjs-dist");
   pdfjs.GlobalWorkerOptions.workerSrc ||= workerURL;
@@ -47,10 +36,12 @@ export async function exportAnnotatedPDF(
     marks,
     {
       answers: Object.fromEntries(messages.map((m) => [m.id, m.content])),
-      blocks,
     },
   );
-  if (!result.exported) throw new Error("批注无法在原文中定位，没有导出");
+  if (!result.exported)
+    throw new Error(
+      "没有可写入原文的批注：译文批注不写入原文，其他批注可能无法定位",
+    );
   downloadBlob(
     new Blob([result.bytes as Uint8Array<ArrayBuffer>], {
       type: "application/pdf",
@@ -71,7 +62,7 @@ export function exportAnnotatedPDFWithToast(
       toast.success(`已导出 ${exported} 条批注`, {
         id,
         description: skipped
-          ? `${skipped} 条无法在原文中定位，未写入`
+          ? `${skipped} 条为译文批注或无法定位，未写入`
           : undefined,
       }),
     (error: Error) => toast.error(error.message, { id }),

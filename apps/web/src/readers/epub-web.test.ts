@@ -305,6 +305,49 @@ it("paints saved colors, opens annotation targets on hit, and removes highlights
     "Same words",
   );
 });
+it("does not paint a translated annotation on its stored source range", async () => {
+  await open();
+  await reader.highlight([
+    {
+      id: "translated",
+      kind: "highlight",
+      color: "#e6b94c",
+      quote: "译文",
+      location: {
+        type: "epub",
+        href: "a.xhtml",
+        blockId: "a",
+        start: 12,
+        end: 22,
+        translation: {
+          blockId: "a",
+          sourceHash: "h",
+          sentenceIndexes: [0],
+          start: 0,
+          end: 2,
+          ranges: [
+            {
+              blockId: "a",
+              sourceHash: "h",
+              sentenceIndexes: [0],
+              start: 0,
+              end: 2,
+              quote: "译文",
+              location: {
+                type: "epub",
+                href: "a.xhtml",
+                blockId: "a",
+                start: 12,
+                end: 22,
+              },
+            },
+          ],
+        },
+      },
+    } as Annotation,
+  ]);
+  expect(registry.size).toBe(0);
+});
 it("restores a block location, reports progress, and returns the current chapter for AI", async () => {
   await open({ type: "epub", href: "b.xhtml", blockId: "c", start: 0, end: 0 });
   expect(api.epubChapter).toHaveBeenCalledWith(

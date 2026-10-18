@@ -65,12 +65,11 @@ it("writes annotations and answers into a downloaded copy", async () => {
   const [, source, marks, context] = mocks.annotatedPDF.mock.calls[0];
   expect(source.url).toBe("/pub/x/d1/original.pdf");
   expect(marks.map((a: Annotation) => a.id)).toEqual(["h", "q"]);
-  expect(context).toEqual({ answers: { m1: "回答" }, blocks: {} });
-  // Layout blocks are only fetched for marks made on the translation.
+  expect(context).toEqual({ answers: { m1: "回答" } });
   expect(mocks.blocks).not.toHaveBeenCalled();
 });
 
-it("passes layout blocks for marks made on the translation", async () => {
+it("does not fetch source blocks to project translated marks", async () => {
   const bounds = { x: 0.1, y: 0.2, width: 0.5, height: 0.1 };
   mocks.annotations.mockResolvedValue([
     mark("t", {
@@ -91,9 +90,7 @@ it("passes layout blocks for marks made on the translation", async () => {
     { id: "p2-b3", page: 2, bounds, label: "text", text: "" },
   ]);
   await exportAnnotatedPDF(doc);
-  expect(mocks.annotatedPDF.mock.calls[0][3].blocks).toEqual({
-    "p2-b3": { page: 2, bounds },
-  });
+  expect(mocks.blocks).not.toHaveBeenCalled();
   const [blob, name] = mocks.downloadBlob.mock.calls[0];
   expect(blob.type).toBe("application/pdf");
   expect(name).toBe("A-B- -C--批注.pdf");
@@ -130,7 +127,7 @@ it("does not save when nothing could be placed", async () => {
     exported: 0,
     skipped: 1,
   });
-  await expect(exportAnnotatedPDF(doc)).rejects.toThrow("无法在原文中定位");
+  await expect(exportAnnotatedPDF(doc)).rejects.toThrow("没有可写入原文的批注");
   expect(mocks.downloadBlob).not.toHaveBeenCalled();
 });
 
@@ -140,7 +137,7 @@ it("shows progress, the count and skipped marks in one toast", async () => {
   expect(mocks.toast.loading).toHaveBeenCalled();
   expect(mocks.toast.success).toHaveBeenCalledWith("已导出 2 条批注", {
     id: "t",
-    description: "1 条无法在原文中定位，未写入",
+    description: "1 条为译文批注或无法定位，未写入",
   });
 
   mocks.annotations.mockRejectedValue(new Error("网络错误"));

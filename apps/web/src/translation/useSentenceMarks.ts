@@ -12,11 +12,7 @@ import type {
   TranslationBlock,
 } from "@reader/core";
 import { translatedAnnotationRanges } from "./annotations";
-import {
-  sourcePassage,
-  translatedSentenceRanges,
-  validParts,
-} from "./sentence-links";
+import { sourcePassage, translatedSentenceRanges } from "./sentence-links";
 import { searchRanges } from "./search-ranges";
 
 type Mark = { annotation: Annotation; range: Range };
@@ -31,7 +27,7 @@ const hit = (range: Range, x: number, y: number) =>
       y <= r.bottom,
   );
 
-/** Hover and saved cross-language marks share sentence geometry, never native selection. */
+/** Saved marks stay on their origin side; hover may still link sentences. */
 export function useSentenceMarks(
   root: RefObject<HTMLDivElement | null>,
   engine: ReaderAdapter | undefined,
@@ -159,29 +155,6 @@ export function useSentenceMarks(
       registry.delete(searchName);
       names = [];
       marks = translatedAnnotationRanges(host, annotations, translations);
-      if (linked)
-        for (const annotation of annotations) {
-          if (
-            annotation.kind === "bookmark" ||
-            annotation.location.type !== "pdf"
-          )
-            continue;
-          for (const part of validParts(
-            annotation.location.sentenceLink,
-            translations,
-          )) {
-            const t = translations.find((t) => t.blockId === part.blockId)!;
-            const ranges =
-              annotation.location.sentenceLink?.origin === "translation"
-                ? sourceRanges(t, part.sentenceIndex)
-                : translatedSentenceRanges(
-                    host,
-                    part.blockId,
-                    part.sentenceIndex,
-                  );
-            marks.push(...ranges.map((range) => ({ annotation, range })));
-          }
-        }
       const groups = new Map<string, Range[]>();
       const rules: string[] = [];
       for (const mark of marks) {
@@ -388,7 +361,7 @@ export function useSentenceMarks(
       activeRanges = fromTranslation
         ? targetRanges(t.blockId, index)
         : sourceRanges(t, index);
-      const rects = ranges.flatMap((range) =>
+      const rects = activeRanges.flatMap((range) =>
         Array.from(range.getClientRects()),
       );
       const matches = annotationsInRects(

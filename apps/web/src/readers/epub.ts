@@ -748,21 +748,13 @@ export class EPUBReaderAdapter implements ReaderAdapter {
     const decorations = await Promise.all(
       annotations
         .filter(
-          (a) => a.location.type === "epub" && a.kind !== "bookmark" && a.quote,
+          (a) =>
+            a.location.type === "epub" &&
+            !a.location.translation &&
+            a.kind !== "bookmark" &&
+            a.quote,
         )
-        .flatMap((a) => {
-          const locations =
-            a.location.translation?.ranges?.flatMap((r) =>
-              r.location ? [r.location] : [],
-            ) ?? [];
-          return locations.length
-            ? locations.map((location, index) => ({
-                ...a,
-                location,
-                decorationId: `${a.id}:${index}`,
-              }))
-            : [{ ...a, decorationId: a.id }];
-        })
+        .map((a) => ({ ...a, decorationId: a.id }))
         .map(async (a): Promise<Decoration | undefined> => {
           try {
             const location = a.location as EPUBLocation;

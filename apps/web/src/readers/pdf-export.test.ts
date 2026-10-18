@@ -7,7 +7,6 @@ import {
   commentText,
   hexColor,
   lineBoxes,
-  translationTargets,
   type ExportContext,
 } from "./pdf-export";
 
@@ -113,8 +112,8 @@ describe("annotated PDF export", () => {
     );
   }, 30_000);
 
-  it("places a translation mark on its source sentence, not the whole block", async () => {
-    const { result, pages, text } = await exportAndReopen([
+  it("skips translated marks even when their source sentence can be found", async () => {
+    const { result, pages } = await exportAndReopen([
       mark({
         id: "t",
         quote: "A claim is not the same as evidence.",
@@ -133,19 +132,8 @@ describe("annotated PDF export", () => {
         },
       }),
     ]);
-    expect(result).toMatchObject({ exported: 1, skipped: 0 });
-    const [highlight] = pages[0].filter((a) => a.subtype === "Highlight");
-    // The highlight sits on the line that holds the sentence.
-    const line = text.items.find(
-      (i) =>
-        "str" in i && i.str.includes("A claim is not the same as evidence."),
-    ) as { transform: number[]; width: number };
-    const [, , , , x, y] = line.transform;
-    const [x1, y1, x2, y2] = highlight.rect;
-    expect(y1).toBeLessThan(y + 2);
-    expect(y2).toBeGreaterThan(y);
-    expect(x1).toBeGreaterThanOrEqual(x - 1);
-    expect(x2).toBeLessThanOrEqual(x + line.width + 1);
+    expect(result).toMatchObject({ exported: 0, skipped: 1 });
+    expect(pages.flat()).toEqual([]);
   }, 30_000);
 
   const page = { x: 0, y: 0, width: 1, height: 1 };
@@ -204,26 +192,19 @@ describe("annotated PDF export", () => {
         },
       },
     });
-  const blocks = { "p2-b3": { page: 2, bounds: page } };
 
-  it("places every block of a selection spanning paragraphs and pages", async () => {
-    const { result, pages } = await exportAndReopen(
-      [spanning("Separate quotations, interpretations, and open questions.")],
-      { blocks },
-    );
-    expect(result).toMatchObject({ exported: 1, skipped: 0 });
-    const [first] = pages[0].filter((a) => a.subtype === "Highlight");
-    const [second] = pages[1].filter((a) => a.subtype === "Highlight");
-    expect(first.contentsObj.str).toBe("跨页的一段");
-    // One comment for the mark, on the first page it touches.
-    expect(second.contentsObj.str).toBe("");
+  it("skips legacy translated marks spanning paragraphs and pages", async () => {
+    const { result, pages } = await exportAndReopen([
+      spanning("Separate quotations, interpretations, and open questions."),
+    ]);
+    expect(result).toMatchObject({ exported: 0, skipped: 1 });
+    expect(pages.flat()).toEqual([]);
   }, 30_000);
 
   it("skips a spanning selection whose second block cannot be placed", async () => {
-    const { result, pages } = await exportAndReopen(
-      [spanning("Not a sentence from this document.")],
-      { blocks },
-    );
+    const { result, pages } = await exportAndReopen([
+      spanning("Not a sentence from this document."),
+    ]);
     expect(result).toMatchObject({ exported: 0, skipped: 1 });
     expect(pages.flat()).toEqual([]);
   }, 30_000);
@@ -321,45 +302,6 @@ describe("export helpers", () => {
     expect(
       lineBoxes([left, { ...right, x: left.x + left.width + 0.005 }]),
     ).toHaveLength(1);
-  });
-  it("needs a sentence link to place a selection spanning blocks", () => {
-    const location = {
-      type: "pdf" as const,
-      page: 1,
-      rects: [{ x: 0, y: 0, width: 1, height: 1 }],
-      translation: {
-        blockId: "a",
-        sourceHash: "h",
-        sentenceIndexes: [0],
-        start: 0,
-        end: 0,
-        ranges: ["a", "b"].map((blockId) => ({
-          blockId,
-          sourceHash: "h",
-          sentenceIndexes: [0],
-          start: 0,
-          end: 0,
-          quote: "",
-        })),
-      },
-    };
-    const blocks = { b: { page: 2, bounds: location.rects[0] } };
-    expect(
-      translationTargets(mark({ quote: "x", location }), blocks),
-    ).toBeNull();
-    // A single block falls back to the stored quote.
-    expect(
-      translationTargets(
-        mark({
-          quote: "x",
-          location: {
-            ...location,
-            translation: { ...location.translation, ranges: undefined },
-          },
-        }),
-        {},
-      ),
-    ).toEqual([{ page: 1, bounds: location.rects[0], sources: ["x"] }]);
   });
   it("writes notes, questions and answers as comments", () => {
     expect(commentText(mark({ note: " 备注 " }))).toBe("备注");
