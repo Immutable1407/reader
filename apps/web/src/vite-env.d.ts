@@ -22,6 +22,8 @@ interface Window {
       settings: import("@reader/core").ProxySettings,
     ) => Promise<import("@reader/core").ProxyCheckResult>;
     restart?: () => Promise<void>;
+    libraryLocation?: () => Promise<string>;
+    moveLibrary?: () => Promise<boolean>;
     commandLine?: () => Promise<import("@reader/core").CommandLineStatus>;
     setCommandLine?: (
       installed: boolean,

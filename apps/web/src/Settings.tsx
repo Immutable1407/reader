@@ -4,6 +4,7 @@ import { useEffect, useRef, useState } from "react";
 import {
   ChevronLeft,
   FileText,
+  FolderOpen,
   Bot,
   Check,
   CircleCheck,
@@ -17,6 +18,7 @@ import {
   X,
 } from "lucide-react";
 import { DiagnosticExport } from "./DiagnosticExport";
+import { LibraryLocationSettings } from "./LibraryLocationSettings";
 import { CommandLineSettings } from "./CommandLineSettings";
 import { ProviderIdentity } from "./ProviderIdentity";
 import { TaskModels } from "./TaskModels";
@@ -597,11 +599,22 @@ export function Settings({
               <FileText />
               诊断
             </TabsTrigger>
+            {window.readerDesktop?.libraryLocation && (
+              <TabsTrigger value="storage">
+                <FolderOpen />
+                存储
+              </TabsTrigger>
+            )}
             <TabsTrigger value="papers">
               <Library />
               论文库
             </TabsTrigger>
           </TabsList>
+          {window.readerDesktop?.libraryLocation && (
+            <TabsContent value="storage" className="settings-panel" keepMounted>
+              <LibraryLocationSettings open={open} />
+            </TabsContent>
+          )}
           <TabsContent
             value="diagnostics"
             className="settings-panel"
