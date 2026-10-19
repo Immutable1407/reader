@@ -535,6 +535,11 @@ export const api = {
     ),
   messages: (id: string, signal?: AbortSignal) =>
     request<Message[]>(`/api/documents/${id}/messages`, { signal }),
+  codexHandoff: (id: string) =>
+    request<components["schemas"]["CodexHandoff"]>(
+      `/api/documents/${encodeURIComponent(id)}/codex-handoff`,
+      { method: "POST" },
+    ),
   validateEvidence: (id: string, message: string, source: string) =>
     request<{ valid: boolean }>(
       `/api/documents/${encodeURIComponent(id)}/messages/${encodeURIComponent(message)}/sources/${encodeURIComponent(source)}`,

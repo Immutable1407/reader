@@ -175,6 +175,7 @@ func (s *Server) Handler() http.Handler {
 	mux.HandleFunc("GET /api/documents/{id}/messages", s.messages)
 	mux.HandleFunc("GET /api/documents/{id}/messages/{message}/sources/{source}", s.validateChatEvidence)
 	mux.HandleFunc("POST /api/documents/{id}/chat", s.chat)
+	mux.HandleFunc("POST /api/documents/{id}/codex-handoff", s.handoffCodex)
 	mux.HandleFunc("GET /api/providers", s.providers)
 	mux.HandleFunc("GET /api/documents/{id}/processing-usage", s.processingUsage)
 	mux.HandleFunc("GET /api/documents/{id}/chat-usage", s.chatUsage)
