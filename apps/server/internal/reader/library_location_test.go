@@ -1,6 +1,7 @@
 package reader
 
 import (
+	"fmt"
 	"os"
 	"path/filepath"
 	"testing"
@@ -197,5 +198,69 @@ func TestLibraryDatabaseURI(t *testing.T) {
 		if got := libraryDatabaseURI(path); got != want {
 			t.Fatalf("%s: got %s, want %s", path, got, want)
 		}
+	}
+}
+
+func TestCopyLibraryPreservesCorpusOverviewAndReferences(t *testing.T) {
+	for _, stale := range []bool{false, true} {
+		t.Run(fmt.Sprintf("stale=%t", stale), func(t *testing.T) {
+			s, a := originalDocumentFixture(t)
+			calls, failAt := 0, -1
+			if err := s.compileOverview(t.Context(), overviewTestJob(t, s), overviewTestService(t, &calls, &failAt)); err != nil {
+				t.Fatal(err)
+			}
+			reference := map[string]any{"sourceId": "S1", "corpusRevision": a.corpus.Revision, "text": "Original evidence", "contentHash": sourceKey("Original evidence")}
+			if _, err := s.Store.DB.Exec("INSERT INTO messages VALUES('answer','doc',?,'now')", jsonText(map[string]any{"role": "assistant", "references": []any{reference}})); err != nil {
+				t.Fatal(err)
+			}
+			if stale {
+				if err := os.WriteFile(filepath.Join(s.Store.Root, "cache", "doc", "a.xhtml"), []byte("Changed original content"), 0600); err != nil {
+					t.Fatal(err)
+				}
+			}
+			source := s.Store.Root
+			s.Close()
+			if err := s.Store.DB.Close(); err != nil {
+				t.Fatal(err)
+			}
+			target := filepath.Join(t.TempDir(), "moved library")
+			if err := CopyLibrary(source, target); err != nil {
+				t.Fatal(err)
+			}
+			for _, root := range []string{source, target} {
+				store, err := OpenStore(root)
+				if err != nil {
+					t.Fatal(err)
+				}
+				defer store.DB.Close()
+				reopened := NewServer(store, "test-secret", "")
+				defer reopened.Close()
+				overview, err := reopened.overviewState(t.Context(), "doc")
+				if err != nil || overview.Stale != stale {
+					t.Fatalf("overview at %s: stale=%t want %t, %v", root, overview.Stale, stale, err)
+				}
+				w := request(t, reopened, "GET", "/api/documents/doc/messages/answer/sources/S1", nil)
+				want := 200
+				if stale {
+					want = 409
+				}
+				if w.Code != want {
+					t.Fatalf("reference at %s: %d want %d: %s", root, w.Code, want, w.Body.String())
+				}
+				var revision, body string
+				if err := store.DB.QueryRow("SELECT revision,body FROM document_corpora WHERE document_id='doc'").Scan(&revision, &body); err != nil {
+					t.Fatal(err)
+				}
+				if revision != a.corpus.Revision || body != jsonText(a.corpus) {
+					t.Fatal("corpus content/revision changed")
+				}
+				if !stale {
+					c, err := reopened.documentCorpus(t.Context(), "doc", func() error { return fmt.Errorf("unchanged corpus must not rebuild") })
+					if err != nil || c.Revision != a.corpus.Revision {
+						t.Fatal("cached corpus not reusable", err)
+					}
+				}
+			}
+		})
 	}
 }

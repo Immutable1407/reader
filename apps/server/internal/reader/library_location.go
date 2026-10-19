@@ -14,6 +14,16 @@ import (
 // CopyLibrary runs after the desktop server exits. The source remains a backup;
 // the caller switches its saved location only after this succeeds.
 func CopyLibrary(source, destination string) (err error) {
+	// Fingerprints use the paths passed to the running Store. Keep their spelling
+	// even when symlinks are resolved below for overlap checks and safe copying.
+	sourceRoot, err := filepath.Abs(source)
+	if err != nil {
+		return err
+	}
+	destinationRoot, err := filepath.Abs(destination)
+	if err != nil {
+		return err
+	}
 	source, err = filepath.EvalSymlinks(source)
 	if err != nil {
 		return err
@@ -97,7 +107,7 @@ func CopyLibrary(source, destination string) (err error) {
 	}
 	// Validate the copied SQLite database (including any recovered WAL) without
 	// running migrations or modifying the source database.
-	return checkLibraryDatabase(filepath.Join(destination, "reader.sqlite"))
+	return checkLibraryDatabase(sourceRoot, destinationRoot)
 }
 func copyLibraryFile(source, destination string) error {
 	in, err := os.Open(source)
@@ -128,8 +138,8 @@ func libraryDatabaseURI(path string) string {
 	u := url.URL{Scheme: "file", Path: sqlitePath, RawQuery: "mode=rw"}
 	return u.String()
 }
-func checkLibraryDatabase(path string) error {
-	db, err := sql.Open("sqlite", libraryDatabaseURI(path))
+func checkLibraryDatabase(source, destination string) error {
+	db, err := sql.Open("sqlite", libraryDatabaseURI(filepath.Join(destination, "reader.sqlite")))
 	if err != nil {
 		return err
 	}
@@ -145,5 +155,53 @@ func checkLibraryDatabase(path string) error {
 	if err := db.QueryRow("SELECT count(*) FROM sqlite_schema WHERE type='table' AND name='documents'").Scan(&tables); err != nil || tables != 1 {
 		return fmt.Errorf("新目录不是有效的 Reader 书库")
 	}
-	return nil
+	return relocateCorpusFingerprints(db, source, destination)
+}
+
+// Only rebind indexes that matched the source before relocation. Already stale
+// indexes remain stale; content revisions, passages and citations never change.
+func relocateCorpusFingerprints(db *sql.DB, source, destination string) error {
+	rows, err := db.Query(`SELECT c.document_id,d.type,c.fingerprint FROM document_corpora c JOIN documents d ON d.id=c.document_id`)
+	if err != nil {
+		return err
+	}
+	type corpusFile struct {
+		document    Document
+		fingerprint string
+	}
+	var corpora []corpusFile
+	for rows.Next() {
+		var c corpusFile
+		if err := rows.Scan(&c.document.ID, &c.document.Type, &c.fingerprint); err != nil {
+			rows.Close()
+			return err
+		}
+		corpora = append(corpora, c)
+	}
+	err = rows.Err()
+	rows.Close()
+	if err != nil {
+		return err
+	}
+	original := &Server{Store: &Store{Root: source}}
+	moved := &Server{Store: &Store{Root: destination}}
+	tx, err := db.Begin()
+	if err != nil {
+		return err
+	}
+	defer tx.Rollback()
+	for _, c := range corpora {
+		before, err := original.corpusFingerprint(c.document)
+		if err != nil || before != c.fingerprint {
+			continue
+		}
+		after, err := moved.corpusFingerprint(c.document)
+		if err != nil {
+			return err
+		}
+		if _, err = tx.Exec("UPDATE document_corpora SET fingerprint=? WHERE document_id=?", after, c.document.ID); err != nil {
+			return err
+		}
+	}
+	return tx.Commit()
 }
