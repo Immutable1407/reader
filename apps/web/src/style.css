@@ -1819,6 +1819,9 @@ kbd {
   max-height: 16rem;
   overflow-y: auto;
 }
+.api-model-list .agent-check-status {
+  margin-top: 0;
+}
 .api-model-list > li + li {
   border-top: 1px solid var(--border);
 }

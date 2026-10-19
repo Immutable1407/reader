@@ -60,6 +60,9 @@ type ProviderEvent struct {
 	Text       string
 	Fallback   string
 	Metrics    []ModelTokens
+
+	// OutputObserved signals nonempty withheld content without carrying its text.
+	OutputObserved bool
 }
 type GenerateRequest struct{ Input AIInput }
 type GenerateResult struct {

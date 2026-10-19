@@ -581,6 +581,9 @@ export interface TranslationBlock {
   error?: string;
 }
 export interface AICapability {
+  /** Observed time to first reasoning or text output, excluding catalog lookup. */
+  textFirstOutputMs?: number;
+  visionFirstOutputMs?: number;
   tools?: "passed" | "unsupported" | "failed";
   toolSchemaVersion?: string;
   toolError?: string;
