@@ -56,7 +56,7 @@ let closing = false;
 let flushed = false;
 let restartRequested = false;
 let proxySettings: ProxySettingsService;
-let activeLibrary: string;
+let activeLibrary: string | undefined;
 let choosingLibrary = false;
 let pendingLibraryMove:
   { destination: string; resolve: (moved: boolean) => void } | undefined;
@@ -96,7 +96,7 @@ async function startServer() {
       "--session",
       diagnostics!.logs.sessionId,
       "--data",
-      activeLibrary,
+      activeLibrary!,
       "--shutdown-on-stdin",
       "--web",
       web,
@@ -255,7 +255,10 @@ app
   .whenReady()
   .then(async () => {
     if (!primary) return;
-    diagnostics = startDiagnosticService(() => window);
+    diagnostics = startDiagnosticService(
+      () => window,
+      () => activeLibrary,
+    );
     ipcMain.on("reader:diagnostic-event", (event, value) =>
       diagnostics!.receive(event, value),
     );
@@ -410,7 +413,7 @@ app
           try {
             await migrateLibrary(
               app.getPath("userData"),
-              activeLibrary,
+              activeLibrary!,
               move.destination,
               serverBinary(),
               async () => {
@@ -582,7 +585,7 @@ app
         )
           throw new Error("Invalid document");
         const file = join(
-          activeLibrary,
+          activeLibrary!,
           type === "pdf" ? "papers" : "books",
           `${id}.${type}`,
         );
