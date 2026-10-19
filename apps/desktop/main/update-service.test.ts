@@ -72,27 +72,18 @@ beforeEach(() => {
   vi.useFakeTimers();
   vi.setSystemTime(day * 10);
   vi.clearAllMocks();
-  assets = [
-    "Reader-0.2.0-mac-arm64.dmg",
-    "Reader-0.2.0-win-x64.exe",
-    "SHA256SUMS.txt",
-  ];
+  assets = ["Reader-0.2.0-mac-arm64.dmg", "Reader-0.2.0-win-x64.exe"];
   mocks.inPlace.mockResolvedValue(true);
   mocks.stage.mockResolvedValue(undefined);
   mocks.app.isPackaged = true;
   mocks.read.mockRejectedValue(new Error("missing"));
   mocks.dialog.mockResolvedValue({ response: 1 });
-  mocks.fetch.mockImplementation(async () =>
-    Response.json({
-      tag_name: "v0.2.0",
-      draft: false,
-      prerelease: false,
-      assets: assets.map((name) => ({
-        name,
-        state: "uploaded",
-        browser_download_url: `https://github.com/cynicalight/reader/releases/download/v0.2.0/${name}`,
-      })),
-    }),
+  mocks.fetch.mockImplementation(async (url: string) =>
+    url.endsWith("/SHA256SUMS.txt")
+      ? new Response(
+          assets.map((name) => `${"a".repeat(64)}  ${name}`).join("\n"),
+        )
+      : Response.json({ tag_name: "v0.2.0" }),
   );
   vi.stubGlobal("process", { ...process, platform: "darwin", arch: "arm64" });
 });
@@ -109,9 +100,9 @@ it("checks on startup, coalesces manual checks, and does not prompt again within
   expect(mocks.dialog).toHaveBeenCalledTimes(1);
   expect(mocks.download).not.toHaveBeenCalled();
   await vi.advanceTimersByTimeAsync(day - 60_000);
-  expect(mocks.fetch).toHaveBeenCalledTimes(1);
-  await Promise.all([service.check(), service.check()]);
   expect(mocks.fetch).toHaveBeenCalledTimes(2);
+  await Promise.all([service.check(), service.check()]);
+  expect(mocks.fetch).toHaveBeenCalledTimes(4);
   expect(mocks.dialog).toHaveBeenCalledTimes(2);
 });
 it("respects persisted check times and stops scheduled work", async () => {
