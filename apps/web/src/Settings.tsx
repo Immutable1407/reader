@@ -4,7 +4,6 @@ import { useEffect, useRef, useState } from "react";
 import {
   ChevronLeft,
   FileText,
-  FolderOpen,
   Bot,
   Check,
   CircleCheck,
@@ -599,22 +598,11 @@ export function Settings({
               <FileText />
               诊断
             </TabsTrigger>
-            {window.readerDesktop?.libraryLocation && (
-              <TabsTrigger value="storage">
-                <FolderOpen />
-                存储
-              </TabsTrigger>
-            )}
             <TabsTrigger value="papers">
               <Library />
               论文库
             </TabsTrigger>
           </TabsList>
-          {window.readerDesktop?.libraryLocation && (
-            <TabsContent value="storage" className="settings-panel" keepMounted>
-              <LibraryLocationSettings open={open} />
-            </TabsContent>
-          )}
           <TabsContent
             value="diagnostics"
             className="settings-panel"
@@ -821,6 +809,11 @@ export function Settings({
             </section>
           </TabsContent>
           <TabsContent value="papers" className="settings-panel" keepMounted>
+            {window.readerDesktop?.libraryLocation && (
+              <div className="mb-6">
+                <LibraryLocationSettings open={open} />
+              </div>
+            )}
             <section>
               <h3 className="mb-3 text-sm font-medium">导入设置</h3>
               <label className="flex items-start gap-2 text-sm">
