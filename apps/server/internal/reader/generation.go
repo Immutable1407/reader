@@ -85,7 +85,6 @@ type GenerationService struct {
 	timeout                 time.Duration // Zero keeps the normal three-minute request limit.
 	primary                 string
 	connections             map[string]generationConnection
-	attemptFailed           func(string, bool, error)
 	usageSink               func(UsageCall) error
 }
 
@@ -102,21 +101,9 @@ func (s *Server) taskGenerationService(config AIConfig, task modelTask) *Generat
 			g.translationInstructions = *config.TranslationPrompt
 		}
 	}
-	g.attemptFailed = func(provider string, vision bool, err error) {
-		// Capability checks cover the chat model; a failing translation model
-		// must not mark the agent unusable for chat.
-		if task == taskTranslation && validAgent(provider) {
-			return
-		}
-		// API checks are per model; a runtime failure does not say which
-		// model's check is stale.
-		if provider == "api" {
-			return
-		}
-		if saveErr := s.recordCapabilityFailure(config, provider, vision, err); saveErr != nil {
-			log.Printf("cannot persist %s capability failure: %v", provider, saveErr)
-		}
-	}
+	// Capability checks describe a tested configuration. Runtime failures are
+	// reported per attempt below; they must not revoke a successful probe.
+
 	for _, p := range []string{"codex", "claude", "kimi", "api", "text-api", "image-api"} {
 		model := models[p]
 		level := efforts[p][model]
@@ -323,10 +310,7 @@ func (g *GenerationService) attempt(ctx context.Context, provider string, in AII
 	result, err = trackModelUsage(UsageCall{ID: attemptID, Provider: provider}, sink, emit, func(send func(ProviderEvent) error) (GenerateResult, error) {
 		return runAttempt(ctx, g.connections[provider].Adapter, in, send)
 	})
-	// User cancellation and a disconnected consumer do not invalidate the agent.
-	if err != nil && !errors.Is(ctx.Err(), context.Canceled) && errorKind(err) != ErrorCanceled && g.attemptFailed != nil {
-		g.attemptFailed(provider, len(in.images()) > 0, err)
-	}
+
 	return result, err
 }
 func (g *GenerationService) generate(ctx context.Context, in AIInput, interactive, exposeText bool, emit func(ProviderEvent) error) (AIResult, error) {

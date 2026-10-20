@@ -102,6 +102,8 @@ func providerFailure(ctx context.Context, c APIConnection, status int, header ht
 		kind = ErrorModel
 	case 402:
 		kind = ErrorBilling
+	case 408, 504:
+		kind = ErrorTimeout
 	case 413:
 		kind = ErrorContext
 	case 429:
