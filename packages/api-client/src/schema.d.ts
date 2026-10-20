@@ -1536,7 +1536,9 @@ export interface paths {
         /** @description Fork the last committed Codex reading turn into an independent conversation with local document and chat snapshots. Does not generate a model answer or change the Reader conversation. Repeated requests for the same snapshot reuse the fork. */
         post: {
             parameters: {
-                query?: never;
+                query?: {
+                    sessionId?: string;
+                };
                 header?: never;
                 path: {
                     id: string;
@@ -3697,6 +3699,370 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/documents/{id}/chat-sessions": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List sessions and latest run; atomically migrate old chat to a default session */
+        get: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    id: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description Success */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["DocumentChatSession"][];
+                    };
+                };
+                /** @description Error */
+                default: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["Error"];
+                    };
+                };
+            };
+        };
+        put?: never;
+        /** Create an independent document chat */
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    id: string;
+                };
+                cookie?: never;
+            };
+            requestBody: {
+                content: {
+                    "application/json": {
+                        title?: string;
+                        /** @enum {unknown} */
+                        provider: "api" | "codex" | "claude" | "kimi";
+                    };
+                };
+            };
+            responses: {
+                /** @description Success */
+                201: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["DocumentChatSession"];
+                    };
+                };
+                /** @description Error */
+                default: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["Error"];
+                    };
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/documents/{id}/chat-sessions/{session}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        /** Rename a session or change its backend while idle */
+        patch: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    id: string;
+                    session: string;
+                };
+                cookie?: never;
+            };
+            requestBody: {
+                content: {
+                    "application/json": {
+                        title?: string;
+                        /** @enum {unknown} */
+                        provider?: "api" | "codex" | "claude" | "kimi";
+                    };
+                };
+            };
+            responses: {
+                /** @description Success */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["DocumentChatSession"];
+                    };
+                };
+                /** @description Error */
+                default: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["Error"];
+                    };
+                };
+            };
+        };
+        trace?: never;
+    };
+    "/api/documents/{id}/chat-sessions/{session}/messages": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Read one session transcript */
+        get: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    id: string;
+                    session: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description Success */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["Message"][];
+                    };
+                };
+                /** @description Error */
+                default: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["Error"];
+                    };
+                };
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/documents/{id}/chat-sessions/{session}/chat": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Start a server-owned run; one active run per session, at most four globally */
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    id: string;
+                    session: string;
+                };
+                cookie?: never;
+            };
+            requestBody: {
+                content: {
+                    "application/json": {
+                        /** @enum {unknown} */
+                        provider: "codex" | "claude" | "kimi" | "api";
+                        attachments?: string[];
+                        /** @description Stable client-generated user message ID. Reuse only for explicit regeneration of the same unanswered last question, with unchanged prompt, context, references, attachments and reading location. The server uses current model settings, does not insert a duplicate question, and returns 409 if the turn has an answer or later messages. Omit for legacy clients. */
+                        userMessageId?: string;
+                        prompt: string;
+                        context: string;
+                        /** @description Reading position captured when sending the question. Navigation context only; does not attach page text or establish evidence. */
+                        readingLocation?: components["schemas"]["DocumentLocation"];
+                        references?: {
+                            text: string;
+                            /** @enum {unknown} */
+                            kind?: "selection" | "section";
+                            location: components["schemas"]["DocumentLocation"];
+                            sourceId?: string;
+                            pageImage?: components["schemas"]["PageImageEvidence"];
+                            corpusRevision?: string;
+                            contentHash?: string;
+                            /** @enum {string} */
+                            precision?: "page" | "block" | "paragraph";
+                        }[];
+                    };
+                };
+            };
+            responses: {
+                /** @description Success */
+                202: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ChatRun"];
+                    };
+                };
+                /** @description Error */
+                default: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["Error"];
+                    };
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/documents/{id}/chat-sessions/{session}/runs/{run}/events": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Replay and subscribe to a run; disconnecting never cancels it */
+        get: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    id: string;
+                    session: string;
+                    run: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description Incremental ChatStream SSE; done follows successful persistence */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "text/event-stream": string;
+                    };
+                };
+                /** @description Error */
+                default: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["Error"];
+                    };
+                };
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/documents/{id}/chat-sessions/{session}/runs/{run}/cancel": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Cancel this run and wait for it to settle */
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    id: string;
+                    session: string;
+                    run: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description Success */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            ok: boolean;
+                        };
+                    };
+                };
+                /** @description Error */
+                default: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["Error"];
+                    };
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
 }
 export type webhooks = Record<string, never>;
 export interface components {
@@ -3975,6 +4341,8 @@ export interface components {
                 /** @enum {string} */
                 precision?: "page" | "block" | "paragraph";
             }[];
+            /** @description Stable side chat session identity; omitted only by legacy clients. */
+            sessionId?: string;
         };
         Provider: {
             /** @enum {string} */
@@ -4371,6 +4739,27 @@ export interface components {
             text: string;
             location: components["schemas"]["EPUBLocation"];
             image?: string;
+        };
+        ChatRun: {
+            id: string;
+            sessionId: string;
+            documentId: string;
+            userMessageId: string;
+            provider: string;
+            /** @enum {unknown} */
+            status: "running" | "completed" | "failed" | "cancelled" | "interrupted";
+            error?: string;
+            startedAt: string;
+            finishedAt?: string;
+        };
+        DocumentChatSession: {
+            id: string;
+            documentId: string;
+            title: string;
+            provider: string;
+            createdAt: string;
+            updatedAt: string;
+            latestRun?: components["schemas"]["ChatRun"];
         };
     };
     responses: never;

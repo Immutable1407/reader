@@ -29,6 +29,9 @@ import (
 )
 
 type Server struct {
+	chatReservations       map[string]bool
+	chatMu                 sync.Mutex
+	chatRuns               map[string]*chatRun
 	Diagnostics            *diagnostics.Store
 	connectorMu            sync.Mutex
 	connectorAvailable     bool
@@ -175,6 +178,13 @@ func (s *Server) Handler() http.Handler {
 	mux.HandleFunc("GET /api/documents/{id}/messages", s.messages)
 	mux.HandleFunc("GET /api/documents/{id}/messages/{message}/sources/{source}", s.validateChatEvidence)
 	mux.HandleFunc("POST /api/documents/{id}/chat", s.chat)
+	mux.HandleFunc("GET /api/documents/{id}/chat-sessions", s.listChatSessions)
+	mux.HandleFunc("POST /api/documents/{id}/chat-sessions", s.createChatSession)
+	mux.HandleFunc("PATCH /api/documents/{id}/chat-sessions/{session}", s.updateChatSession)
+	mux.HandleFunc("GET /api/documents/{id}/chat-sessions/{session}/messages", s.sessionMessages)
+	mux.HandleFunc("POST /api/documents/{id}/chat-sessions/{session}/chat", s.chat)
+	mux.HandleFunc("GET /api/documents/{id}/chat-sessions/{session}/runs/{run}/events", s.sessionRunEvents)
+	mux.HandleFunc("POST /api/documents/{id}/chat-sessions/{session}/runs/{run}/cancel", s.cancelSessionRun)
 	mux.HandleFunc("POST /api/documents/{id}/codex-handoff", s.handoffCodex)
 	mux.HandleFunc("GET /api/providers", s.providers)
 	mux.HandleFunc("GET /api/documents/{id}/processing-usage", s.processingUsage)
@@ -866,6 +876,12 @@ func (s *Server) search(w http.ResponseWriter, r *http.Request) {
 	respond(w, 200, out)
 }
 func (s *Server) messages(w http.ResponseWriter, r *http.Request) {
+	var defaultID string
+	if s.Store.DB.QueryRow("SELECT id FROM chat_sessions WHERE document_id=? ORDER BY rowid LIMIT 1", r.PathValue("id")).Scan(&defaultID) == nil {
+		r.SetPathValue("session", defaultID)
+		s.sessionMessages(w, r)
+		return
+	}
 	rows, err := s.Store.DB.Query("SELECT body FROM messages WHERE document_id=? ORDER BY created_at", r.PathValue("id"))
 	if err != nil {
 		fail(w, 500, "读取对话失败")

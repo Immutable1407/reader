@@ -7,9 +7,11 @@ import { codexThreadURL } from "../../../../packages/reader-core/src/codex-link"
 
 export function CodexHandoffButton({
   documentId,
+  sessionId,
   disabled,
 }: {
   documentId: string;
+  sessionId?: string;
   disabled: boolean;
 }) {
   const [busy, setBusy] = useState(false);
@@ -19,7 +21,9 @@ export function CodexHandoffButton({
     running.current = true;
     setBusy(true);
     try {
-      const result = await api.codexHandoff(documentId);
+      const result = sessionId
+        ? await api.codexHandoff(documentId, sessionId)
+        : await api.codexHandoff(documentId);
       const url = codexThreadURL(result.threadId);
       try {
         if (window.readerDesktop?.openCodexThread) {

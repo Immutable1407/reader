@@ -13,6 +13,8 @@ export { ChatStreamError, type ChatStreamEvent } from "./chat-stream";
 import createClient from "openapi-fetch";
 import type { components, paths } from "./schema";
 import type {
+  ChatRun,
+  DocumentChatSession,
   Document,
   DocumentOverview,
   OverviewJob,
@@ -535,9 +537,55 @@ export const api = {
     ),
   messages: (id: string, signal?: AbortSignal) =>
     request<Message[]>(`/api/documents/${id}/messages`, { signal }),
-  codexHandoff: (id: string) =>
+  chatSessions: (id: string, signal?: AbortSignal) =>
+    request<DocumentChatSession[]>(`/api/documents/${id}/chat-sessions`, {
+      signal,
+    }),
+  createChatSession: (id: string, provider: string) =>
+    request<DocumentChatSession>(`/api/documents/${id}/chat-sessions`, {
+      method: "POST",
+      body: JSON.stringify({ provider }),
+    }),
+  updateChatSession: (
+    id: string,
+    sessionId: string,
+    patch: { title?: string; provider?: string },
+  ) =>
+    request<DocumentChatSession>(
+      `/api/documents/${id}/chat-sessions/${sessionId}`,
+      { method: "PATCH", body: JSON.stringify(patch) },
+    ),
+  sessionMessages: (id: string, sessionId: string, signal?: AbortSignal) =>
+    request<Message[]>(
+      `/api/documents/${id}/chat-sessions/${sessionId}/messages`,
+      { signal },
+    ),
+  startChatRun: (
+    id: string,
+    sessionId: string,
+    input: {
+      provider: string;
+      prompt: string;
+      context: string;
+      userMessageId?: string;
+      references: SourceReference[];
+      attachments: string[];
+      readingLocation?: DocumentLocation;
+    },
+  ) =>
+    request<ChatRun>(`/api/documents/${id}/chat-sessions/${sessionId}/chat`, {
+      method: "POST",
+      body: JSON.stringify(input),
+      signal: AbortSignal.timeout(30_000),
+    }),
+  cancelChatRun: (id: string, sessionId: string, runId: string) =>
+    request<{ ok: boolean }>(
+      `/api/documents/${id}/chat-sessions/${sessionId}/runs/${runId}/cancel`,
+      { method: "POST", signal: AbortSignal.timeout(30_000) },
+    ),
+  codexHandoff: (id: string, sessionId?: string) =>
     request<components["schemas"]["CodexHandoff"]>(
-      `/api/documents/${encodeURIComponent(id)}/codex-handoff`,
+      `/api/documents/${encodeURIComponent(id)}/codex-handoff${sessionId ? `?sessionId=${encodeURIComponent(sessionId)}` : ""}`,
       { method: "POST" },
     ),
   validateEvidence: (id: string, message: string, source: string) =>
@@ -644,4 +692,24 @@ export async function chat(
     });
     throw error;
   }
+}
+
+/** Attach/replay a run without starting another model request. */
+export async function watchChatRun(
+  id: string,
+  sessionId: string,
+  runId: string,
+  signal: AbortSignal,
+  emit: (event: ChatStreamEvent) => void,
+) {
+  const response = await diagnosticFetch(
+    `/api/documents/${id}/chat-sessions/${sessionId}/runs/${runId}/events`,
+    { headers: { Authorization: `Bearer ${sessionToken}` }, signal },
+  );
+  if (!response.ok) {
+    const data = await response.json().catch(() => ({}));
+    throw new Error(data.error || `读取运行失败 (${response.status})`);
+  }
+  if (!response.body) throw new Error("没有收到运行事件");
+  await consumeChatStream(response.body, signal, emit);
 }

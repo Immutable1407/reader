@@ -301,7 +301,7 @@ func (g *GenerationService) attempt(ctx context.Context, provider string, in AII
 		slog.Log(ctx, level, "generation.finish", "attemptId", attemptID, "requestId", requestID(ctx), "provider", provider, "durationMs", time.Since(started).Milliseconds(), "errorCode", kind)
 	}()
 	sink := g.usageSink
-	structuredUsage := in.Chat != nil && in.Chat.Agent != nil && (provider == "codex" || provider == "api" || provider == "text-api")
+	structuredUsage := in.Chat != nil && ((in.Chat.Agent != nil && provider == "codex") || ((in.Chat.Agent != nil || in.Chat.SessionID != "") && (provider == "api" || provider == "text-api" || provider == "image-api")))
 	if structuredUsage {
 		in.UsageSink = g.usageSink
 		in.UsageProvider = provider

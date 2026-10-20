@@ -505,6 +505,7 @@ export interface ImageAttachment {
   caption?: string;
 }
 export interface Message {
+  sessionId?: string;
   /** Provider-returned thinking, displayed separately and never added to answer context. */
   reasoning?: string;
   /** Navigation snapshot at send time; not an original-text citation. */
@@ -764,3 +765,24 @@ export type {
 } from "./proxy-settings";
 export type { UpdateProgress } from "./update-progress";
 export type { CommandLineStatus } from "./command-line";
+
+export interface ChatRun {
+  id: string;
+  sessionId: string;
+  documentId: string;
+  userMessageId: string;
+  provider: string;
+  status: "running" | "completed" | "failed" | "cancelled" | "interrupted";
+  error?: string;
+  startedAt: string;
+  finishedAt?: string;
+}
+export interface DocumentChatSession {
+  id: string;
+  documentId: string;
+  title: string;
+  provider: string;
+  createdAt: string;
+  updatedAt: string;
+  latestRun?: ChatRun;
+}
