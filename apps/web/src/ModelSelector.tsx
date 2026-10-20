@@ -62,9 +62,11 @@ export function selectedAgentModel(
 }
 
 export function ModelSelector({
+  providerOverride,
   disabled,
   onSettings,
 }: {
+  providerOverride?: string;
   disabled: boolean;
   onSettings: () => void;
 }) {
@@ -74,7 +76,7 @@ export function ModelSelector({
     aiModelSaving: saving,
     setAIModelSaving,
   } = useReaderStore();
-  const provider = config?.primary ?? "";
+  const provider = providerOverride ?? config?.primary ?? "";
   const revision = catalogRevision(config);
   const [catalog, setCatalog] = useState<{
     provider: string;
@@ -147,7 +149,7 @@ export function ModelSelector({
     setAIModelSaving(true);
     try {
       const latest = await api.aiConfig();
-      if (latest.primary !== provider) {
+      if (providerOverride === undefined && latest.primary !== provider) {
         setAIConfig(latest);
         throw new Error("Agent SDK 已改变，请重新选择模型");
       }
@@ -180,7 +182,7 @@ export function ModelSelector({
         effortQueue.current = null;
         const latest = await api.aiConfig();
         if (
-          latest.primary !== provider ||
+          (providerOverride === undefined && latest.primary !== provider) ||
           (latest.models[provider] ?? "") !== configuredModel
         ) {
           setAIConfig(latest);

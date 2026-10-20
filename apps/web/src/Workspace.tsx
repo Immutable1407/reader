@@ -4,6 +4,7 @@ import { LinkPreviewPanel } from "./LinkPreviewPanel";
 import { AnnotationHoverCard } from "./AnnotationHoverCard";
 import { AnnotationQuote } from "./AnnotationQuote";
 import {
+  useCallback,
   useEffect,
   useLayoutEffect,
   useMemo,
@@ -42,6 +43,7 @@ import {
 import { api, blockImageURL } from "@reader/api";
 import {
   locationLabel,
+  type DocumentChatSession,
   type Annotation,
   type Document as ReaderDocument,
   type DocumentLocation,
@@ -98,6 +100,8 @@ import { ProcessingUsageDialog } from "./ProcessingUsage";
 import { ModelSelector } from "./ModelSelector";
 import { SourceReferences } from "./SourceReferences";
 import { ChatSession } from "./chat/chat-session";
+import { getChatSession } from "./chat/session-registry";
+import { SessionPicker } from "./chat/SessionPicker";
 import { AssistantPanel } from "./chat/AssistantPanel";
 import { CodexHandoffButton } from "./chat/CodexHandoffButton";
 import { ImagePreview, imageLabel } from "./ImagePreview";
@@ -366,12 +370,88 @@ export function Workspace({
     null,
   );
   const readingPane = useRef<HTMLDivElement>(null);
-  const provider = aiConfig?.primary ?? "";
+  const [sessionCatalog, setSessionCatalog] = useState<{
+    documentId: string;
+    items: DocumentChatSession[];
+  }>({ documentId: doc.id, items: [] });
+  const [selectedSession, setSelectedSession] = useState<{
+    documentId: string;
+    id: string;
+  }>({ documentId: doc.id, id: "" });
+  const [sessionError, setSessionError] = useState("");
+  const currentDocument = useRef(doc.id);
+  currentDocument.current = doc.id;
+  const sessions =
+    sessionCatalog.documentId === doc.id ? sessionCatalog.items : [];
+  let preferred =
+    selectedSession.documentId === doc.id ? selectedSession.id : "";
+  if (!preferred) {
+    try {
+      preferred = localStorage.getItem(`reader.chat-session.${doc.id}`) || "";
+    } catch {}
+  }
+  const currentSession =
+    sessions.find((s) => s.id === preferred) ?? sessions[0];
+  const provider = currentSession?.provider ?? aiConfig?.primary ?? "";
+  const sessionListSerial = useRef(0);
+  const refreshSessions = useCallback(async () => {
+    const serial = ++sessionListSerial.current;
+    const items = await api.chatSessions(doc.id, AbortSignal.timeout(15_000));
+    if (
+      currentDocument.current === doc.id &&
+      serial === sessionListSerial.current
+    ) {
+      setSessionCatalog({ documentId: doc.id, items });
+      setSessionError("");
+    }
+  }, [doc.id]);
+  const selectSession = (id: string) => {
+    setSelectedSession({ documentId: doc.id, id });
+    try {
+      localStorage.setItem(`reader.chat-session.${doc.id}`, id);
+    } catch {}
+  };
+  useEffect(() => {
+    let alive = true;
+    let timer: ReturnType<typeof setTimeout>;
+    const poll = async () => {
+      try {
+        await refreshSessions();
+      } catch (error) {
+        if (alive) setSessionError((error as Error).message);
+      } finally {
+        if (alive) timer = setTimeout(poll, 3000);
+      }
+    };
+    void poll();
+    return () => {
+      alive = false;
+      clearTimeout(timer);
+    };
+  }, [refreshSessions]);
   const [prompt, setPrompt] = useState("");
   const [quotes, setQuotes] = useState<ReaderSelection[]>([]);
   const [images, setImages] = useState<ImageAttachment[]>([]);
   const [previewImage, setPreviewImage] = useState<ImageAttachment>();
   const composeInput = useRef<HTMLTextAreaElement>(null);
+  const composerDrafts = useRef(
+    new Map<
+      string,
+      { prompt: string; quotes: ReaderSelection[]; images: ImageAttachment[] }
+    >(),
+  );
+  const composerValue = useRef({ prompt, quotes, images });
+  composerValue.current = { prompt, quotes, images };
+  const composerKey = `${doc.id}:${currentSession?.id ?? ""}`;
+  useEffect(() => {
+    const saved = composerDrafts.current.get(composerKey);
+    setPrompt(saved?.prompt ?? "");
+    setQuotes(saved?.quotes ?? []);
+    setImages(saved?.images ?? []);
+    return () => {
+      composerDrafts.current.set(composerKey, composerValue.current);
+    };
+  }, [composerKey]);
   useEffect(() => {
     let alive = true;
     void api
@@ -386,10 +466,29 @@ export function Workspace({
       alive = false;
     };
   }, [setAIConfig]);
-  const session = useMemo(() => new ChatSession(doc.id), [doc.id]);
+  const emptySession = useMemo(() => new ChatSession(doc.id), [doc.id]);
+  const session = currentSession
+    ? getChatSession(doc.id, currentSession.id)
+    : emptySession;
   const chat = useSyncExternalStore(session.subscribe, session.getSnapshot);
+  useEffect(() => {
+    if (
+      !currentSession ||
+      currentSession.latestRun?.status !== "running" ||
+      chat.busy
+    )
+      return;
+    const timer = setTimeout(() => void session.load(), 3000);
+    return () => clearTimeout(timer);
+  }, [
+    currentSession?.latestRun?.id,
+    currentSession?.latestRun?.status,
+    chat.busy,
+    session,
+  ]);
   const sendSerial = useRef(0);
-  const [sending, setSending] = useState(false);
+  const [preparing, setSending] = useState(false);
+  const sending = preparing || chat.busy;
   const [pageInput, setPageInput] = useState("");
   const abort = useRef<AbortController | null>(null);
   const searchSerial = useRef(0);
@@ -411,7 +510,7 @@ export function Workspace({
     let alive = true;
     session.activate();
     abort.current = null;
-    void session.load();
+    if (currentSession) void session.load();
     setSending(false);
     api
       .annotations(doc.id)
@@ -426,7 +525,7 @@ export function Workspace({
       alive = false;
       sendSerial.current++;
       abort.current?.abort();
-      session.dispose();
+      // A viewer switch must not abort its independently owned run.
       void flushProgress().catch((e) => toast.error(e.message));
     };
   }, [doc.id, session]);
@@ -764,14 +863,14 @@ export function Workspace({
     const current = useReaderStore.getState();
     if (abort.current || session.getSnapshot().busy || current.aiModelSaving)
       return;
-    if (!current.aiConfig?.primary) {
+    if (!provider) {
       onSettings();
       return;
     }
     const serial = ++sendSerial.current;
     setSending(true);
     try {
-      await session.regenerate(current.aiConfig.primary);
+      await session.regenerate(provider);
     } catch (error) {
       if (serial === sendSerial.current) toast.error((error as Error).message);
     } finally {
@@ -1468,6 +1567,7 @@ export function Workspace({
                   <CodexHandoffButton
                     key={doc.id}
                     documentId={doc.id}
+                    sessionId={currentSession?.id}
                     disabled={
                       sending ||
                       !chat.loaded ||
@@ -1485,8 +1585,37 @@ export function Workspace({
                   { "--assistant-font-scale": assistantSize } as CSSProperties
                 }
               >
+                <SessionPicker
+                  documentId={doc.id}
+                  sessions={sessions}
+                  current={currentSession}
+                  busy={
+                    sending || currentSession?.latestRun?.status === "running"
+                  }
+                  onChange={selectSession}
+                  onRefresh={refreshSessions}
+                />
+                {sessionError && (
+                  <div
+                    className="px-3 py-2 text-sm text-destructive"
+                    role="alert"
+                  >
+                    {sessionError}
+                    <Button
+                      variant="link"
+                      size="sm"
+                      onClick={() =>
+                        void refreshSessions().catch((error) =>
+                          toast.error(error.message),
+                        )
+                      }
+                    >
+                      重试
+                    </Button>
+                  </div>
+                )}
                 <AssistantPanel
-                  key={doc.id}
+                  key={currentSession?.id ?? doc.id}
                   session={session}
                   onRegenerate={() => void regenerate()}
                   regenerateDisabled={aiModelSaving || sending}
@@ -1618,7 +1747,12 @@ export function Workspace({
                     }}
                   />
                   <div className="compose-footer">
-                    <ModelSelector disabled={sending} onSettings={onSettings} />
+                    <ModelSelector
+                      key={provider}
+                      providerOverride={provider}
+                      disabled={sending || !currentSession}
+                      onSettings={onSettings}
+                    />
                     {sending ? (
                       <Button
                         size="icon-sm"

@@ -4338,6 +4338,7 @@
                                         ["api", "codex", "claude", "kimi"],
                                     },
                                 },
+                              "required": ["provider"],
                             },
                         },
                     },

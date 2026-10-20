@@ -3754,7 +3754,7 @@ export interface paths {
                     "application/json": {
                         title?: string;
                         /** @enum {unknown} */
-                        provider?: "api" | "codex" | "claude" | "kimi";
+                        provider: "api" | "codex" | "claude" | "kimi";
                     };
                 };
             };
