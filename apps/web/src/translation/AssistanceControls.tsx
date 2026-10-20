@@ -89,8 +89,7 @@ export function AssistanceControls({
     if (epubChapter) {
       const location = epubChapter();
       if (!location?.href) throw new Error("正文仍在加载，请稍后再试");
-      const result = await api.translateEPUBChapter(documentId, location);
-      if (result.hasMore) toast("本章较长，完成后可再次点击翻译本章继续");
+      await api.translateEPUBChapter(documentId, location);
       return api.assistance(documentId);
     }
     const range = chapter?.();
@@ -101,11 +100,6 @@ export function AssistanceControls({
       range.toPage,
     );
     if (result.parsing) toast("正在解析本章，完成后开始翻译");
-    else if (!result.queued) toast("本章已翻译");
-    else if (result.nextPage)
-      toast(
-        `本章较长，本次翻译至第 ${result.nextPage} 页，完成后可再次翻译本章`,
-      );
     return api.assistance(documentId);
   };
   return (
@@ -116,7 +110,7 @@ export function AssistanceControls({
         disabled={busy || !job || finished}
         title={
           action === "chapter"
-            ? "翻译当前章节，单次最多约 4 万字"
+            ? "翻译当前完整章节，复用已完成译文"
             : job?.enabled
               ? job.detail
               : epubChapter

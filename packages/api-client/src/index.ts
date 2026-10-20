@@ -298,7 +298,7 @@ export const api = {
       method: "POST",
       body: JSON.stringify({ blockId }),
     }),
-  /** Queues a page range, capped by the server; nextPage is where it stopped. */
+  /** Queues the entire page range through the shared translation workers. */
   translateRange: (id: string, fromPage: number, toPage: number) =>
     request<{
       queued: number;
