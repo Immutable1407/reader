@@ -4,10 +4,13 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"net/http/httptest"
 	"os"
 	"path/filepath"
 	"strings"
+	"sync"
 	"testing"
+	"time"
 )
 
 func recoveryRequest(t *testing.T, s *Server) []Annotation {
@@ -316,5 +319,100 @@ func TestRecoveryLeavesMissingUnparsedPagesUntouched(t *testing.T) {
 	_ = s.Store.DB.QueryRow("SELECT count(*) FROM annotations").Scan(&count)
 	if count != 1 {
 		t.Fatal("unparsed page treated as orphan")
+	}
+}
+
+func TestRecoveryReanchorsWhenOnlyEarlierSentenceLengthChanges(t *testing.T) {
+	s, _, m := completedTranslationFixture(t)
+	b := m.Blocks[0]
+	a := insertRecoveryMark(t, s, b, "重要", "Second sentence.")
+	var loc map[string]json.RawMessage
+	_ = json.Unmarshal(a.Location, &loc)
+	mark := recoveredMark(t, a)
+	mark.Start, mark.End = 2, 4
+	mark.SentenceIndexes = []int{1}
+	mark.TargetText = "重要"
+	loc["translation"] = json.RawMessage(jsonText(mark))
+	a.Location = json.RawMessage(jsonText(loc))
+	_, err := s.Store.DB.Exec("UPDATE annotations SET body=? WHERE id=?", jsonText(a), a.ID)
+	if err != nil {
+		t.Fatal(err)
+	}
+	current := newTranslation(b)
+	current.Status = "complete"
+	current.Sentences = []TranslationSentence{{Source: "First sentence.", Target: "第一句现在变得更长。"}, {Source: "Second sentence.", Target: "重要"}}
+	if err = s.saveTranslation("doc", current); err != nil {
+		t.Fatal(err)
+	}
+	items := recoveryRequest(t, s)
+	mark = recoveredMark(t, items[0])
+	if !mark.Recovered || mark.MatchedQuote != "重要" || !equalIndexes(mark.SentenceIndexes, []int{1}) {
+		t.Fatalf("old paragraph offsets survived: %+v", mark)
+	}
+}
+func TestRecoveryUndoRestoringStaleMarkResetsCheck(t *testing.T) {
+	s, _, m := completedTranslationFixture(t)
+	a := insertRecoveryMark(t, s, m.Blocks[0], "旧译文", "")
+	out := undoRequest(t, s, "client", "DELETE", "/api/documents/doc/annotations/"+a.ID, nil)
+	if out.Code != 204 {
+		t.Fatal(out.Code, out.Body.String())
+	}
+	recoveryRequest(t, s)
+	undoLast(t, s, "client")
+	var checked bool
+	if err := s.Store.DB.QueryRow("SELECT checked FROM annotation_recovery WHERE document_id='doc'").Scan(&checked); err != nil || checked {
+		t.Fatal("undo did not reset check", err, checked)
+	}
+	items := recoveryRequest(t, s)
+	if len(items) != 1 || !recoveredMark(t, items[0]).Recovered {
+		t.Fatal(items)
+	}
+}
+
+func TestRecoveryCheckedFastPathAndBusyLocksDoNotWait(t *testing.T) {
+	s, _, _ := completedTranslationFixture(t)
+	recoveryRequest(t, s)
+	s.annotationMu.Lock()
+	s.translationMu.Lock()
+	// Release after a deadline even if the handler regresses to blocking locks.
+	done := make(chan struct{})
+	out := httptest.NewRecorder()
+	r := httptest.NewRequest("POST", "http://127.0.0.1:17840/api/documents/doc/annotations/recover", strings.NewReader(`{}`))
+	r.Header.Set("Authorization", "Bearer "+s.Token)
+	go func() { s.Handler().ServeHTTP(out, r); close(done) }()
+	waited := false
+	select {
+	case <-done:
+	case <-time.After(time.Second):
+		waited = true
+	}
+	s.translationMu.Unlock()
+	s.annotationMu.Unlock()
+	<-done
+	if waited || out.Code != 200 {
+		t.Fatal("checked fast path waited for mutation locks", out.Code)
+	}
+	_, err := s.Store.DB.Exec("UPDATE annotation_recovery SET checked=0 WHERE document_id='doc'")
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, lock := range []*sync.Mutex{&s.annotationMu, &s.translationMu} {
+		lock.Lock()
+		out = httptest.NewRecorder()
+		done = make(chan struct{})
+		r = httptest.NewRequest("POST", "http://127.0.0.1:17840/api/documents/doc/annotations/recover", strings.NewReader(`{}`))
+		r.Header.Set("Authorization", "Bearer "+s.Token)
+		go func() { s.Handler().ServeHTTP(out, r); close(done) }()
+		waited = false
+		select {
+		case <-done:
+		case <-time.After(time.Second):
+			waited = true
+		}
+		lock.Unlock()
+		<-done
+		if waited || out.Code != 409 {
+			t.Fatal("busy lock queued check", out.Code)
+		}
 	}
 }

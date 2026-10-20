@@ -72,8 +72,9 @@ export function translatedSelection(
       sourceText: sentenceIndexes
         .map((i) => sentenceAnchor(translation.sentences[i]))
         .join(""),
-      targetText: sentenceIndexes
-        .map((i) => translation.sentences[i].target)
+      // Offsets are paragraph-relative: an earlier sentence can move this mark.
+      targetText: translation.sentences
+        .map((sentence) => sentence.target)
         .join(""),
       start,
       end: start + clipped.toString().length,

@@ -39,6 +39,7 @@ export type PDFLocation = {
 export type TranslationRecoveryAnchor = {
   /** Source sentence text survives changes to translation sentence boundaries. */
   sourceText?: string;
+  /** Entire paragraph target; detects offsets shifted by preceding sentences. */
   targetText?: string;
   recovered?: boolean;
   wholeSentence?: boolean;

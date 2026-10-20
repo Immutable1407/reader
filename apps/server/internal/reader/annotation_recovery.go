@@ -54,15 +54,31 @@ func (s *Server) annotationRecoveryLock(document string) *sync.Mutex {
 
 func (s *Server) recoverAnnotations(w http.ResponseWriter, r *http.Request) {
 	document := r.PathValue("id")
-	d, err := s.Store.Document(document)
-	if err != nil || d.DeletedAt != "" {
-		fail(w, 404, "文档不存在")
-		return
-	}
+
+	ctx, cancel := context.WithTimeout(r.Context(), annotationRecoveryTimeout)
+	defer cancel()
 	var req struct {
 		Force bool `json:"force"`
 	}
 	if !decode(w, r, &req) {
+		return
+	}
+	checked := false
+	readCheck := func() error {
+		return s.Store.DB.QueryRowContext(ctx, `SELECT COALESCE(r.checked,0) FROM documents d LEFT JOIN annotation_recovery r ON r.document_id=d.id WHERE d.id=? AND d.deleted_at=''`, document).Scan(&checked)
+	}
+	err := readCheck()
+	if errors.Is(err, sql.ErrNoRows) {
+		fail(w, 404, "文档不存在")
+		return
+	}
+	if err != nil {
+		fail(w, 500, "无法读取批注检查状态")
+		return
+	}
+	// Checked documents never wait for another document's recovery locks.
+	if checked && !req.Force {
+		respond(w, 200, map[string]bool{"checked": true})
 		return
 	}
 	lock := s.annotationRecoveryLock(document)
@@ -71,17 +87,19 @@ func (s *Server) recoverAnnotations(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	defer lock.Unlock()
-	// All annotation mutations share this lock. Translation publication shares
-	// translationMu; the check cannot observe a half-published paragraph.
-	s.annotationMu.Lock()
+	// Never queue behind another document's recovery. All mutations and
+	// publication still share these existing locks, with bounded execution.
+	if !s.annotationMu.TryLock() {
+		fail(w, 409, "正在修改批注，请稍后重试")
+		return
+	}
 	defer s.annotationMu.Unlock()
-	s.translationMu.Lock()
+	if !s.translationMu.TryLock() {
+		fail(w, 409, "正在更新译文，请稍后重试")
+		return
+	}
 	defer s.translationMu.Unlock()
-	ctx, cancel := context.WithTimeout(r.Context(), annotationRecoveryTimeout)
-	defer cancel()
-	checked := false
-	err = s.Store.DB.QueryRowContext(ctx, "SELECT checked FROM annotation_recovery WHERE document_id=?", document).Scan(&checked)
-	if err != nil && !errors.Is(err, sql.ErrNoRows) {
+	if err = readCheck(); err != nil {
 		fail(w, 500, "无法读取批注检查状态")
 		return
 	}
@@ -416,7 +434,11 @@ func recoverTranslationAnnotation(ctx context.Context, a Annotation, m translati
 			source += recoverySentenceSource(current.Sentences[i])
 			target += current.Sentences[i].Target
 		}
-		unchanged := part.SourceText != "" && part.TargetText == target && part.BlockID == p.BlockID && part.SourceHash == p.SourceHash && equalIndexes(part.SentenceIndexes, indexes)
+		paragraphTarget := ""
+		for _, sentence := range current.Sentences {
+			paragraphTarget += sentence.Target
+		}
+		unchanged := part.SourceText != "" && part.TargetText == paragraphTarget && part.BlockID == p.BlockID && part.SourceHash == p.SourceHash && equalIndexes(part.SentenceIndexes, indexes)
 		if !unchanged {
 			part.Recovered = true
 			part.MatchedQuote = ""
@@ -426,7 +448,7 @@ func recoverTranslationAnnotation(ctx context.Context, a Annotation, m translati
 			part.WholeSentence = part.WholeSentence || part.MatchedQuote == ""
 		}
 		part.BlockID, part.SourceHash, part.SentenceIndexes = p.BlockID, p.SourceHash, indexes
-		part.SourceText, part.TargetText = source, target
+		part.SourceText, part.TargetText = source, paragraphTarget
 		// Navigation to a reparsed block must use its current source geometry.
 		if input, ok := m.(layoutManifest); ok && len(out) == 0 {
 			for _, b := range input.Blocks {
@@ -502,7 +524,10 @@ func enrichTranslationAnnotation(a Annotation, translations []TranslationBlock) 
 			// Old indices are evidence only while their saved quote still
 			// occurs in that sentence. Already-stale marks use source lookup.
 			if part.Quote != "" && strings.Contains(target, part.Quote) {
-				part.SourceText, part.TargetText = source, target
+				part.SourceText = source
+				for _, sentence := range t.Sentences {
+					part.TargetText += sentence.Target
+				}
 				part.WholeSentence = recoveryNormalize(part.Quote) == recoveryNormalize(target)
 			}
 		}

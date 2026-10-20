@@ -321,11 +321,13 @@ export function PDFReadingView({
       (b) => !isPDFPageDecoration(b),
     );
     const linked =
-      location.translation?.blockId ?? location.sentenceLink?.parts[0]?.blockId;
+      location.translation?.blockId ??
+      location.sourceAnchors?.[0]?.blockId ??
+      location.sentenceLink?.parts[0]?.blockId;
     const page = readable.filter((b) => b.page === location.page);
     // Saved selections carry rects rather than x/y; the first marked line
     // decides the paragraph, never the page origin.
-    const rect = location.rects?.[0];
+    const rect = location.rects?.[0] ?? location.sourceAnchors?.[0]?.bounds;
     const covering =
       rect &&
       page
