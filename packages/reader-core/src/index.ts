@@ -123,7 +123,7 @@ export type PaperSort =
   | "venue"
   | "status"
   | "notes";
-/** Optional columns of the paper table; the title is always shown. */
+/** Metadata columns of the paper table. */
 export type PaperColumn =
   | "authors"
   | "year"
@@ -180,10 +180,12 @@ export interface PaperLibraryPreferences {
   layout?: "list" | "table";
   /** Visible table columns in order. */
   columns?: PaperColumn[];
-  /** Order of all table columns, including hidden ones; the title remains visible. */
+  /** Whether the title column is shown (default on). */
+  showTitle?: boolean;
+  /** Order of all table columns, including hidden ones. */
   columnOrder?: ("title" | PaperColumn)[];
-  /** Widths of resized table columns in CSS pixels; the title fills the rest. */
-  columnWidths?: Partial<Record<PaperColumn, number>>;
+  /** Widths of resized table columns in CSS pixels. */
+  columnWidths?: Partial<Record<"title" | PaperColumn, number>>;
   /** Width of the paper detail panel in CSS pixels. */
   detailWidth?: number;
   /** Look up metadata from the DOI or arXiv ID printed in imported PDFs. */

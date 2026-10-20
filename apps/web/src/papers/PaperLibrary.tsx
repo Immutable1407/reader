@@ -172,9 +172,6 @@ export function PaperLibrary({
   const sort: PaperSort = prefs.sort || "opened";
   const reverse = !!prefs.sortReverse;
   const columnControls = usePaperColumns(prefs);
-  const columns = columnControls.visible.filter(
-    (c): c is PaperColumn => c !== "title",
-  );
   const ui = usePaperUI();
   const {
     view,
@@ -343,15 +340,19 @@ export function PaperLibrary({
   }, [selectedId, ui]);
   // Widths follow the pointer locally and are saved once the drag ends.
   const [draftWidths, setDraftWidths] =
-    useState<Partial<Record<PaperColumn, number>>>();
+    useState<Partial<Record<TableColumn, number>>>();
   const [draftDetail, setDraftDetail] = useState<number>();
   const columnWidths = {
     ...defaultColumnWidths,
     ...prefs.columnWidths,
     ...draftWidths,
   };
+  const tableWidth = columnControls.visible.reduce(
+    (sum, c) => sum + (columnWidths[c] ?? 160),
+    32 + (picking ? 32 : 0),
+  );
   const detailWidth = draftDetail ?? prefs.detailWidth;
-  const saveColumnWidths = (next: Partial<Record<PaperColumn, number>>) =>
+  const saveColumnWidths = (next: Partial<Record<TableColumn, number>>) =>
     void savePaperPreferences((p) => ({
       ...p,
       columnWidths: { ...p.columnWidths, ...next },
@@ -366,10 +367,10 @@ export function PaperLibrary({
   const resizeColumn = (
     e: ReactPointerEvent<HTMLElement>,
     left: "title" | PaperColumn,
-    right: TableColumn,
+    right: TableColumn | undefined,
   ) => {
     const start = headerWidths(e.currentTarget);
-    let next: Partial<Record<PaperColumn, number>> = {};
+    let next: Partial<Record<TableColumn, number>> = {};
     dragHorizontally(
       e,
       (dx) => {
@@ -385,7 +386,7 @@ export function PaperLibrary({
   const nudgeColumn = (
     e: ReactKeyboardEvent<HTMLElement>,
     left: "title" | PaperColumn,
-    right: TableColumn,
+    right: TableColumn | undefined,
   ) => {
     const dx = { ArrowLeft: -resizeStep, ArrowRight: resizeStep }[e.key];
     if (!dx) return;
@@ -945,10 +946,14 @@ export function PaperLibrary({
                   <Table
                     {...columnControls.target()}
                     style={{
-                      minWidth:
-                        240 +
-                        (picking ? 32 : 0) +
-                        columns.reduce((sum, c) => sum + columnWidths[c], 0),
+                      // Keep the title flexible until first resized; afterwards
+                      // the table follows saved widths rather than redistributing them.
+                      width:
+                        columnWidths.title !== undefined ||
+                        !columnControls.visible.includes("title")
+                          ? tableWidth
+                          : undefined,
+                      minWidth: tableWidth,
                     }}
                   >
                     <caption className="sr-only">论文库</caption>
@@ -967,11 +972,7 @@ export function PaperLibrary({
                               key={c}
                               scope="col"
                               data-column={c}
-                              style={
-                                c === "title"
-                                  ? undefined
-                                  : { width: columnWidths[c] }
-                              }
+                              style={{ width: columnWidths[c] }}
                               aria-sort={
                                 active
                                   ? descending
@@ -999,20 +1000,15 @@ export function PaperLibrary({
                                   )
                                 )}
                               </div>
-                              {/* The last column borders the menu column; the title absorbs its changes. */}
-                              {next && (
-                                <span
-                                  role="separator"
-                                  aria-orientation="vertical"
-                                  aria-label={`调整${c === "title" ? "标题" : columnLabels[c]}列宽度`}
-                                  tabIndex={0}
-                                  className="paper-column-resizer"
-                                  onPointerDown={(e) =>
-                                    resizeColumn(e, c, next)
-                                  }
-                                  onKeyDown={(e) => nudgeColumn(e, c, next)}
-                                />
-                              )}
+                              <span
+                                role="separator"
+                                aria-orientation="vertical"
+                                aria-label={`调整${c === "title" ? "标题" : columnLabels[c]}列宽度`}
+                                tabIndex={0}
+                                className="paper-column-resizer"
+                                onPointerDown={(e) => resizeColumn(e, c, next)}
+                                onKeyDown={(e) => nudgeColumn(e, c, next)}
+                              />
                             </TableHead>
                           );
                         })}
@@ -1026,7 +1022,11 @@ export function PaperLibrary({
                       {!visible.length && (
                         <TableRow>
                           <TableCell
-                            colSpan={columns.length + 2 + (picking ? 1 : 0)}
+                            colSpan={
+                              columnControls.visible.length +
+                              1 +
+                              (picking ? 1 : 0)
+                            }
                           >
                             {emptyState}
                           </TableCell>

@@ -566,9 +566,9 @@ it("resizes table columns at their shared boundary", async () => {
     host.querySelector<HTMLElement>('th[data-column="authors"]')!.style.width,
   ).toBe("120px");
   await press(titleEdge, "pointerup", 440);
-  expect(prefs().columnWidths).toEqual({ authors: 120 });
-  // The last column has no handle: the menu column cannot give up space.
-  expect(host.querySelector('[aria-label="调整状态列宽度"]')).toBeNull();
+  expect(prefs().columnWidths).toEqual({ title: 440, authors: 120 });
+  // The final column can be resized without changing the menu column.
+  expect(host.querySelector('[aria-label="调整状态列宽度"]')).not.toBeNull();
   await act(async () =>
     host
       .querySelector('[aria-label="调整作者列宽度"]')!
@@ -576,7 +576,7 @@ it("resizes table columns at their shared boundary", async () => {
         new KeyboardEvent("keydown", { key: "ArrowRight", bubbles: true }),
       ),
   );
-  expect(prefs().columnWidths).toEqual({ authors: 176, year: 48 });
+  expect(prefs().columnWidths).toEqual({ title: 440, authors: 176, year: 48 });
   rects.mockRestore();
 });
 
@@ -1321,4 +1321,135 @@ it("removes live drag styles on unmount without saving", async () => {
   await act(async () => root.render(null));
   expect(document.head.textContent).not.toContain("data-column-reordering");
   expect(api.saveLibraryPreferences).not.toHaveBeenCalled();
+});
+
+it.each([
+  ["title", "authors", "year"],
+  ["authors", "title", "year"],
+  ["authors", "year", "title"],
+])(
+  "resizes and persists the title at any position: %s, %s, %s",
+  async (...columnOrder) => {
+    await act(async () =>
+      useReaderStore.setState({
+        libraryPreferences: {
+          mode: "papers",
+          papers: {
+            layout: "table",
+            columns: ["authors", "year"],
+            columnOrder: columnOrder as ("title" | "authors" | "year")[],
+          },
+        },
+      }),
+    );
+    const rects = fakeWidths({ title: 400, authors: 160, year: 64 });
+    try {
+      const edge = host.querySelector<HTMLElement>(
+        '[aria-label="调整标题列宽度"]',
+      );
+      expect(edge).not.toBeNull();
+      await press(edge!, "pointerdown", 400);
+      await press(edge!, "pointermove", 416);
+      expect(
+        host.querySelector<HTMLElement>('th[data-column="title"]')!.style.width,
+      ).toBe("416px");
+      expect(
+        host.querySelector<HTMLTableElement>(".paper-table table")!.style.width,
+      ).toBe(columnOrder[2] === "title" ? "672px" : "656px");
+      expect(api.saveLibraryPreferences).not.toHaveBeenCalled();
+      await press(edge!, "pointerup", 416);
+      expect(prefs().columnWidths).toHaveProperty("title", 416);
+      const saved = useReaderStore.getState().libraryPreferences;
+      await act(async () =>
+        useReaderStore.setState({
+          libraryPreferences: {
+            ...saved,
+            papers: { ...saved.papers, layout: "list" },
+          },
+        }),
+      );
+      await act(async () =>
+        useReaderStore.setState({ libraryPreferences: saved }),
+      );
+      expect(
+        host.querySelector<HTMLElement>('th[data-column="title"]')!.style.width,
+      ).toBe("416px");
+    } finally {
+      rects.mockRestore();
+    }
+  },
+);
+
+it("hides and restores the title from the column picker without losing order or width", async () => {
+  await act(async () =>
+    useReaderStore.setState({
+      libraryPreferences: {
+        mode: "papers",
+        papers: {
+          layout: "table",
+          columns: ["authors", "year"],
+          columnOrder: ["authors", "title", "year"],
+          columnWidths: { title: 360 },
+        },
+      },
+    }),
+  );
+  await act(async () =>
+    host.querySelector<HTMLButtonElement>('[aria-label="显示的列"]')!.click(),
+  );
+  const title = document.querySelector<HTMLElement>(
+    '[aria-label="显示标题列"]',
+  )!;
+  expect(title.getAttribute("aria-checked")).toBe("true");
+  await act(async () => title.click());
+  expect(host.querySelector('th[data-column="title"]')).toBeNull();
+  expect(
+    row("Attention Is All You Need").querySelector('td[data-column="title"]'),
+  ).toBeNull();
+  expect(headerColumns()).toEqual(["authors", "year"]);
+  const saved = useReaderStore.getState().libraryPreferences;
+  await act(async () =>
+    useReaderStore.setState({ libraryPreferences: structuredClone(saved) }),
+  );
+  expect(headerColumns()).toEqual(["authors", "year"]);
+  await act(async () =>
+    document.querySelector<HTMLElement>('[aria-label="显示标题列"]')!.click(),
+  );
+  expect(headerColumns()).toEqual(["authors", "title", "year"]);
+  expect(
+    host.querySelector<HTMLElement>('th[data-column="title"]')!.style.width,
+  ).toBe("360px");
+  expect(
+    row("Attention Is All You Need").querySelector('td[data-column="title"]')
+      ?.textContent,
+  ).toContain("Attention Is All You Need");
+});
+
+it("moves the final metadata boundary even before the title has a saved width", async () => {
+  await act(async () =>
+    useReaderStore.setState({
+      libraryPreferences: {
+        mode: "papers",
+        papers: { layout: "table", columns: ["authors", "year"] },
+      },
+    }),
+  );
+  const rects = fakeWidths({ title: 400, authors: 160, year: 64 });
+  try {
+    const edge = host.querySelector<HTMLElement>(
+      '[aria-label="调整年份列宽度"]',
+    )!;
+    await press(edge, "pointerdown", 624);
+    await press(edge, "pointermove", 664);
+    expect(
+      host.querySelector<HTMLTableElement>(".paper-table table")!.style.width,
+    ).toBe("696px");
+    expect(
+      host.querySelector<HTMLElement>('th[data-column="title"]')!.style.width,
+    ).toBe("400px");
+    await press(edge, "pointerup", 664);
+    expect(prefs().columnWidths).toEqual({ title: 400, year: 104 });
+  } finally {
+    rects.mockRestore();
+  }
 });
