@@ -4,6 +4,8 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"runtime"
+	"strings"
 	"testing"
 )
 
@@ -36,7 +38,7 @@ func migrationSource(t *testing.T) string {
 }
 func TestCopyLibraryPreservesSourceAndDatabase(t *testing.T) {
 	source := migrationSource(t)
-	target := filepath.Join(t.TempDir(), "新书库")
+	target := filepath.Join(t.TempDir(), "新书库 # &")
 	if err := CopyLibrary(source, target); err != nil {
 		t.Fatal(err)
 	}
@@ -92,6 +94,37 @@ func TestCopyLibraryRefusesExistingAndNestedTargets(t *testing.T) {
 		t.Fatal(err, string(b))
 	}
 }
+
+func TestCopyLibraryRejectsQuestionMarkPathsBeforeCopying(t *testing.T) {
+	if runtime.GOOS == "windows" {
+		t.Skip("Windows does not allow question marks in directory names")
+	}
+	source := migrationSource(t)
+	for _, relative := range []string{"Reader?Library", filepath.Join("parent?question", "Reader Library")} {
+		t.Run(relative, func(t *testing.T) {
+			target := filepath.Join(t.TempDir(), relative)
+			if err := os.MkdirAll(filepath.Dir(target), 0700); err != nil {
+				t.Fatal(err)
+			}
+			if err := CopyLibrary(source, target); err == nil || !strings.Contains(err.Error(), "书库路径不能包含 ?") {
+				t.Fatalf("expected path validation error, got %v", err)
+			}
+			if _, err := os.Stat(target); !os.IsNotExist(err) {
+				t.Fatalf("created unsafe target: %v", err)
+			}
+		})
+	}
+	store, err := OpenStore(source)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer store.DB.Close()
+	var note string
+	if err := store.DB.QueryRow("SELECT body FROM document_notes WHERE document_id='test-document'").Scan(&note); err != nil || note != "Keep my notes" {
+		t.Fatalf("source note changed: %q, %v", note, err)
+	}
+}
+
 func TestCopyLibraryWaitsForSourceLock(t *testing.T) {
 	source := migrationSource(t)
 	target := filepath.Join(t.TempDir(), "target")

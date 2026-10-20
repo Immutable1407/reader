@@ -251,3 +251,28 @@ it("does not close the reader when the native confirmation is cancelled", async 
   expect(window.webContents.send).not.toHaveBeenCalledWith("reader:flush");
   expect(migrate).not.toHaveBeenCalled();
 });
+
+it.each(["/destination?question", "/parent?question/destination"])(
+  "rejects an unsafe library path before confirming or closing: %s",
+  async (selected) => {
+    showOpenDialog.mockResolvedValueOnce({
+      canceled: false,
+      filePaths: [selected],
+    });
+    // A missing path guard must fail the test without waiting for a flush.
+    showMessageBox.mockResolvedValueOnce({ response: 1 });
+    await expect(move()).rejects.toThrow("书库路径不能包含 ?");
+    expect(showMessageBox).not.toHaveBeenCalled();
+    expect(window.webContents.send).not.toHaveBeenCalledWith("reader:flush");
+    expect(stop).not.toHaveBeenCalled();
+    expect(migrate).not.toHaveBeenCalled();
+    expect(app.relaunch).not.toHaveBeenCalled();
+    expect(handlers.get("reader:library-location")!(event())).toBe(
+      "/old/library",
+    );
+
+    showOpenDialog.mockResolvedValueOnce({ canceled: true, filePaths: [] });
+    expect(await move()).toBe(false);
+    expect(showOpenDialog).toHaveBeenCalledTimes(2);
+  },
+);

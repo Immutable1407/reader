@@ -498,6 +498,9 @@ app
           await realpath(selected.filePaths[0]),
           "Reader Library",
         );
+        // The server's SQLite DSN treats ? as the start of query parameters.
+        if (destination.includes("?"))
+          throw new Error("书库路径不能包含 ?，请选择其他位置。");
         try {
           await lstat(destination);
           throw new Error(

@@ -24,6 +24,10 @@ func CopyLibrary(source, destination string) (err error) {
 	if err != nil {
 		return err
 	}
+	// OpenStore treats ? as the start of SQLite DSN parameters on restart.
+	if strings.Contains(destinationRoot, "?") {
+		return fmt.Errorf("书库路径不能包含 ?，请选择其他位置。")
+	}
 	source, err = filepath.EvalSymlinks(source)
 	if err != nil {
 		return err
