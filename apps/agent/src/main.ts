@@ -30,6 +30,8 @@ lines.on("line", (line) => {
       runId = input.runId;
       // API keys must never follow redirects or escape the configured origin.
       const upstream = new URL(input.model.baseUrl);
+      if (input.endpoint && new URL(input.endpoint).origin !== upstream.origin)
+        throw new Error("模型端点不匹配");
       const fetch = globalThis.fetch;
       globalThis.fetch = async (url, init) => {
         const target = new URL(url instanceof Request ? url.url : String(url));
@@ -42,7 +44,27 @@ lines.on("line", (line) => {
           headers.delete("authorization");
           headers.delete("x-api-key");
         }
-        return fetch(url, { ...init, headers, redirect: "error" });
+        let body = init?.body;
+        if (input.payload && typeof body === "string") {
+          const payload = JSON.parse(body);
+          for (const field of [
+            "reasoning_effort",
+            "thinking",
+            "output_config",
+            "reasoning_split",
+            "max_tokens",
+            "max_completion_tokens",
+          ])
+            delete payload[field];
+          Object.assign(payload, input.payload);
+          body = JSON.stringify(payload);
+        }
+        return fetch(input.endpoint || url, {
+          ...init,
+          body,
+          headers,
+          redirect: "error",
+        });
       };
       void runAgent(
         input,

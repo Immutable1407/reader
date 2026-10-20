@@ -59,6 +59,14 @@ try {
   });
   if (native.error) throw native.error;
   assert.equal(native.status, 0, "Packaged native processor smoke failed");
+  const agent = spawnSync(electron, [join(resources, "agent/smoke.mjs")], {
+    cwd: temporary,
+    env: { ...process.env, ELECTRON_RUN_AS_NODE: "1" },
+    stdio: "inherit",
+    timeout: 30_000,
+  });
+  if (agent.error) throw agent.error;
+  assert.equal(agent.status, 0, "Packaged pi worker smoke failed");
   const token = randomBytes(32).toString("hex");
   child = spawn(
     join(resources, "bin", `reader-server${windows ? ".exe" : ""}`),

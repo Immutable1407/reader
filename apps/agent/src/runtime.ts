@@ -27,6 +27,8 @@ export interface AgentRequest {
   system: string;
   model: Model<Api>;
   key: string;
+  payload?: Record<string, unknown>;
+  endpoint?: string;
   effort: "off" | "minimal" | "low" | "medium" | "high" | "xhigh" | "max";
   entries?: FileEntry[];
   images?: ImageContent[];
@@ -137,7 +139,9 @@ export async function runAgent(
   });
   let rounds = 0,
     aborted = false,
-    outputBytes = 0;
+    outputBytes = 0,
+    reasoningBytes = 0,
+    draftBytes = 0;
   const stop = () => {
     aborted = true;
     void session.abort();
@@ -146,13 +150,22 @@ export async function runAgent(
   if (signal.aborted) stop();
   const unsubscribe = session.subscribe((event) => {
     if (event.type === "turn_start" && ++rounds > 64) stop();
-    if (event.type === "message_start" && event.message.role === "assistant")
+    if (event.type === "message_start" && event.message.role === "assistant") {
+      draftBytes = 0;
       emit({ type: "draft", reset: true, text: "" });
+    }
     if (event.type === "message_update") {
       const delta = event.assistantMessageEvent;
       if (delta.type === "text_delta" || delta.type === "thinking_delta") {
-        outputBytes += Buffer.byteLength(delta.delta);
-        if (outputBytes > 2 * 1024 * 1024) {
+        const bytes = Buffer.byteLength(delta.delta);
+        outputBytes += bytes;
+        if (delta.type === "thinking_delta") reasoningBytes += bytes;
+        else draftBytes += bytes;
+        if (
+          outputBytes > 4 * 1024 * 1024 ||
+          reasoningBytes > 1024 * 1024 ||
+          draftBytes > 1024 * 1024
+        ) {
           stop();
           return;
         }
@@ -167,6 +180,9 @@ export async function runAgent(
       emit({ type: "usage", model: m.model, usage: m.usage });
       if (m.content.some((part) => part.type === "toolCall"))
         emit({ type: "draft", reset: true, text: "" });
+    }
+    if (event.type === "compaction_end" && event.result?.usage) {
+      emit({ type: "usage", model: model.id, usage: event.result.usage });
     }
     if (event.type === "compaction_start")
       emit({ type: "activity", message: "正在整理对话上下文" });

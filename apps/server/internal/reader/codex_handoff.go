@@ -39,6 +39,31 @@ func (s *Server) handoffCodex(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	defer s.aiMu.Unlock()
+	sessionID := r.URL.Query().Get("sessionId")
+	if sessionID == "" {
+		_ = s.Store.DB.QueryRow("SELECT id FROM chat_sessions WHERE document_id=? ORDER BY rowid LIMIT 1", r.PathValue("id")).Scan(&sessionID)
+	}
+	// Reserve only this session while exporting its independent snapshot.
+	// Other sessions can still start, subscribe and cancel.
+	if sessionID != "" {
+		s.chatMu.Lock()
+		if _, err := s.Store.chatSession(r.PathValue("id"), sessionID); err != nil {
+			s.chatMu.Unlock()
+			fail(w, 404, "会话不存在")
+			return
+		}
+		if s.chatRuns[sessionID] != nil || s.chatReservations[sessionID] {
+			s.chatMu.Unlock()
+			fail(w, 409, "请等待当前会话结束后再接续")
+			return
+		}
+		if s.chatReservations == nil {
+			s.chatReservations = map[string]bool{}
+		}
+		s.chatReservations[sessionID] = true
+		s.chatMu.Unlock()
+		defer func() { s.chatMu.Lock(); delete(s.chatReservations, sessionID); s.chatMu.Unlock() }()
+	}
 	ctx, cancel := context.WithTimeout(r.Context(), 90*time.Second)
 	defer cancel()
 	ctx, finish, err := s.beginDocumentTask(ctx, r.PathValue("id"))
@@ -52,7 +77,7 @@ func (s *Server) handoffCodex(w http.ResponseWriter, r *http.Request) {
 		fail(w, 404, "文档已不可用")
 		return
 	}
-	c, err := s.Store.documentConversation(ctx, d.ID, "codex", "codex-native-v1")
+	c, err := s.Store.documentConversation(ctx, d.ID, conversationProvider(sessionID, "codex"), "codex-native-v1")
 	if err != nil {
 		fail(w, 500, "无法读取 Codex 阅读会话")
 		return
@@ -61,7 +86,11 @@ func (s *Server) handoffCodex(w http.ResponseWriter, r *http.Request) {
 		fail(w, 409, "请先使用 Codex 完成一次文档阅读对话")
 		return
 	}
-	messages, err := s.Store.chatHistory(d.ID)
+	var scope []string
+	if sessionID != "" {
+		scope = []string{sessionID}
+	}
+	messages, err := s.Store.chatHistory(d.ID, scope...)
 	if err != nil {
 		fail(w, 500, "无法读取聊天历史")
 		return

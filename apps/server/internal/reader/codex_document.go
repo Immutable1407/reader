@@ -188,12 +188,16 @@ func streamCodexDocumentChat(ctx context.Context, root, model string, in AIInput
 	if err != nil {
 		return GenerateResult{}, err
 	}
-	entry, err := a.server.documentCodex.acquire(ctx, a, root, model)
+	cache := a.codexCache
+	if cache == nil {
+		cache = &a.server.documentCodex
+	}
+	entry, err := cache.acquire(ctx, a, root, model)
 	if err != nil {
 		return GenerateResult{}, err
 	}
 	healthy := false
-	defer func() { a.server.documentCodex.release(entry, healthy) }()
+	defer func() { cache.release(entry, healthy) }()
 	session := entry.session
 	if session.threadID != "" {
 		if _, err = session.verifyDocumentConfig(ctx); err != nil {
@@ -221,7 +225,7 @@ func streamCodexDocumentChat(ctx context.Context, root, model string, in AIInput
 		progress.NativePending = a.conversation.NativePending
 		progress.NativeDirty = a.conversation.NativeDirty
 		progress.NativeUsage = a.conversation.NativeUsage
-		return saveDocumentConversation(ctx, a.server.Store.DB, a.corpus.DocumentID, a.provider, progress)
+		return saveDocumentConversation(ctx, a.server.Store.DB, a.corpus.DocumentID, a.conversationProvider(), progress)
 	}
 	a.conversation.NativeDirty = true
 	a.conversation.NativePending = ""

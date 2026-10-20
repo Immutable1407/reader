@@ -123,3 +123,133 @@ test("SDK worker bridges only registered tools and resumes accepted history", as
     server.closeAllConnections();
   }
 }, 20000);
+
+test.each(["truncated", "anthropic"])(
+  "validates %s provider termination",
+  async (mode) => {
+    const upstream = createServer(async (req, res) => {
+      let raw = "";
+      for await (const chunk of req) raw += chunk;
+      const request = JSON.parse(raw);
+      expect(request.messages.at(-1).content).toBeTruthy();
+      res.writeHead(200, { "Content-Type": "text/event-stream" });
+      if (mode === "truncated") {
+        res.end(
+          'data: {"choices":[{"index":0,"delta":{"content":"partial answer"}}]}\n\n',
+        );
+        return;
+      }
+      expect(req.url).toBe("/relay/messages");
+      for (const [event, data] of [
+        [
+          "message_start",
+          {
+            type: "message_start",
+            message: {
+              id: "m",
+              type: "message",
+              role: "assistant",
+              model: "test",
+              content: [],
+              stop_reason: null,
+              stop_sequence: null,
+              usage: { input_tokens: 10, output_tokens: 0 },
+            },
+          },
+        ],
+        [
+          "content_block_start",
+          {
+            type: "content_block_start",
+            index: 0,
+            content_block: { type: "text", text: "" },
+          },
+        ],
+        [
+          "content_block_delta",
+          {
+            type: "content_block_delta",
+            index: 0,
+            delta: { type: "text_delta", text: "anthropic complete" },
+          },
+        ],
+        ["content_block_stop", { type: "content_block_stop", index: 0 }],
+        [
+          "message_delta",
+          {
+            type: "message_delta",
+            delta: { stop_reason: "end_turn", stop_sequence: null },
+            usage: { output_tokens: 4 },
+          },
+        ],
+        ["message_stop", { type: "message_stop" }],
+      ])
+        res.write(`event: ${event}\ndata: ${JSON.stringify(data)}\n\n`);
+      res.end();
+    });
+    await new Promise<void>((resolve) =>
+      upstream.listen(0, "127.0.0.1", resolve),
+    );
+    const base = `http://127.0.0.1:${(upstream.address() as { port: number }).port}/relay`;
+    const child = spawn(process.execPath, ["dist/main.mjs"], { cwd: root });
+    const events: any[] = [];
+    let stderr = "";
+    child.stderr.on("data", (chunk) => (stderr += chunk));
+    createInterface({ input: child.stdout }).on("line", (line) =>
+      events.push(JSON.parse(line)),
+    );
+    child.stdin.write(
+      JSON.stringify({
+        type: "start",
+        input: {
+          version: 1,
+          runId: "protocol",
+          prompt: "hello",
+          system: "read",
+          key: "",
+          effort: "off",
+          tools: [],
+          endpoint:
+            base + (mode === "anthropic" ? "/messages" : "/chat/completions"),
+          payload: mode === "anthropic" ? { max_tokens: 8192 } : {},
+          model: {
+            id: "test",
+            name: "test",
+            provider: "reader",
+            api:
+              mode === "anthropic"
+                ? "anthropic-messages"
+                : "openai-completions",
+            baseUrl: base,
+            reasoning: false,
+            input: ["text"],
+            cost: { input: 0, output: 0, cacheRead: 0, cacheWrite: 0 },
+            contextWindow: 32000,
+            maxTokens: 4096,
+          },
+        },
+      }) + "\n",
+    );
+    try {
+      const code = await new Promise((resolve) => child.on("exit", resolve));
+      expect(stderr).toBe("");
+      if (mode === "truncated") {
+        expect(code).toBe(1);
+        expect(
+          events.some((e) => e.type === "draft" && e.text === "partial answer"),
+        ).toBe(true);
+        expect(events.some((e) => e.type === "complete")).toBe(false);
+      } else {
+        expect({ code, error: events.find((e) => e.type === "error") }).toEqual(
+          { code: 0, error: undefined },
+        );
+        expect(events.at(-1).text).toBe("anthropic complete");
+      }
+    } finally {
+      child.kill();
+      upstream.close();
+      upstream.closeAllConnections();
+    }
+  },
+  15000,
+);

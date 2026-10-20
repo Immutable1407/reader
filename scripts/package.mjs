@@ -62,6 +62,10 @@ run(process.execPath, [
   "--config.node-linker=hoisted",
   join(staging, "agent"),
 ]);
+await cp(
+  join(root, "scripts/agent-smoke.mjs"),
+  join(staging, "agent/smoke.mjs"),
+);
 // Include lazy worker/shared chunks as well as entrypoints and the model.
 await cp(join(processor, "dist"), processor, { recursive: true });
 await rm(join(processor, "dist"), { recursive: true });

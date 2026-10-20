@@ -54,6 +54,7 @@ type Annotation struct {
 	Tags []string `json:"tags,omitempty"`
 }
 type Message struct {
+	SessionID       string            `json:"sessionId,omitempty"`
 	Reasoning       string            `json:"reasoning,omitempty"`
 	ReadingLocation json.RawMessage   `json:"readingLocation,omitempty"`
 	Attachments     []ImageAttachment `json:"attachments,omitempty"`
@@ -114,6 +115,11 @@ func OpenStore(root string) (*Store, error) {
  CREATE VIRTUAL TABLE IF NOT EXISTS document_overviews_fts USING fts5(document_id UNINDEXED,revision UNINDEXED,content,tokenize='unicode61');
  CREATE TRIGGER IF NOT EXISTS document_overview_delete AFTER DELETE ON document_overviews BEGIN DELETE FROM document_overviews_fts WHERE document_id=old.document_id; END;
  CREATE TABLE IF NOT EXISTS document_conversations(document_id TEXT NOT NULL REFERENCES documents(id) ON DELETE CASCADE,provider TEXT NOT NULL,body TEXT NOT NULL,PRIMARY KEY(document_id,provider));
+ CREATE TABLE IF NOT EXISTS chat_sessions(id TEXT PRIMARY KEY,document_id TEXT NOT NULL REFERENCES documents(id) ON DELETE CASCADE,title TEXT NOT NULL,provider TEXT NOT NULL,created_at TEXT NOT NULL,updated_at TEXT NOT NULL);
+ CREATE INDEX IF NOT EXISTS chat_sessions_document ON chat_sessions(document_id);
+ CREATE INDEX IF NOT EXISTS messages_session ON messages(document_id,json_extract(body,'$.sessionId'));
+ CREATE TABLE IF NOT EXISTS chat_runs(id TEXT PRIMARY KEY,session_id TEXT NOT NULL REFERENCES chat_sessions(id) ON DELETE CASCADE,body TEXT NOT NULL);
+ CREATE INDEX IF NOT EXISTS chat_runs_session ON chat_runs(session_id);
  CREATE TABLE IF NOT EXISTS chat_agent_runs(id TEXT PRIMARY KEY,document_id TEXT NOT NULL REFERENCES documents(id) ON DELETE CASCADE,body TEXT NOT NULL);`)
 	if err != nil {
 		db.Close()
@@ -125,6 +131,12 @@ func OpenStore(root string) (*Store, error) {
 		return nil, err
 	}
 	if err = store.compactMarks(); err != nil {
+		db.Close()
+		return nil, err
+	}
+	// A process restart cannot resume an in-flight provider call. Preserve the
+	// transcript; the UI may explicitly retry the unanswered question.
+	if _, err = db.Exec(`UPDATE chat_runs SET body=json_set(body,'$.status',CASE WHEN EXISTS(SELECT 1 FROM messages m WHERE m.document_id=json_extract(chat_runs.body,'$.documentId') AND json_extract(m.body,'$.sessionId')=chat_runs.session_id AND m.rowid>(SELECT rowid FROM messages WHERE id=json_extract(chat_runs.body,'$.userMessageId')) AND json_extract(m.body,'$.role')='assistant') THEN 'completed' ELSE 'interrupted' END,'$.error','应用已重启，请同步会话记录') WHERE json_extract(body,'$.status')='running'`); err != nil {
 		db.Close()
 		return nil, err
 	}
