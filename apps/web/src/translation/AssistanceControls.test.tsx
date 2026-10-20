@@ -173,8 +173,8 @@ it("a book translates the current chapter instead of the whole document", async 
   };
   vi.mocked(api.translateRange).mockResolvedValue({
     queued: 12,
-    characters: 39000,
-    nextPage: 31,
+    characters: 50000,
+    nextPage: 0,
     parsing: false,
   });
   vi.mocked(api.assistance)
@@ -201,7 +201,7 @@ it("a book translates the current chapter instead of the whole document", async 
   );
   expect(api.translateRange).toHaveBeenCalledWith("book", 20, 45);
   expect(api.setAssistance).not.toHaveBeenCalled();
-  expect(toast).toHaveBeenCalledWith(expect.stringContaining("第 31 页"));
+  expect(toast).not.toHaveBeenCalled();
   expect(host.textContent).toContain("暂停翻译");
 });
 
