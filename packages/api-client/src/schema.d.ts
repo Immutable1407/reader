@@ -2512,7 +2512,7 @@ export interface paths {
         };
         get?: never;
         put?: never;
-        /** @description Queue the EPUB chapter at this location. Top-level TOC boundaries (children of a sole book-title parent) take precedence; without a TOC use the spine file. Queues at most approximately 40000 Unicode source characters, retaining whole paragraphs and completed results. Resumes paused work. No PDF page numbers. */
+        /** @description Queue the entire EPUB chapter at this location through the shared translation workers, retaining completed results. Top-level TOC boundaries (children of a sole book-title parent) take precedence; without a TOC use the spine file. Resumes paused work. No PDF page numbers. */
         post: {
             parameters: {
                 query?: never;
@@ -2547,7 +2547,7 @@ export interface paths {
                         "application/json": {
                             queued: number;
                             characters: number;
-                            /** @description Request this chapter again to queue the remaining text after the character limit. */
+                            /** @description Legacy compatibility field; always false because the entire chapter is queued. */
                             hasMore: boolean;
                         };
                     };
@@ -2578,7 +2578,7 @@ export interface paths {
         };
         get?: never;
         put?: never;
-        /** @description Queue untranslated paragraphs and formulas in a page range, in reading order, starting at the first unfinished page and covering at most 30 pages and 40000 source characters. Book pages that were never parsed are parsed first. Also resumes paused processing. */
+        /** @description Queue all untranslated paragraphs and formulas in the requested page range through the shared translation workers, retaining completed results. Missing book pages are parsed first in automatic batches of at most 30 pages. Also resumes paused processing. */
         post: {
             parameters: {
                 query?: never;
@@ -2606,9 +2606,9 @@ export interface paths {
                         "application/json": {
                             queued: number;
                             characters: number;
-                            /** @description Page where the character or 30-page limit stopped the request; 0 when the range is fully queued. */
+                            /** @description Legacy compatibility field; always 0 because the entire range is queued. */
                             nextPage: number;
-                            /** @description Book pages in the window are parsed first (at most 30 pages); translation is queued when parsing finishes. */
+                            /** @description Missing book pages in the requested range are parsed first in automatic batches; translation is queued when parsing finishes. */
                             parsing: boolean;
                         };
                     };

@@ -3,22 +3,13 @@ import type { TranslationBlock } from "@reader/core";
 export type TranslationEvent =
   | { event: "snapshot"; data: TranslationBlock[] }
   | { event: "translation"; data: TranslationBlock };
-// Keep runtime validation exhaustive when the shared protocol adds a status.
-const translationStatuses = {
-  idle: true,
-  pending: true,
-  running: true,
-  complete: true,
-  failed: true,
-} satisfies Record<TranslationBlock["status"], true>;
 function isBlock(value: unknown): value is TranslationBlock {
   if (!value || typeof value !== "object") return false;
   const b = value as TranslationBlock;
   return (
     typeof b.blockId === "string" &&
     typeof b.sourceHash === "string" &&
-    typeof b.status === "string" &&
-    Object.hasOwn(translationStatuses, b.status) &&
+    ["idle", "pending", "running", "complete", "failed"].includes(b.status) &&
     Array.isArray(b.sentences) &&
     b.sentences.every(
       (s) => s && typeof s.source === "string" && typeof s.target === "string",

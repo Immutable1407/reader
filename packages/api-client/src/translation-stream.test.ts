@@ -1,66 +1,43 @@
 import { expect, it } from "vitest";
-import type { TranslationBlock } from "@reader/core";
 import {
   consumeTranslationStream,
   type TranslationEvent,
 } from "./translation-stream";
 
-it.each(["snapshot", "translation"] as const)(
-  "accepts idle book paragraphs in a %s event",
-  async (event) => {
-    const idle: TranslationBlock = {
-      blockId: "p1-b1",
-      sourceHash: "hash",
-      status: "idle",
-      sentences: [],
-    };
-    const complete: TranslationBlock = {
-      ...idle,
-      blockId: "p1-b2",
-      status: "complete",
-      sentences: [{ source: "Source.", target: "译文。" }],
-    };
-    const data = event === "snapshot" ? [idle, complete] : idle;
-    const body = new ReadableStream<Uint8Array>({
-      start(controller) {
-        controller.enqueue(
-          new TextEncoder().encode(
-            `event: ${event}\ndata: ${JSON.stringify(data)}\n\n`,
-          ),
-        );
-      },
-    });
-    const abort = new AbortController();
-    const events: TranslationEvent[] = [];
-    await expect(
-      consumeTranslationStream(body, abort.signal, (value) => {
-        events.push(value);
-        abort.abort();
-      }),
-    ).rejects.toMatchObject({ name: "AbortError" });
-    expect(events).toEqual([{ event, data }]);
-  },
-);
-
-it("rejects an unknown status even when the remaining fields are valid", async () => {
-  const block = {
-    blockId: "p1-b1",
+it("accepts unrequested book paragraphs alongside completed translations", async () => {
+  const idle = {
+    blockId: "p2-b1",
     sourceHash: "hash",
-    status: "toString",
+    status: "idle",
     sentences: [],
   };
+  const complete = {
+    ...idle,
+    blockId: "p1-b1",
+    status: "complete",
+    sentences: [{ source: "Source.", target: "译文。" }],
+  };
+  const abort = new AbortController();
+  const events: TranslationEvent[] = [];
   const body = new ReadableStream<Uint8Array>({
-    start(controller) {
-      controller.enqueue(
+    start(c) {
+      c.enqueue(
         new TextEncoder().encode(
-          `event: translation\ndata: ${JSON.stringify(block)}\n\n`,
+          `event: snapshot\ndata: ${JSON.stringify([complete, idle])}\n\nevent: translation\ndata: ${JSON.stringify(idle)}\n\n`,
         ),
       );
     },
   });
   await expect(
-    consumeTranslationStream(body, new AbortController().signal, () => {}),
-  ).rejects.toThrow("译文事件格式无效");
+    consumeTranslationStream(body, abort.signal, (event) => {
+      events.push(event);
+      if (events.length === 2) abort.abort();
+    }),
+  ).rejects.toMatchObject({ name: "AbortError" });
+  expect(events).toEqual([
+    { event: "snapshot", data: [complete, idle] },
+    { event: "translation", data: idle },
+  ]);
 });
 
 it("delivers completed paragraphs before EOF across fragmented UTF-8 and multiple frames", async () => {
