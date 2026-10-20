@@ -469,6 +469,11 @@ export const api = {
       method: "PATCH",
       body: JSON.stringify(patch),
     }),
+  recoverAnnotations: (id: string, force = false) =>
+    request<{ checked: boolean }>(`/api/documents/${id}/annotations/recover`, {
+      method: "POST",
+      body: JSON.stringify({ force }),
+    }),
   annotations: (id: string) =>
     request<Annotation[]>(`/api/documents/${id}/annotations`),
   annotate: (

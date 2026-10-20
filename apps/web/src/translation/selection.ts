@@ -60,6 +60,21 @@ export function translatedSelection(
       blockId: block.id,
       sourceHash: translation.sourceHash,
       sentenceIndexes,
+      wholeSentence:
+        quote ===
+        sentenceIndexes
+          .map(
+            (i) =>
+              node.querySelector(`[data-sentence="${i}"]`)?.textContent ?? "",
+          )
+          .join("")
+          .trim(),
+      sourceText: sentenceIndexes
+        .map((i) => sentenceAnchor(translation.sentences[i]))
+        .join(""),
+      targetText: sentenceIndexes
+        .map((i) => translation.sentences[i].target)
+        .join(""),
       start,
       end: start + clipped.toString().length,
       quote,

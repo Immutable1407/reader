@@ -4,6 +4,60 @@
  */
 
 export interface paths {
+    "/api/documents/{id}/annotations/recover": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Recover translated annotations and split legacy linked marks */
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    id: string;
+                };
+                cookie?: never;
+            };
+            requestBody: {
+                content: {
+                    "application/json": {
+                        /** @default false */
+                        force?: boolean;
+                    };
+                };
+            };
+            responses: {
+                /** @description checked=false while processing or data is unavailable; no records deleted */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            checked: boolean;
+                        };
+                    };
+                };
+                /** @description Annotation check or retranslation is already starting */
+                409: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/translate-selection": {
         parameters: {
             query?: never;
@@ -3829,6 +3883,17 @@ export interface components {
         DocumentLocation: {
             /** @constant */
             type: "pdf";
+            sourceAnchors?: {
+                blockId: string;
+                source: string;
+                page: number;
+                bounds: {
+                    x: number;
+                    y: number;
+                    width: number;
+                    height: number;
+                };
+            }[];
             page: number;
             x?: number;
             y?: number;
@@ -4322,12 +4387,22 @@ export interface components {
         TranslationLocation: {
             blockId: string;
             sourceHash: string;
+            sourceText?: string;
+            targetText?: string;
+            recovered?: boolean;
+            wholeSentence?: boolean;
+            matchedQuote?: string;
             sentenceIndexes: number[];
             start: number;
             end: number;
             ranges?: {
                 blockId: string;
                 sourceHash: string;
+                sourceText?: string;
+                targetText?: string;
+                recovered?: boolean;
+                wholeSentence?: boolean;
+                matchedQuote?: string;
                 sentenceIndexes: number[];
                 start: number;
                 end: number;
