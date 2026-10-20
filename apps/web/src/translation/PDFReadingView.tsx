@@ -1018,11 +1018,6 @@ export function PDFReadingView({
                     : "正文仍在解析中，完成的段落会在这里显示。"}
                 </p>
               )}
-              {processing?.incomplete && (
-                <p className="translation-warning">
-                  部分页面没有可提取文字，需要 OCR；当前译文不完整。
-                </p>
-              )}
               {visibleBlocks.map((block) => {
                 const translated = byId.get(block.id),
                   noteIndexes = annotations.flatMap((a) => {

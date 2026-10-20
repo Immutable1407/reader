@@ -147,7 +147,7 @@ func TestImportWithAutoTranslationDisabledDoesNotStartBackgroundAI(t *testing.T)
 	}
 }
 
-func TestFullProcessingRetainsEarlierOCRWarnings(t *testing.T) {
+func TestFullProcessingIgnoresEarlierOCRWarnings(t *testing.T) {
 	s, p := processingFixture(t)
 	m, _ := s.readLayout("doc")
 	m.Pages = 10
@@ -158,8 +158,8 @@ func TestFullProcessingRetainsEarlierOCRWarnings(t *testing.T) {
 	if e := s.learnPDF(context.Background(), &p); e != nil {
 		t.Fatal(e)
 	}
-	if !p.Incomplete {
-		t.Fatal("whole-book status forgot an earlier scanned page")
+	if p.Incomplete || p.Warning != "" {
+		t.Fatalf("obsolete no-text warning retained: %+v", p)
 	}
 }
 
