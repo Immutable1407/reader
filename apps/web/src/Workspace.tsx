@@ -1590,6 +1590,7 @@ export function Workspace({
                   sessions={sessions}
                   current={currentSession}
                   provider={provider}
+                  running={sending}
                   onChange={selectSession}
                   onRefresh={refreshSessions}
                 />

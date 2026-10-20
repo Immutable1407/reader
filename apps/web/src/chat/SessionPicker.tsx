@@ -31,6 +31,7 @@ export function SessionPicker({
   sessions,
   current,
   provider,
+  running = false,
   onChange,
   onRefresh,
 }: {
@@ -38,9 +39,11 @@ export function SessionPicker({
   sessions: DocumentChatSession[];
   current?: DocumentChatSession;
   provider: string;
+  running?: boolean;
   onChange: (id: string) => void;
   onRefresh: () => Promise<void>;
 }) {
+  const status = running ? "running" : current?.latestRun?.status;
   const [renaming, setRenaming] = useState(false);
   const [name, setName] = useState("");
   const [saving, setSaving] = useState(false);
@@ -123,15 +126,15 @@ export function SessionPicker({
           <Plus />
         </Button>
       </div>
-      {current?.latestRun && (
+      {status && (
         <span
           className="flex items-center justify-end gap-1 text-xs text-muted-foreground"
           role="status"
         >
-          {current.latestRun.status === "running" && (
+          {status === "running" && (
             <LoaderCircle className="size-3 animate-spin motion-reduce:animate-none" />
           )}
-          {statusLabels[current.latestRun.status]}
+          {statusLabels[status]}
         </span>
       )}
       <Dialog open={renaming} onOpenChange={setRenaming}>

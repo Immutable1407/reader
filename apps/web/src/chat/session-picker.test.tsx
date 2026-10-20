@@ -65,3 +65,37 @@ it("creates using the updated settings choice rather than the current session's 
   expect(host.querySelector('[aria-label="会话后端"]')).toBeNull();
   expect(host.querySelector('[aria-label="选择会话"]')).not.toBeNull();
 });
+
+it("shows an active request immediately even before the run list refreshes", async () => {
+  const current: DocumentChatSession = {
+    id: "session",
+    documentId: "doc",
+    title: "方法问题",
+    provider: "api",
+    createdAt: "now",
+    updatedAt: "now",
+    latestRun: {
+      id: "old-run",
+      sessionId: "session",
+      documentId: "doc",
+      userMessageId: "question",
+      provider: "api",
+      status: "completed",
+      startedAt: "now",
+    },
+  };
+  await act(async () =>
+    root.render(
+      <SessionPicker
+        documentId="doc"
+        sessions={[current]}
+        current={current}
+        provider="api"
+        running
+        onChange={() => {}}
+        onRefresh={async () => {}}
+      />,
+    ),
+  );
+  expect(host.querySelector('[role="status"]')?.textContent).toBe("运行中");
+});
