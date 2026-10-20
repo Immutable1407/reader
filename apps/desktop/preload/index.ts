@@ -35,6 +35,8 @@ contextBridge.exposeInMainWorld("readerDesktop", {
   checkProxy: (settings: ProxySettings) =>
     proxyRequest("reader:check-proxy", settings),
   restart: () => proxyRequest("reader:restart"),
+  libraryLocation: () => proxyRequest("reader:library-location"),
+  moveLibrary: () => proxyRequest("reader:move-library"),
   commandLine: () => proxyRequest("reader:command-line"),
   setCommandLine: (installed: boolean) =>
     proxyRequest("reader:set-command-line", installed),
