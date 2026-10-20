@@ -109,6 +109,9 @@ async function startServer() {
         READER_TOKEN: serverToken,
         PATH: pathValue,
         READER_NODE: process.execPath,
+        READER_AGENT: app.isPackaged
+          ? join(process.resourcesPath, "agent", "dist", "main.mjs")
+          : join(root, "agent", "dist", "main.mjs"),
         READER_PROCESSOR: app.isPackaged
           ? join(process.resourcesPath, "processor", "main.mjs")
           : join(root, "processor", "dist", "main.mjs"),

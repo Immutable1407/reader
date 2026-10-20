@@ -52,6 +52,16 @@ run(process.execPath, [
   "--config.node-linker=hoisted",
   processor,
 ]);
+run(process.execPath, [
+  pnpm,
+  "--filter",
+  "@reader/agent",
+  "deploy",
+  "--prod",
+  "--config.inject-workspace-packages=true",
+  "--config.node-linker=hoisted",
+  join(staging, "agent"),
+]);
 // Include lazy worker/shared chunks as well as entrypoints and the model.
 await cp(join(processor, "dist"), processor, { recursive: true });
 await rm(join(processor, "dist"), { recursive: true });

@@ -76,6 +76,7 @@ try {
         ...process.env,
         READER_TOKEN: token,
         READER_NODE: electron,
+        READER_AGENT: join(resources, "agent/dist/main.mjs"),
         READER_PROCESSOR: join(resources, "processor/main.mjs"),
       },
       stdio: ["ignore", "pipe", "inherit"],
