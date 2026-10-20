@@ -255,7 +255,7 @@ READER_TEST_STREAM_PROVIDER=kimi go test ./internal/reader -run '^TestLiveAgentS
 
 ## Side chat sessions 与 pi · #128
 
-侧栏会话以 `chat_sessions.id` 为稳定身份，`documentId` 只是文档关联。同一文档可新建、重命名和切换会话，后端分别选择自有 API Agent（pi）、Codex、Claude Code 或 Kimi。模型及 Effort 仍复用设置中各后端的偏好，开始运行时冻结配置；运行中修改另一会话的设置不改变已开始的请求。会话不是工作目录，也没有新增终端、写文件、RAG 或 Memory 工具。
+侧栏会话以 `chat_sessions.id` 为稳定身份，`documentId` 只是文档关联。同一文档可新建、重命名和切换会话。后端统一在设置中选择自有 API Agent（pi）、Codex、Claude Code 或 Kimi；侧栏仅管理会话，不提供后端选择器。各会话的新消息和重新生成使用当前全局选择，session 的 provider 元数据不覆盖设置。模型及 Effort 仍复用对应后端的偏好，开始运行时冻结配置；修改设置不改变已开始的请求。会话不是工作目录，也没有新增终端、写文件、RAG 或 Memory 工具。
 
 首次访问会话列表时，将旧消息的 JSON 增补 `sessionId`，原消息 ID、引用、附件、阅读位置与批注关联保持不变，旧 provider continuation 一起迁入默认会话。迁移有事务保护并可重复执行。旧 `/messages` 和 `/chat` 客户端在文档迁移后指向默认会话，保留 SSE 形态；未迁移文档的旧端点保留兼容实现。新侧栏使用显式会话接口。
 

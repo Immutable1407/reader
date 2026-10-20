@@ -392,7 +392,7 @@ export function Workspace({
   }
   const currentSession =
     sessions.find((s) => s.id === preferred) ?? sessions[0];
-  const provider = currentSession?.provider ?? aiConfig?.primary ?? "";
+  const provider = aiConfig?.primary ?? "";
   const sessionListSerial = useRef(0);
   const refreshSessions = useCallback(async () => {
     const serial = ++sessionListSerial.current;
@@ -1589,9 +1589,7 @@ export function Workspace({
                   documentId={doc.id}
                   sessions={sessions}
                   current={currentSession}
-                  busy={
-                    sending || currentSession?.latestRun?.status === "running"
-                  }
+                  provider={provider}
                   onChange={selectSession}
                   onRefresh={refreshSessions}
                 />
@@ -1749,7 +1747,6 @@ export function Workspace({
                   <div className="compose-footer">
                     <ModelSelector
                       key={provider}
-                      providerOverride={provider}
                       disabled={sending || !currentSession}
                       onSettings={onSettings}
                     />

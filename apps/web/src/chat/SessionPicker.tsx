@@ -17,7 +17,6 @@ import {
   DialogTitle,
 } from "@reader/ui/components/dialog";
 import { Input } from "@reader/ui/components/input";
-import { ProviderIdentity } from "../ProviderIdentity";
 import { toast } from "sonner";
 
 const statusLabels = {
@@ -31,14 +30,14 @@ export function SessionPicker({
   documentId,
   sessions,
   current,
-  busy,
+  provider,
   onChange,
   onRefresh,
 }: {
   documentId: string;
   sessions: DocumentChatSession[];
   current?: DocumentChatSession;
-  busy: boolean;
+  provider: string;
   onChange: (id: string) => void;
   onRefresh: () => Promise<void>;
 }) {
@@ -54,7 +53,7 @@ export function SessionPicker({
     try {
       const session = await api.createChatSession(
         documentId,
-        current?.provider ?? "api",
+        provider || "api",
       );
       await onRefresh();
       onChange(session.id);
@@ -64,11 +63,11 @@ export function SessionPicker({
       setSaving(false);
     }
   };
-  const update = async (patch: { title?: string; provider?: string }) => {
+  const update = async (title: string) => {
     if (!current) return;
     setSaving(true);
     try {
-      await api.updateChatSession(documentId, current.id, patch);
+      await api.updateChatSession(documentId, current.id, { title });
       await onRefresh();
       setRenaming(false);
     } catch (error) {
@@ -124,44 +123,17 @@ export function SessionPicker({
           <Plus />
         </Button>
       </div>
-      <div className="flex items-center justify-between gap-2">
-        <Select
-          value={current?.provider ?? null}
-          onValueChange={(provider) => {
-            if (provider) void update({ provider });
-          }}
-          disabled={!current || busy || saving}
+      {current?.latestRun && (
+        <span
+          className="flex items-center justify-end gap-1 text-xs text-muted-foreground"
+          role="status"
         >
-          <SelectTrigger
-            className="h-7 w-auto border-0 bg-transparent px-1 text-xs shadow-none"
-            aria-label="会话后端"
-          >
-            <SelectValue>
-              {current && (
-                <ProviderIdentity provider={current.provider} size={14} />
-              )}
-            </SelectValue>
-          </SelectTrigger>
-          <SelectContent>
-            {["api", "codex", "claude", "kimi"].map((provider) => (
-              <SelectItem key={provider} value={provider}>
-                <ProviderIdentity provider={provider} size={16} />
-              </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
-        {current?.latestRun && (
-          <span
-            className="flex items-center gap-1 text-xs text-muted-foreground"
-            role="status"
-          >
-            {current.latestRun.status === "running" && (
-              <LoaderCircle className="size-3 animate-spin motion-reduce:animate-none" />
-            )}
-            {statusLabels[current.latestRun.status]}
-          </span>
-        )}
-      </div>
+          {current.latestRun.status === "running" && (
+            <LoaderCircle className="size-3 animate-spin motion-reduce:animate-none" />
+          )}
+          {statusLabels[current.latestRun.status]}
+        </span>
+      )}
       <Dialog open={renaming} onOpenChange={setRenaming}>
         <DialogContent className="sm:max-w-sm">
           <DialogHeader>
@@ -171,7 +143,7 @@ export function SessionPicker({
             className="flex flex-col gap-3"
             onSubmit={(event) => {
               event.preventDefault();
-              void update({ title: name });
+              void update(name);
             }}
           >
             <Input
