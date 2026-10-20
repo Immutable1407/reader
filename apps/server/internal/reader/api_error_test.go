@@ -47,6 +47,9 @@ func TestProviderErrorsAreClassifiedAndRedacted(t *testing.T) {
 			if errorKind(err) != tt.kind {
 				t.Fatalf("%v want %s", err, tt.kind)
 			}
+			if tt.kind == ErrorTimeout && !strings.HasPrefix(err.Error(), "上游请求超时") {
+				t.Fatalf("timeout has no readable explanation: %v", err)
+			}
 			if err.(*apiFailure).Param != tt.param {
 				t.Fatal(err)
 			}
