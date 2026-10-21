@@ -976,7 +976,9 @@ export function PDFReadingView({
                     : undefined;
                 input("translation");
                 hover("translation");
-                selecting.current = true;
+                // The viewport itself receives scrollbar presses. Keep following
+                // those scrolls while the pointer is down; only text drags select.
+                selecting.current = !!section && event.button === 0;
                 selection.current = null;
                 events.selection(null);
                 void engine?.focusSentences?.("", []);

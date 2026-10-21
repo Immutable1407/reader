@@ -729,13 +729,17 @@ kbd {
      those layers inside the reader, below app dialogs and popovers. */
   isolation: isolate;
   overflow: auto;
-  scrollbar-width: none;
-  scrollbar-gutter: auto;
 }
-.reader-engine.pdf-container::-webkit-scrollbar {
-  display: none;
-  width: 0;
-  height: 0;
+/* Both reading panes keep a discoverable scrollbar, even before wheel input. */
+.reader-engine.pdf-container,
+.pdf-reading .translation-document {
+  scrollbar-width: thin;
+  scrollbar-gutter: stable;
+  scrollbar-color: var(--muted-foreground) transparent;
+}
+.reader-engine.pdf-container::-webkit-scrollbar-thumb,
+.pdf-reading .translation-document::-webkit-scrollbar-thumb {
+  background-color: var(--muted-foreground);
 }
 .pdfViewer .page {
   margin: 20px auto !important;
