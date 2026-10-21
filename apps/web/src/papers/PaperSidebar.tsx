@@ -7,6 +7,7 @@ import {
   CircleHelp,
   Copy,
   Eye,
+  FileDown,
   FileText,
   Folder,
   FolderOpen,
@@ -15,6 +16,7 @@ import {
   Tags,
   Library,
   Loader2,
+  Pencil,
   Pin,
   Plus,
   Star,
@@ -229,7 +231,6 @@ export function PaperSidebar({
     view,
     setView,
     select,
-    startPicking,
     selectedId,
     setNaming,
     setSmartEditing,
@@ -277,7 +278,7 @@ export function PaperSidebar({
       }}
     >
       <Eye />
-      在侧栏隐藏
+      隐藏
     </ContextMenuItem>
   );
   const viewRow = (v: BuiltinView, isPinned = false) => (
@@ -482,18 +483,6 @@ export function PaperSidebar({
             )}
             <ContextMenuSeparator />
             <ContextMenuItem
-              onClick={() => {
-                choose(key);
-                startPicking(
-                  documents
-                    .filter((d) => matchesView(d, key, jobs, context))
-                    .map((d) => d.id),
-                );
-              }}
-            >
-              批量选择这个分类的论文
-            </ContextMenuItem>
-            <ContextMenuItem
               onClick={() =>
                 exportCitations(
                   documents.filter((d) => matchesView(d, key, jobs, context)),
@@ -501,14 +490,15 @@ export function PaperSidebar({
                 )
               }
             >
-              导出这个分类的引用
+              <FileDown />
+              导出引用
             </ContextMenuItem>
             <ContextMenuItem
               variant="destructive"
               onClick={() => setDeleting(name)}
             >
               <Trash2 />
-              删除分类
+              删除
             </ContextMenuItem>
           </>
         }
@@ -578,22 +568,11 @@ export function PaperSidebar({
           <>
             {pinItem(key)}
             <ContextMenuItem onClick={() => setSmartEditing(item)}>
-              编辑…
+              <Pencil />
+              编辑
             </ContextMenuItem>
             {!isPinned && hideItem(key)}
             <ContextMenuSeparator />
-            <ContextMenuItem
-              onClick={() => {
-                choose(key);
-                startPicking(
-                  documents
-                    .filter((d) => matchesView(d, key, jobs, context))
-                    .map((d) => d.id),
-                );
-              }}
-            >
-              批量选择这个分类的论文
-            </ContextMenuItem>
             <ContextMenuItem
               onClick={() =>
                 exportCitations(
@@ -602,7 +581,8 @@ export function PaperSidebar({
                 )
               }
             >
-              导出这个分类的引用
+              <FileDown />
+              导出引用
             </ContextMenuItem>
             <ContextMenuItem
               variant="destructive"
@@ -614,7 +594,7 @@ export function PaperSidebar({
               }}
             >
               <Trash2 />
-              删除智能标签分类
+              删除
             </ContextMenuItem>
           </>
         }

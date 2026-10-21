@@ -19,6 +19,7 @@ import {
   CheckSquare,
   List,
   Table2,
+  FileDown,
   FolderMinus,
   FolderPlus,
   Loader2,
@@ -43,7 +44,6 @@ import type {
   PaperColumn,
   PaperSort,
   Processing,
-  ReadingStatus,
 } from "@reader/core";
 import { Button } from "@reader/ui/components/button";
 import { Checkbox } from "@reader/ui/components/checkbox";
@@ -80,6 +80,7 @@ import {
 } from "@reader/ui/components/dropdown-menu";
 import { useReaderStore } from "../store";
 import { TrashView } from "../TrashView";
+import { exportAnnotatedPDFWithToast } from "../annotated-pdf-export";
 import { trashWithUndo } from "../library-actions";
 import { toast } from "sonner";
 import {
@@ -92,7 +93,6 @@ import {
   savePaperPreferences,
   toggleTagFor,
   toggleCategoryFor,
-  setReadingStatus,
   setStarred,
 } from "./actions";
 import {
@@ -250,6 +250,24 @@ export function PaperLibrary({
   const visibleIds = visible.map((d) => d.id);
   const selected = documents.find((d) => d.id === selectedId);
   const pickedDocs = documents.filter((d) => picked.has(d.id));
+  const pickedById = new Map(pickedDocs.map((doc) => [doc.id, doc]));
+  const pickedPDFs = [...picked]
+    .map((id) => pickedById.get(id))
+    .filter((doc): doc is Document => doc?.type === "pdf");
+  const [exportingPDFs, setExportingPDFs] = useState(false);
+  const pdfExportRunning = useRef(false);
+  const exportPickedPDFs = async () => {
+    if (pdfExportRunning.current || !pickedPDFs.length) return;
+    pdfExportRunning.current = true;
+    setExportingPDFs(true);
+    try {
+      // Each export reports its own result and handles failure before continuing.
+      for (const doc of pickedPDFs) await exportAnnotatedPDFWithToast(doc);
+    } finally {
+      pdfExportRunning.current = false;
+      setExportingPDFs(false);
+    }
+  };
   const categories = paperCategories(prefs, documents);
   const category = view.startsWith("folder:") ? view.slice(7) : "";
   const smart = prefs.smartCategories || [];
@@ -737,6 +755,20 @@ export function PaperLibrary({
                   已选 {picked.size} 篇
                 </span>
                 <div className="ml-auto flex flex-wrap items-center gap-1">
+                  <Button
+                    size="sm"
+                    variant="ghost"
+                    title="导出带批注的 PDF"
+                    disabled={!pickedPDFs.length || exportingPDFs}
+                    onClick={() => void exportPickedPDFs()}
+                  >
+                    {exportingPDFs ? (
+                      <Loader2 className="animate-spin" />
+                    ) : (
+                      <FileDown />
+                    )}
+                    {exportingPDFs ? "正在导出…" : "导出"}
+                  </Button>
                   <DropdownMenu>
                     <DropdownMenuTrigger
                       render={
@@ -748,7 +780,7 @@ export function PaperLibrary({
                       }
                     >
                       <FolderPlus />
-                      加入分类
+                      分类
                     </DropdownMenuTrigger>
                     <DropdownMenuContent className="max-h-80 w-48">
                       {flattenCategories(categoryTree(categories)).map(
@@ -790,35 +822,10 @@ export function PaperLibrary({
                       移出当前分类
                     </Button>
                   )}
-                  <DropdownMenu>
-                    <DropdownMenuTrigger
-                      render={
-                        <Button
-                          size="sm"
-                          variant="ghost"
-                          disabled={!pickedDocs.length}
-                        />
-                      }
-                    >
-                      阅读状态
-                    </DropdownMenuTrigger>
-                    <DropdownMenuContent>
-                      {(Object.keys(statusLabels) as ReadingStatus[]).map(
-                        (key) => (
-                          <DropdownMenuItem
-                            key={key}
-                            onClick={() =>
-                              void setReadingStatus(pickedDocs, key)
-                            }
-                          >
-                            标为{statusLabels[key]}
-                          </DropdownMenuItem>
-                        ),
-                      )}
-                    </DropdownMenuContent>
-                  </DropdownMenu>
                   <Button
-                    size="sm"
+                    size="icon-sm"
+                    aria-label="星标"
+                    title="星标"
                     variant="ghost"
                     disabled={!pickedDocs.length}
                     onClick={() =>
@@ -829,10 +836,11 @@ export function PaperLibrary({
                     }
                   >
                     <Star />
-                    星标
                   </Button>
                   <Button
-                    size="sm"
+                    size="icon-sm"
+                    aria-label="导出引用"
+                    title="导出引用"
                     variant="ghost"
                     disabled={!pickedDocs.length}
                     onClick={() =>
@@ -840,20 +848,20 @@ export function PaperLibrary({
                     }
                   >
                     <Quote />
-                    导出引用
                   </Button>
                   <DropdownMenu>
                     <DropdownMenuTrigger
                       render={
                         <Button
-                          size="sm"
+                          size="icon-sm"
+                          aria-label="标签"
+                          title="标签"
                           variant="ghost"
                           disabled={!pickedDocs.length}
                         />
                       }
                     >
                       <Tag />
-                      标签
                     </DropdownMenuTrigger>
                     <DropdownMenuContent className="max-h-80 w-48">
                       {tags.map((tag) => (
@@ -877,14 +885,15 @@ export function PaperLibrary({
                     </DropdownMenuContent>
                   </DropdownMenu>
                   <Button
-                    size="sm"
+                    size="icon-sm"
+                    aria-label="移到回收站"
+                    title="移到回收站"
                     variant="ghost"
                     className="text-destructive"
                     disabled={!pickedDocs.length}
                     onClick={() => void trashPapers(pickedDocs, true)}
                   >
                     <Trash2 />
-                    移到回收站
                   </Button>
                 </div>
               </div>

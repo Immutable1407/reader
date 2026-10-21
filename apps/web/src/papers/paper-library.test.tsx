@@ -9,6 +9,10 @@ import { PaperLibrary } from "./PaperLibrary";
 import { PaperSidebar } from "./PaperSidebar";
 import { usePaperUI } from "./state";
 import { paper } from "./fixtures";
+import { exportAnnotatedPDFWithToast } from "../annotated-pdf-export";
+vi.mock("../annotated-pdf-export", () => ({
+  exportAnnotatedPDFWithToast: vi.fn(async () => 1),
+}));
 vi.mock("@reader/api", () => ({
   api: {
     snapshotStatus: vi.fn(async () => ({ available: false })),
@@ -128,7 +132,7 @@ const navButton = (label: string) =>
   )!;
 const button = (label: string) =>
   [...host.querySelectorAll<HTMLButtonElement>("button")].find(
-    (b) => b.textContent?.trim() === label,
+    (b) => b.textContent?.trim() === label || b.getAttribute("aria-label") === label,
   )!;
 
 it("shows details on click and saves an edited field as manual metadata", async () => {
@@ -156,7 +160,7 @@ it("selects all visible papers and changes their status together", async () => {
   await act(async () => row("Attention Is All You Need").click());
   expect(host.textContent).toContain("已选 1 篇");
   const star = [...host.querySelectorAll("button")].find(
-    (b) => b.textContent === "星标",
+    (b) => b.getAttribute("aria-label") === "星标",
   )!;
   await act(async () => star.click());
   expect(api.update).toHaveBeenCalledExactlyOnceWith("b", { favorite: true });
@@ -618,6 +622,39 @@ it.each(["list", "table"] as const)(
     expect(navButton("解析中")).toBeDefined();
   },
 );
+
+it("exports selected PDFs sequentially and prevents duplicate batch exports", async () => {
+  let finishFirst!: (value: number) => void;
+  vi.mocked(exportAnnotatedPDFWithToast).mockImplementationOnce(
+    () =>
+      new Promise<number>((resolve) => {
+        finishFirst = resolve;
+      }),
+  );
+  await act(async () =>
+    useReaderStore.setState({
+      documents: [...docs, paper({ id: "epub", title: "EPUB", type: "epub" })],
+    }),
+  );
+  await act(async () => button("批量").click());
+  expect(button("导出").disabled).toBe(true);
+  await act(async () => usePaperUI.getState().setPicked(["epub"]));
+  expect(button("导出").disabled).toBe(true);
+  await act(async () => usePaperUI.getState().setPicked(["b", "a", "epub"]));
+  const trigger = button("导出");
+  await act(async () => {
+    trigger.click();
+    trigger.click();
+  });
+  expect(exportAnnotatedPDFWithToast).toHaveBeenCalledExactlyOnceWith(docs[1]);
+  expect(trigger.disabled).toBe(true);
+  // Changing the selection during export does not change the captured batch.
+  await act(async () => usePaperUI.getState().setPicked(["epub"]));
+  await act(async () => finishFirst(1));
+  expect(exportAnnotatedPDFWithToast).toHaveBeenCalledTimes(2);
+  expect(exportAnnotatedPDFWithToast).toHaveBeenNthCalledWith(2, docs[0]);
+  expect(button("导出").disabled).toBe(true);
+});
 
 it("shows optional metadata columns and sorts publication dates without inventing missing precision", async () => {
   await act(async () =>
