@@ -17,6 +17,7 @@ import {
   removeCategoryPreferences,
   renameCategoryPreferences,
   hasTag,
+  inSmartCategory,
   validCategory,
   withinCategory,
   type PaperView,
@@ -252,14 +253,21 @@ export const looksLikeReference = (text: string) =>
   text.length <= 500 && referencePattern.test(text.trim());
 
 /** Download a paper by identifier, link or title and show it in the list. */
-export async function importReference(ref: string, folder = "") {
+export async function importReference(ref: string, target = "") {
+  const smartCategory = target.startsWith("smart:") ? target.slice(6) : "";
+  const folder = smartCategory
+    ? ""
+    : target.startsWith("folder:")
+      ? target.slice(7)
+      : target;
+  const category = smartCategory ? { smartCategory } : folder ? { folder } : {};
   let doc;
   try {
-    doc = folder
+    doc = target
       ? await api.resolveDocument(ref.trim(), {
           library: "papers",
           allowLarge: false,
-          folder,
+          ...category,
         })
       : await api.resolveDocument(ref.trim());
   } catch (error) {
@@ -270,14 +278,23 @@ export async function importReference(ref: string, folder = "") {
     doc = await api.resolveDocument(ref.trim(), {
       library,
       allowLarge: true,
-      ...(library === "papers" && folder ? { folder } : {}),
+      ...(library === "papers" ? category : {}),
     });
   }
   await refreshLibrary().catch(() => {});
   const ui = usePaperUI.getState();
   if (doc.library === "papers") {
+    const smart = useReaderStore
+      .getState()
+      .libraryPreferences.papers?.smartCategories?.find(
+        (item) => item.id === smartCategory,
+      );
     ui.setView(
-      folder && doc.folders.includes(folder) ? `folder:${folder}` : "all",
+      smart && inSmartCategory(doc, smart)
+        ? `smart:${smart.id}`
+        : folder && doc.folders.includes(folder)
+          ? `folder:${folder}`
+          : "all",
     );
     ui.setQuery("");
     ui.setTagFilter({ ...ui.tagFilter, tags: [] });

@@ -67,7 +67,7 @@ it("uses the current paper category for file and reference imports", async () =>
     (button) => button.textContent?.includes("选择 PDF 文件"),
   )!;
   await act(async () => fileButton.click());
-  expect(choose).toHaveBeenCalledWith("Security/Web");
+  expect(choose).toHaveBeenCalledWith("folder:Security/Web");
 
   vi.mocked(api.resolveDocument).mockResolvedValue(
     paper({ id: "new", folders: ["Security/Web"] }),
@@ -92,6 +92,59 @@ afterEach(async () => {
   await act(async () => root.unmount());
   host.remove();
   document.body.innerHTML = "";
+});
+it("defaults to the current smart category and passes its ID to both import paths", async () => {
+  await act(async () => {
+    useReaderStore.setState({
+      libraryPreferences: {
+        papers: {
+          smartCategories: [
+            { id: "web", name: "Web Security", tags: ["Security", "Web"] },
+          ],
+        },
+      },
+    });
+    usePaperUI.getState().setView("smart:web");
+    root.render(
+      <ImportPaperDialog
+        open={false}
+        onOpenChange={close}
+        onChooseFiles={choose}
+      />,
+    );
+  });
+  await act(async () =>
+    root.render(
+      <ImportPaperDialog open onOpenChange={close} onChooseFiles={choose} />,
+    ),
+  );
+  expect(
+    document.querySelector('[aria-labelledby="import-paper-folder-label"]')
+      ?.textContent,
+  ).toContain("Web Security（智能标签）");
+  const fileButton = Array.from(document.querySelectorAll("button")).find(
+    (button) => button.textContent?.includes("选择 PDF 文件"),
+  )!;
+  await act(async () => fileButton.click());
+  expect(choose).toHaveBeenCalledWith("smart:web");
+  vi.mocked(api.resolveDocument).mockResolvedValue(
+    paper({ tags: ["Security", "Web"] }),
+  );
+  const input = document.querySelector<HTMLInputElement>(
+    '[aria-label="论文标识或链接"]',
+  )!;
+  await act(async () => type(input, "1706.03762"));
+  await act(async () =>
+    input.form!.dispatchEvent(
+      new SubmitEvent("submit", { bubbles: true, cancelable: true }),
+    ),
+  );
+  expect(api.resolveDocument).toHaveBeenCalledWith("1706.03762", {
+    library: "papers",
+    allowLarge: false,
+    smartCategory: "web",
+  });
+  expect(usePaperUI.getState().view).toBe("smart:web");
 });
 const type = (input: HTMLInputElement, value: string) => {
   Object.getOwnPropertyDescriptor(
@@ -164,7 +217,7 @@ it.each(["papers", "books"] as const)(
       .mockResolvedValueOnce(paper({ library }));
     let result: ReturnType<typeof importReference>;
     await act(async () => {
-      result = importReference("1706.03762");
+      result = importReference("1706.03762", "smart:web");
       await Promise.resolve();
     });
     expect(document.body.textContent).toContain("检测到 PDF 过大");
@@ -183,6 +236,7 @@ it.each(["papers", "books"] as const)(
     expect(api.resolveDocument).toHaveBeenLastCalledWith("1706.03762", {
       library,
       allowLarge: true,
+      ...(library === "papers" ? { smartCategory: "web" } : {}),
     });
   },
 );

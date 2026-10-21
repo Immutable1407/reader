@@ -349,7 +349,7 @@ func (s *Server) importDocument(w http.ResponseWriter, r *http.Request) {
 		fail(w, 500, "保存失败")
 		return
 	}
-	d, status, err := s.importFileWithFolder(r.Context(), temp.Name(), header.Filename, library, r.FormValue("allowLarge") == "1", r.FormValue("folder"))
+	d, status, err := s.importFileToCategory(r.Context(), temp.Name(), header.Filename, library, r.FormValue("allowLarge") == "1", r.FormValue("folder"), r.FormValue("smartCategory"))
 	var large importError
 	if errors.As(err, &large) && large.code != "" {
 		respond(w, status, map[string]any{"error": large.message, "code": large.code, "pages": large.pages})
@@ -381,18 +381,19 @@ func (e importError) Error() string { return e.message }
 // file returns the existing document, whichever library holds it.
 // A long paper is imported only after the reader confirms (allowLarge).
 func (s *Server) importFile(ctx context.Context, temp, filename, library string, allowLarge bool) (Document, int, error) {
-	return s.importFileWithFolder(ctx, temp, filename, library, allowLarge, "")
+	return s.importFileToCategory(ctx, temp, filename, library, allowLarge, "", "")
 }
 
-func (s *Server) importFileWithFolder(ctx context.Context, temp, filename, library string, allowLarge bool, folder string) (Document, int, error) {
+func (s *Server) importFileToCategory(ctx context.Context, temp, filename, library string, allowLarge bool, folder, smartCategory string) (Document, int, error) {
 	s.importMu.Lock()
 	defer s.importMu.Unlock()
 	kind := strings.TrimPrefix(strings.ToLower(filepath.Ext(filename)), ".")
 	failure := func(status int, message string) (Document, int, error) {
 		return Document{}, status, importError{status: status, message: message}
 	}
-	if folder != "" && (library != "papers" || !validImportFolder(folder)) {
-		return failure(400, "目标分类无效")
+	tags, categoryErr := s.importCategoryTags(library, folder, smartCategory)
+	if categoryErr != nil {
+		return failure(400, categoryErr.Error())
 	}
 	f, err := os.Open(temp)
 	if err != nil {
@@ -446,7 +447,7 @@ func (s *Server) importFileWithFolder(ctx context.Context, temp, filename, libra
 		}
 	}
 	d := Document{ID: docID, Type: kind, Title: strings.TrimSuffix(filepath.Base(filename), filepath.Ext(filename)), Size: size, CreatedAt: now(), LastOpenedAt: "", Library: library}
-	d.Category, d.CategorySource, d.ClassificationStatus, d.Tags, d.Folders = "article", "default", "pending", []string{}, []string{}
+	d.Category, d.CategorySource, d.ClassificationStatus, d.Tags, d.Folders = "article", "default", "pending", tags, []string{}
 	if kind == "pdf" && library == "books" {
 		// Classification reads parsed text, which books gain chapter by chapter.
 		d.ClassificationStatus = "idle"
@@ -508,7 +509,8 @@ func (s *Server) importFileWithFolder(ctx context.Context, temp, filename, libra
 		metadata = `{"lookup":"pending"}`
 	}
 	folders, _ := json.Marshal(d.Folders)
-	_, err = tx.Exec("INSERT INTO documents(id,type,title,author,size,created_at,last_opened_at,category,category_source,classification_status,library,metadata,folders) VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?)", d.ID, d.Type, d.Title, d.Author, d.Size, d.CreatedAt, d.LastOpenedAt, d.Category, d.CategorySource, d.ClassificationStatus, d.Library, metadata, string(folders))
+	tagJSON, _ := json.Marshal(d.Tags)
+	_, err = tx.Exec("INSERT INTO documents(id,type,title,author,size,created_at,last_opened_at,category,category_source,classification_status,library,metadata,folders,tags) VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?)", d.ID, d.Type, d.Title, d.Author, d.Size, d.CreatedAt, d.LastOpenedAt, d.Category, d.CategorySource, d.ClassificationStatus, d.Library, metadata, string(folders), string(tagJSON))
 	if err == nil {
 		for href, text := range texts {
 			_, err = tx.Exec("INSERT INTO search_index(document_id,href,content) VALUES(?,?,?)", d.ID, href, text)

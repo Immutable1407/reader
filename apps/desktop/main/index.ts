@@ -197,7 +197,13 @@ async function importPaths(
     const form = new FormData();
     form.append("library", library);
     if (allowLarge) form.append("allowLarge", "1");
-    if (folder) form.append("folder", folder);
+    if (folder.startsWith("smart:"))
+      form.append("smartCategory", folder.slice(6));
+    else if (folder)
+      form.append(
+        "folder",
+        folder.startsWith("folder:") ? folder.slice(7) : folder,
+      );
     form.append("file", new Blob([data]), name);
     const response = await fetch(`${serverURL}/api/documents`, {
       method: "POST",

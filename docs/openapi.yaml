@@ -1020,6 +1020,11 @@
                                       "type": "string",
                                       "description": "Optional target paper category. Applied only to a newly imported paper; an existing document keeps its folders.",
                                     },
+                                  "smartCategory":
+                                    {
+                                      "type": "string",
+                                      "description": "Saved smart category ID, mutually exclusive with folder. Its required tags are applied atomically to a newly imported paper. Existing documents keep their tags.",
+                                    },
                                 },
                               "required": ["file"],
                             },
@@ -4053,6 +4058,11 @@
                                     {
                                       "type": "string",
                                       "description": "Optional target paper category. Applied only to a newly imported paper; an existing document keeps its folders.",
+                                    },
+                                  "smartCategory":
+                                    {
+                                      "type": "string",
+                                      "description": "Saved smart category ID, mutually exclusive with folder. Its required tags are applied atomically to a newly imported paper. Existing documents keep their tags.",
                                     },
                                 },
                               "required": ["ref"],

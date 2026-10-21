@@ -42,11 +42,19 @@ export function ImportPaperDialog({
     libraryPreferences.papers || {},
     documents.filter((doc) => doc.library === "papers"),
   );
+  const smartCategories = libraryPreferences.papers?.smartCategories || [];
+  const smart = smartCategories.find((item) => `smart:${item.id}` === folder);
   useEffect(() => {
     if (!open) return;
     const view = usePaperUI.getState().view;
-    const current = view.startsWith("folder:") ? view.slice(7) : "";
-    setFolder(categories.includes(current) ? current : "");
+    const current =
+      view.startsWith("folder:") && categories.includes(view.slice(7))
+        ? view
+        : view.startsWith("smart:") &&
+            smartCategories.some((item) => `smart:${item.id}` === view)
+          ? view
+          : "";
+    setFolder(current);
     // Capture the current view when the dialog opens, not when the library refreshes.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [open]);
@@ -104,14 +112,23 @@ export function ImportPaperDialog({
               className="w-full"
             >
               <SelectValue>
-                {folder ? folder.replaceAll("/", " / ") : "-"}
+                {smart
+                  ? `${smart.name}（智能标签）`
+                  : folder
+                    ? folder.slice(7).replaceAll("/", " / ")
+                    : "-"}
               </SelectValue>
             </SelectTrigger>
             <SelectContent>
               <SelectItem value="none">-</SelectItem>
               {categories.map((name) => (
-                <SelectItem key={name} value={name}>
+                <SelectItem key={name} value={`folder:${name}`}>
                   {name.replaceAll("/", " / ")}
+                </SelectItem>
+              ))}
+              {smartCategories.map((item) => (
+                <SelectItem key={`smart:${item.id}`} value={`smart:${item.id}`}>
+                  {item.name}（智能标签）
                 </SelectItem>
               ))}
             </SelectContent>

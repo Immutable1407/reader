@@ -402,14 +402,25 @@ export const api = {
     const form = new FormData();
     form.append("library", library);
     if (allowLarge) form.append("allowLarge", "1");
-    if (folder) form.append("folder", folder);
+    if (folder.startsWith("smart:"))
+      form.append("smartCategory", folder.slice(6));
+    else if (folder)
+      form.append(
+        "folder",
+        folder.startsWith("folder:") ? folder.slice(7) : folder,
+      );
     form.append("file", file);
     return request<Document>("/api/documents", { method: "POST", body: form });
   },
   /** Import a paper from an arXiv ID, DOI, paper link, PDF link or title. */
   resolveDocument: (
     ref: string,
-    options?: { library: LibraryMode; allowLarge: boolean; folder?: string },
+    options?: {
+      library: LibraryMode;
+      allowLarge: boolean;
+      folder?: string;
+      smartCategory?: string;
+    },
   ) =>
     request<Document>("/api/documents/resolve", {
       method: "POST",

@@ -162,8 +162,9 @@ export function App() {
   }, []);
   const currentPaperFolder = () => {
     const view = usePaperUI.getState().view;
-    return currentMode() === "papers" && view.startsWith("folder:")
-      ? view.slice(7)
+    return currentMode() === "papers" &&
+      (view.startsWith("folder:") || view.startsWith("smart:"))
+      ? view
       : "";
   };
   const chooseFiles = (folder = currentPaperFolder()) => {

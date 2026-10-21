@@ -934,6 +934,8 @@ export interface paths {
                         allowLarge?: "1";
                         /** @description Optional target paper category. Applied only to a newly imported paper; an existing document keeps its folders. */
                         folder?: string;
+                        /** @description Saved smart category ID, mutually exclusive with folder. Its required tags are applied atomically to a newly imported paper. Existing documents keep their tags. */
+                        smartCategory?: string;
                     };
                 };
             };
@@ -3526,6 +3528,8 @@ export interface paths {
                         allowLarge?: boolean;
                         /** @description Optional target paper category. Applied only to a newly imported paper; an existing document keeps its folders. */
                         folder?: string;
+                        /** @description Saved smart category ID, mutually exclusive with folder. Its required tags are applied atomically to a newly imported paper. Existing documents keep their tags. */
+                        smartCategory?: string;
                     };
                 };
             };
