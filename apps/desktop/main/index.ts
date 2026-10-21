@@ -35,6 +35,7 @@ import {
 import { startUpdateService } from "./update-service";
 import { devIsolation } from "./dev-isolation";
 import { startDiagnosticService } from "./diagnostic-service";
+import { serverSpawnDiagnostics } from "./server-spawn-diagnostics";
 import { discoverEndNote } from "./endnote-discovery";
 import { commandLineStatus, setCommandLine } from "./command-line";
 const isolation = devIsolation({
@@ -134,7 +135,11 @@ async function startServer() {
       reject(new Error("本地服务启动超时"));
     }, 20000);
     child!.once("error", (err) => {
-      diagnostics?.record("server.spawn_failed", err);
+      diagnostics?.logs.record("desktop", {
+        level: "error",
+        event: "server.spawn_failed",
+        ...serverSpawnDiagnostics(binary, err),
+      });
       clearTimeout(timer);
       reject(err);
     });
