@@ -1064,102 +1064,18 @@ it("paints a jump target on an unparsed page after page navigation", async () =>
 });
 
 it.each(["left", "right"] as const)(
-  "refocuses the viewport center once after the %s sidebar closes",
+  "lets the PDF viewport adapt to %s sidebar changes without imposing a new block zoom",
   async (closed) => {
     await click("原文译文");
     vi.mocked(adapter.focusBlock!).mockClear();
-    const extra: PDFBlock[] = [
-      {
-        id: "p1-center",
-        page: 1,
-        label: "text",
-        text: "Center",
-        bounds: { x: 0.1, y: 0.55, width: 0.3, height: 0.1 },
-      },
-    ];
-    await renderView(defaultTheme, extra);
-    // A stale reading anchor must not win over the actual viewport center.
-    await act(async () =>
-      fixture.events!.readingAnchor?.({ blockId: "p1-b1", fraction: 0.5 }),
-    );
-    const source = document.createElement("div");
-    source.className = "pdf-container";
-    source.innerHTML = '<div class="page" data-page-number="1"></div>';
-    host.querySelector(".translation-source")!.append(source);
-    vi.spyOn(source, "getBoundingClientRect").mockReturnValue(
-      new DOMRect(0, 300, 600, 600),
-    );
-    vi.spyOn(
-      source.firstElementChild!,
-      "getBoundingClientRect",
-    ).mockReturnValue(new DOMRect(0, 0, 600, 1000));
-    vi.useFakeTimers();
-    try {
-      host.setAttribute("data-toggling", "");
-      await renderView(defaultTheme, extra, [], {
-        left: closed !== "left",
-        right: closed !== "right",
-      });
-      await act(async () => {
-        await vi.advanceTimersByTimeAsync(300);
-      });
-      expect(adapter.focusBlock).not.toHaveBeenCalled();
-      host.removeAttribute("data-toggling");
-      await act(async () => {
-        await vi.advanceTimersByTimeAsync(100);
-      });
-      expect(adapter.focusBlock).toHaveBeenCalledExactlyOnceWith(
-        "p1-center",
-        "parallel",
-      );
-      await renderView(defaultTheme, extra);
-      await act(async () => {
-        await vi.advanceTimersByTimeAsync(300);
-      });
-      expect(adapter.focusBlock).toHaveBeenCalledTimes(1);
-    } finally {
-      vi.useRealTimers();
-    }
-  },
-);
-
-it.each(["wheel", "mode", "reopen"])(
-  "cancels sidebar refocus after %s",
-  async (action) => {
-    await act(async () =>
-      fixture.events!.readingAnchor?.({ blockId: "p1-b1", fraction: 0.5 }),
-    );
-    const source = document.createElement("div");
-    source.className = "pdf-container";
-    source.innerHTML = '<div class="page" data-page-number="1"></div>';
-    host.querySelector(".translation-source")!.append(source);
-    vi.spyOn(source, "getBoundingClientRect").mockReturnValue(
-      new DOMRect(0, 0, 600, 600),
-    );
-    vi.spyOn(
-      source.firstElementChild!,
-      "getBoundingClientRect",
-    ).mockReturnValue(new DOMRect(0, 0, 600, 1000));
-    vi.useFakeTimers();
-    try {
-      await renderView(defaultTheme, [], [], { left: false, right: true });
-      if (action === "wheel")
-        await act(async () =>
-          host
-            .querySelector(".translation-source")!
-            .dispatchEvent(
-              new WheelEvent("wheel", { bubbles: true, deltaY: 50 }),
-            ),
-        );
-      if (action === "mode") await click("仅译文");
-      if (action === "reopen") await renderView();
-      await act(async () => {
-        await vi.advanceTimersByTimeAsync(300);
-      });
-      expect(adapter.focusBlock).not.toHaveBeenCalled();
-    } finally {
-      vi.useRealTimers();
-    }
+    vi.mocked(adapter.goTo).mockClear();
+    await renderView(defaultTheme, [], [], {
+      left: closed !== "left",
+      right: closed !== "right",
+    });
+    await renderView();
+    expect(adapter.focusBlock).not.toHaveBeenCalled();
+    expect(adapter.goTo).not.toHaveBeenCalled();
   },
 );
 

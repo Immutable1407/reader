@@ -67,8 +67,13 @@ export function ReaderView({
         annotation: (target) => {
           if (!disposed) latest.current.events.annotation?.(target);
         },
-        zoom: (zoom) => {
-          if (!disposed) latest.current.events.zoom?.(zoom);
+        zoom: (zoom, origin, widthRatio) => {
+          if (!disposed) {
+            if (origin === "layout")
+              latest.current.events.zoom?.(zoom, origin, widthRatio);
+            else if (origin) latest.current.events.zoom?.(zoom, origin);
+            else latest.current.events.zoom?.(zoom);
+          }
         },
         blockHover: (block) => {
           if (!disposed) latest.current.events.blockHover?.(block);

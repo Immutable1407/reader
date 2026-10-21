@@ -18,12 +18,14 @@ export function TranslationPanes({
   mode,
   swapped,
   onSwap,
+  onResizeStart,
   source,
   translation,
 }: {
   mode: "source" | "parallel" | "translation";
   swapped: boolean;
   onSwap: () => void;
+  onResizeStart?: () => void;
   source: ReactNode;
   translation: ReactNode;
 }) {
@@ -80,6 +82,18 @@ export function TranslationPanes({
       <ResizablePanelGroup
         orientation="horizontal"
         disabled={!parallel}
+        onPointerDownCapture={(event) => {
+          if (
+            (event.target as Element).closest('[data-slot="resizable-handle"]')
+          )
+            onResizeStart?.();
+        }}
+        onKeyDownCapture={(event) => {
+          if (
+            (event.target as Element).closest('[data-slot="resizable-handle"]')
+          )
+            onResizeStart?.();
+        }}
         onLayoutChange={(layout) => {
           if (parallel) setDividerLeft(layout[`${id}-left`]);
         }}

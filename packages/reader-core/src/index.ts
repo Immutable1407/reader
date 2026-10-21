@@ -334,6 +334,8 @@ export interface ReaderTheme {
   margin: number;
   scroll: boolean;
   zoom: number | "width";
+  /** Explicit zoom preferences for individual PDFs; global zoom is the fallback. */
+  documentZooms?: Record<string, number | "width">;
   /** Translated text size in rem; smaller than the source by default. */
   translationFontSize?: number;
   /** AI conversation text scale; 1 keeps the existing size. */
@@ -414,7 +416,11 @@ export interface ReaderEvents {
   annotation?: (target: ReaderAnnotationTarget | null) => void;
   /** Hover preview only; never select or copy annotation text. */
   annotationHover?: (target: ReaderAnnotationTarget | null) => void;
-  zoom?: (zoom: ReaderTheme["zoom"]) => void;
+  zoom?: (
+    zoom: ReaderTheme["zoom"],
+    origin?: "focus" | "layout",
+    widthRatio?: number,
+  ) => void;
   readingAnchor?: (anchor: PDFReadingAnchor) => void;
   blockFocus?: (block: PDFBlock) => void;
   blockAction?: (block: PDFBlock, action: PDFBlockAction) => void;

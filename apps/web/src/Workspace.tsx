@@ -1,4 +1,5 @@
 import { useShortcut } from "./shortcuts/shortcuts";
+import { useDocumentTheme } from "./useDocumentTheme";
 import { SelectionTranslation } from "./SelectionTranslation";
 import { LinkPreviewPanel } from "./LinkPreviewPanel";
 import { AnnotationHoverCard } from "./AnnotationHoverCard";
@@ -215,18 +216,25 @@ function TOCTree({
 }
 export function Workspace({
   document: doc,
-  theme,
+  active = true,
+  theme: sharedTheme,
   processing,
   onBack,
   onSettings,
 }: {
   document: ReaderDocument;
+  active?: boolean;
   theme: ReaderTheme;
   processing?: Processing;
   onBack: () => void;
   onSettings: () => void;
 }) {
-  const { setTheme, aiConfig, setAIConfig, aiModelSaving } = useReaderStore();
+  const { aiConfig, setAIConfig, aiModelSaving } = useReaderStore();
+  const { theme, setTheme, onZoom } = useDocumentTheme(
+    sharedTheme,
+    doc,
+    active,
+  );
   const translationSize = theme.translationFontSize ?? 1;
   const assistantSize = theme.assistantFontScale ?? 1;
   const linkTarget = useReaderStore((s) => s.linkTarget);
@@ -302,8 +310,16 @@ export function Workspace({
       });
     },
   );
-  const [left, setLeft] = useState(true);
-  const [right, setRight] = useState(true);
+  const [left, updateLeft] = useState(true);
+  const [right, updateRight] = useState(true);
+  const setLeft: typeof updateLeft = (value) => {
+    adapter?.cancelBlockFocus?.();
+    updateLeft(value);
+  };
+  const setRight: typeof updateRight = (value) => {
+    adapter?.cancelBlockFocus?.();
+    updateRight(value);
+  };
   const leftPanel = usePanelRef();
   const rightPanel = usePanelRef();
   const panelGroup = useRef<HTMLDivElement>(null);
@@ -1300,8 +1316,10 @@ export function Workspace({
         onPointerDownCapture={(event) => {
           if (
             (event.target as Element).closest('[data-slot="resizable-handle"]')
-          )
+          ) {
+            adapter?.cancelBlockFocus?.();
             panelGroup.current?.removeAttribute("data-toggling");
+          }
         }}
       >
         <ResizablePanel
@@ -1424,7 +1442,7 @@ export function Workspace({
                     setTOC(items);
                   }}
                   events={{
-                    zoom: (zoom) => setTheme({ zoom }),
+                    zoom: onZoom,
                     location: saveLocation,
                     selection: selectText,
                     annotation: selectAnnotation,
