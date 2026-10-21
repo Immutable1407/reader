@@ -21,7 +21,7 @@ vi.mock("@reader/api", () => ({
 let root: Root, host: HTMLDivElement;
 const paused: Processing = {
   documentId: "book",
-  phase: "learning",
+  phase: "translating",
   status: "paused",
   enabled: false,
   pagesDone: 0,
@@ -265,4 +265,33 @@ it("offers manual translation after local parsing instead of resuming a translat
     host.querySelector<HTMLButtonElement>("button")!.click(),
   );
   expect(api.setAssistance).toHaveBeenCalledWith("book", "start");
+});
+
+it.each(["queued", "running"] as const)(
+  "keeps mandatory paper parsing %s without a pause action",
+  async (status) => {
+    await render(1, { ...paused, phase: "learning", enabled: true, status });
+    expect(host.textContent).toContain(
+      status === "queued" ? "等待解析" : "解析中",
+    );
+    const button = host.querySelector<HTMLButtonElement>("button")!;
+    expect(button.disabled).toBe(true);
+    await act(async () => button.click());
+    expect(api.setAssistance).not.toHaveBeenCalled();
+  },
+);
+
+it("retries paper parsing without labelling it as translation", async () => {
+  await render(1, {
+    ...paused,
+    enabled: true,
+    phase: "learning",
+    status: "failed",
+    autoTranslateMaxPages: 0,
+  });
+  expect(host.textContent).toContain("重试解析");
+  await act(async () =>
+    host.querySelector<HTMLButtonElement>("button")!.click(),
+  );
+  expect(api.setAssistance).toHaveBeenCalledWith("book", "resume");
 });

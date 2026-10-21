@@ -137,6 +137,18 @@ func (s *Store) enableLegacyProcessing() error {
 	return err
 }
 
+// Older translation pause controls could also stop initial paper parsing.
+// Resume only that local stage and retain the user's decision not to translate.
+func (s *Store) recoverPausedPaperParsing() error {
+	_, err := s.DB.Exec(`UPDATE document_processing
+ SET status='queued',body=json_set(body,'$.enabled',json('true'),'$.status','queued',
+ '$.detail','等待解析 PDF','$.autoTranslateMaxPages',0,'$.updatedAt',?)
+ WHERE phase='learning' AND status='paused' AND json_extract(body,'$.enabled')=0
+ AND COALESCE(json_extract(body,'$.retranslating'),0)=0
+ AND document_id IN (SELECT id FROM documents WHERE type='pdf' AND library='papers')`, now())
+	return err
+}
+
 // Only document creation reads this preference; updating settings never wakes a job.
 // PDF books wait for an explicit chapter request before layout or translation.
 func importedProcessing(id, library, value string) Processing {
@@ -323,6 +335,9 @@ func (s *Server) StartProcessing(parent context.Context) func() {
 	}
 	if err := s.Store.enableLegacyProcessing(); err != nil {
 		log.Printf("cannot migrate processing state: %v", err)
+	}
+	if err := s.Store.recoverPausedPaperParsing(); err != nil {
+		log.Printf("cannot recover paper parsing: %v", err)
 	}
 	if err := s.Store.prepareManualEPUBProcessing(); err != nil {
 		log.Printf("cannot prepare EPUB processing: %v", err)
