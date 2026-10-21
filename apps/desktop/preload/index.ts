@@ -42,6 +42,8 @@ contextBridge.exposeInMainWorld("readerDesktop", {
     proxyRequest("reader:set-command-line", installed),
   writeClipboardText: (text: string) =>
     ipcRenderer.invoke("reader:clipboard-write", text),
+  writeClipboardImage: (data: Uint8Array, text: string) =>
+    ipcRenderer.invoke("reader:clipboard-write-image", data, text),
   onBeforeClose: (callback: () => Promise<void>) => {
     const listener = () => {
       void callback().then(

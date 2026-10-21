@@ -27,7 +27,7 @@ import {
   parseReaderLink,
   type ReaderLinkTarget,
 } from "../../../packages/reader-core/src/reader-link";
-import { writeClipboardText } from "./clipboard";
+import { writeClipboardImage, writeClipboardText } from "./clipboard";
 import {
   ProxySettingsService,
   electronProxyConfiguration,
@@ -475,6 +475,11 @@ app
     );
     ipcMain.handle("reader:clipboard-write", (event, text: unknown) =>
       writeClipboardText(event, text, window?.webContents, url),
+    );
+    ipcMain.handle(
+      "reader:clipboard-write-image",
+      (event, data: unknown, text: unknown) =>
+        writeClipboardImage(event, data, text, window?.webContents, url),
     );
     const settingsSender = (event: Electron.IpcMainInvokeEvent) => {
       if (

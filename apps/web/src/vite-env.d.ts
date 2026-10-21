@@ -29,13 +29,12 @@ interface Window {
       installed: boolean,
     ) => Promise<import("@reader/core").CommandLineStatus>;
     writeClipboardText: (text: string) => Promise<void>;
+    writeClipboardImage: (data: Uint8Array, text: string) => Promise<void>;
     setAppearance: (
       appearance: "light" | "sepia" | "dark" | "system",
     ) => Promise<void>;
     /** Resolves with long papers that need the reader's confirmation. */
-    findEndNoteLibraries?: (
-      id: string,
-    ) => Promise<{
+    findEndNoteLibraries?: (id: string) => Promise<{
       candidates: { path: string; name: string }[];
       timedOut: boolean;
     }>;
