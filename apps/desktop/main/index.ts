@@ -348,7 +348,7 @@ app
             titleBarStyle: "hidden" as const,
             trafficLightPosition: { x: 20, y: 20 },
           }
-        : {}),
+        : { autoHideMenuBar: true }),
       backgroundColor: windowBackground(appearance),
       webPreferences: {
         preload: join(__dirname, "preload.cjs"),
