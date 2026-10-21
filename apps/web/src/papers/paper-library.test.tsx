@@ -135,6 +135,11 @@ const button = (label: string) =>
     (b) => b.textContent?.trim() === label || b.getAttribute("aria-label") === label,
   )!;
 
+const menuItem = (label: string) =>
+  [...document.querySelectorAll<HTMLElement>('[role="menuitem"]')].find(
+    (item) => item.textContent === label,
+  )!;
+
 it("shows details on click and saves an edited field as manual metadata", async () => {
   await act(async () => row("Attention Is All You Need").click());
   const detail = host.querySelector(".paper-detail")!;
@@ -419,6 +424,23 @@ it("edits authors as capsules", async () => {
   });
 });
 
+it("offers existing tags when adding one from the detail panel", async () => {
+  await act(async () =>
+    useReaderStore.setState({
+      documents: [{ ...docs[0], tags: ["Transformer", "NLP"] }, docs[1]],
+    }),
+  );
+  await act(async () => row("Graph Attention Networks").click());
+  const detail = host.querySelector(".paper-detail")!;
+  await act(async () =>
+    detail
+      .querySelector<HTMLButtonElement>('button[aria-label="添加标签"]')!
+      .click(),
+  );
+  await act(async () => menuItem("#Transformer").click());
+  expect(api.update).toHaveBeenLastCalledWith("b", { tags: ["Transformer"] });
+});
+
 it("tags a paper and collects it in a smart tag category", async () => {
   await act(async () => row("Graph Attention Networks").click());
   const detail = host.querySelector(".paper-detail")!;
@@ -427,6 +449,7 @@ it("tags a paper and collects it in a smart tag category", async () => {
       .querySelector<HTMLButtonElement>('button[aria-label="添加标签"]')!
       .click(),
   );
+  await act(async () => menuItem("新标签…").click());
   const input = detail.querySelector<HTMLInputElement>(
     'input[aria-label="添加标签"]',
   )!;
