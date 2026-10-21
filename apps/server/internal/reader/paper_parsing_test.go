@@ -50,6 +50,27 @@ func TestPaperParsingRetryPreservesManualTranslation(t *testing.T) {
 	}
 }
 
+func TestPaperParsingRetryReturnsSavedProcessing(t *testing.T) {
+	s, p := processingFixture(t)
+	p.Status = "failed"
+	if err := s.Store.saveProcessing(p); err != nil {
+		t.Fatal(err)
+	}
+	failed, err := s.Store.processing("doc")
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	returned := assistanceRequest(t, s, "resume")
+	saved, err := s.Store.processing("doc")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if returned.Status != "queued" || saved.Status != "queued" || returned.UpdatedAt != saved.UpdatedAt || returned.UpdatedAt == failed.UpdatedAt {
+		t.Fatalf("retry returned stale state: failed=%+v returned=%+v saved=%+v", failed, returned, saved)
+	}
+}
+
 func TestStartupRecoversPausedPaperParsingOnly(t *testing.T) {
 	for _, tc := range []struct {
 		name, library, phase   string

@@ -70,6 +70,10 @@ func (s *Server) setAssistance(w http.ResponseWriter, r *http.Request) {
 				fail(w, 500, "无法恢复解析任务")
 				return
 			}
+			if p, e = s.Store.processing(d.ID); e != nil {
+				fail(w, 500, "无法读取处理状态")
+				return
+			}
 		}
 		respond(w, 200, p)
 		return
