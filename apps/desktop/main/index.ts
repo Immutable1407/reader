@@ -191,6 +191,7 @@ async function importPaths(
   paths: string[],
   library: "books" | "papers" = "books",
   allowLarge = false,
+  folder = "",
 ) {
   const accepted = library === "papers" ? /\.pdf$/i : /\.(epub|pdf)$/i;
   const large: Array<{ id: string; name: string; pages: number }> = [];
@@ -201,6 +202,13 @@ async function importPaths(
     const form = new FormData();
     form.append("library", library);
     if (allowLarge) form.append("allowLarge", "1");
+    if (folder.startsWith("smart:"))
+      form.append("smartCategory", folder.slice(6));
+    else if (folder)
+      form.append(
+        "folder",
+        folder.startsWith("folder:") ? folder.slice(7) : folder,
+      );
     form.append("file", new Blob([data]), name);
     const response = await fetch(`${serverURL}/api/documents`, {
       method: "POST",
@@ -713,26 +721,33 @@ app
       });
       return selected.canceled ? null : selected.filePaths[0] || null;
     });
-    ipcMain.handle("reader:import", async (event, library: unknown) => {
-      if (
-        event.sender !== window?.webContents ||
-        event.senderFrame !== window.webContents.mainFrame
-      )
-        throw new Error("Invalid sender");
-      if (library !== "books" && library !== "papers")
-        throw new Error("Invalid library");
-      const selected = await dialog.showOpenDialog(window, {
-        properties: ["openFile", "multiSelections"],
-        filters:
-          library === "papers"
-            ? [{ name: "PDF", extensions: ["pdf"] }]
-            : [{ name: "EPUB / PDF", extensions: ["epub", "pdf"] }],
-      });
-      return selected.canceled ? [] : importPaths(selected.filePaths, library);
-    });
+    ipcMain.handle(
+      "reader:import",
+      async (event, library: unknown, folder: unknown) => {
+        if (
+          event.sender !== window?.webContents ||
+          event.senderFrame !== window.webContents.mainFrame
+        )
+          throw new Error("Invalid sender");
+        if (library !== "books" && library !== "papers")
+          throw new Error("Invalid library");
+        if (typeof folder !== "string" || (library !== "papers" && folder))
+          throw new Error("Invalid folder");
+        const selected = await dialog.showOpenDialog(window, {
+          properties: ["openFile", "multiSelections"],
+          filters:
+            library === "papers"
+              ? [{ name: "PDF", extensions: ["pdf"] }]
+              : [{ name: "EPUB / PDF", extensions: ["epub", "pdf"] }],
+        });
+        return selected.canceled
+          ? []
+          : importPaths(selected.filePaths, library, false, folder);
+      },
+    );
     ipcMain.handle(
       "reader:import-large",
-      async (event, ids: unknown, library: unknown) => {
+      async (event, ids: unknown, library: unknown, folder: unknown) => {
         if (
           event.sender !== window?.webContents ||
           event.senderFrame !== window.webContents.mainFrame
@@ -740,7 +755,9 @@ app
           throw new Error("Invalid sender");
         if (
           !Array.isArray(ids) ||
-          (library !== "books" && library !== "papers")
+          (library !== "books" && library !== "papers") ||
+          typeof folder !== "string" ||
+          (library !== "papers" && folder)
         )
           throw new Error("Invalid import");
         const paths = ids.flatMap((id) => {
@@ -748,7 +765,7 @@ app
           if (path) largePapers.delete(id);
           return path ? [path] : [];
         });
-        await importPaths(paths, library, true);
+        await importPaths(paths, library, true, folder);
       },
     );
     await window.loadURL(`${url}/#token=${serverToken}`);

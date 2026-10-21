@@ -64,10 +64,13 @@ contextBridge.exposeInMainWorld("readerDesktop", {
     ipcRenderer.invoke("reader:choose-endnote", directory),
   chooseZoteroDirectory: () =>
     ipcRenderer.invoke("reader:choose-zotero-directory"),
-  importFiles: (library: "books" | "papers") =>
-    ipcRenderer.invoke("reader:import", library),
-  importLargePapers: (ids: string[], library: "books" | "papers") =>
-    ipcRenderer.invoke("reader:import-large", ids, library),
+  importFiles: (library: "books" | "papers", folder = "") =>
+    ipcRenderer.invoke("reader:import", library, folder),
+  importLargePapers: (
+    ids: string[],
+    library: "books" | "papers",
+    folder = "",
+  ) => ipcRenderer.invoke("reader:import-large", ids, library, folder),
   showDocumentFile: (id: string, type: "pdf" | "epub") =>
     ipcRenderer.invoke("reader:document-file", id, type, "show"),
   openDocumentFile: (id: string, type: "pdf" | "epub") =>
