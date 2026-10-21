@@ -88,6 +88,16 @@
 .dark[data-dark-contrast="high"] .app::before {
   content: none;
 }
+/* Graphite's input tone matches the default tab track, hiding the active
+   tab. Sink the track and raise the active tab instead. */
+.dark:not([data-dark-contrast="high"])
+  [data-slot="tabs-list"][data-variant="default"] {
+  background: rgb(0 0 0 / 22%);
+}
+.dark:not([data-dark-contrast="high"]) [data-slot="tabs-indicator"] {
+  border-color: #5c585c;
+  background: #4d494d;
+}
 /* Paper: a warm light theme for the whole window. Surfaces: primary
    #f7f6f2, secondary #eeede7, tertiary #e2e1db. */
 :root[data-theme="sepia"] {
