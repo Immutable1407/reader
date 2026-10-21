@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"errors"
 	"net/http"
+	"net/mail"
 	"os"
 	"strings"
 	"unicode"
@@ -140,6 +141,24 @@ func (s *Server) savePreferences(w http.ResponseWriter, r *http.Request) {
 	var v map[string]any
 	if !decode(w, r, &v) {
 		return
+	}
+	if key == "library" {
+		if raw, exists := v["crossrefEmail"]; exists {
+			email, ok := raw.(string)
+			email = strings.TrimSpace(email)
+			if !ok || len(email) > 254 {
+				fail(w, 400, "请填写有效的 Crossref 联系邮箱")
+				return
+			}
+			if email != "" {
+				address, err := mail.ParseAddress(email)
+				if err != nil || address.Address != email {
+					fail(w, 400, "请填写有效的 Crossref 联系邮箱")
+					return
+				}
+			}
+			v["crossrefEmail"] = email
+		}
 	}
 	b, _ := json.Marshal(v)
 	if len(b) > 64<<10 {
