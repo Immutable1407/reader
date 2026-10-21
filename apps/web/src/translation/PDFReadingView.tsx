@@ -1,4 +1,5 @@
 import { figureTarget } from "../readers/figure-references";
+import { readerLayout, updateReaderLayout } from "../reader-layout";
 import {
   useEffect,
   useLayoutEffect,
@@ -86,8 +87,8 @@ export function PDFReadingView({
   onReady: (adapter: ReaderAdapter, toc: TOCItem[]) => void;
   events: ReaderEvents;
 }) {
+  const { swapped, sourceWidth } = readerLayout(theme.readerLayout);
   const [mode, setMode] = useState<Mode>("source"),
-    [swapped, setSwapped] = useState(false),
     [syncEnabled, setSyncEnabled] = useState(true);
   const { translations, error } = useTranslations(doc.id);
   const [popup, setPopup] = useState<{ block: PDFBlock; rect: DOMRect }>();
@@ -878,7 +879,11 @@ export function PDFReadingView({
       <TranslationPanes
         mode={mode}
         swapped={swapped}
-        onSwap={() => setSwapped((value) => !value)}
+        onSwap={() => updateReaderLayout({ swapped: !swapped })}
+        sourceWidth={sourceWidth}
+        onSourceWidthChange={(sourceWidth) =>
+          updateReaderLayout({ sourceWidth })
+        }
         source={
           <div
             className="translation-source"

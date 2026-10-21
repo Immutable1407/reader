@@ -1,4 +1,9 @@
 import { useShortcut } from "./shortcuts/shortcuts";
+import {
+  readerLayout,
+  sidebarLayout,
+  updateReaderLayout,
+} from "./reader-layout";
 import { SelectionTranslation } from "./SelectionTranslation";
 import { LinkPreviewPanel } from "./LinkPreviewPanel";
 import { AnnotationHoverCard } from "./AnnotationHoverCard";
@@ -302,16 +307,22 @@ export function Workspace({
       });
     },
   );
-  const [left, setLeft] = useState(true);
-  const [right, setRight] = useState(true);
+  const layout = readerLayout(theme.readerLayout);
+  const left = layout.navigationOpen;
+  const right = layout.assistantOpen;
+  const setLeft = (navigationOpen: boolean) =>
+    updateReaderLayout({ navigationOpen });
+  const setRight = (assistantOpen: boolean) =>
+    updateReaderLayout({ assistantOpen });
+  const initialLayout = useRef(sidebarLayout(layout));
   const leftPanel = usePanelRef();
   const rightPanel = usePanelRef();
   const panelGroup = useRef<HTMLDivElement>(null);
   useLayoutEffect(() => {
     const group = panelGroup.current;
     const changes = [
-      [leftPanel.current, left],
-      [rightPanel.current, right],
+      [leftPanel.current, left, layout.navigationWidth],
+      [rightPanel.current, right, layout.assistantWidth],
     ] as const;
     if (
       !group ||
@@ -319,9 +330,9 @@ export function Workspace({
     )
       return;
     group.setAttribute("data-toggling", "");
-    for (const [panel, open] of changes) {
+    for (const [panel, open, width] of changes) {
       if (panel && panel.isCollapsed() === open) {
-        if (open) panel.expand();
+        if (open) panel.resize(`${width}%`);
         else panel.collapse();
       }
     }
@@ -330,7 +341,14 @@ export function Workspace({
       clearTimeout(timer);
       group.removeAttribute("data-toggling");
     };
-  }, [left, right, leftPanel, rightPanel]);
+  }, [
+    left,
+    right,
+    layout.navigationWidth,
+    layout.assistantWidth,
+    leftPanel,
+    rightPanel,
+  ]);
   const [overviewOpen, setOverviewOpen] = useState(false);
   const [usageOpen, setUsageOpen] = useState(false);
   const [rightTab, setRightTab] = useState("ai");
@@ -501,8 +519,8 @@ export function Workspace({
     setSearchedQuery("");
     setSearching(false);
   }, [doc.id]);
-  useShortcut("readerLeft", () => setLeft((value) => !value));
-  useShortcut("readerRight", () => setRight((value) => !value));
+  useShortcut("readerLeft", () => setLeft(!left));
+  useShortcut("readerRight", () => setRight(!right));
   useShortcut("search", () => {
     setLeft(true);
     setLeftTab("search");
@@ -1291,10 +1309,19 @@ export function Workspace({
         orientation="horizontal"
         className="reader-panels"
         elementRef={panelGroup}
-        onLayoutChanged={(layout, { isUserInteraction }) => {
+        defaultLayout={initialLayout.current}
+        onLayoutChanged={(sizes, { isUserInteraction }) => {
           if (isUserInteraction) {
-            setLeft(layout.navigation > 0);
-            setRight(layout.assistant > 0);
+            updateReaderLayout({
+              navigationOpen: sizes.navigation > 0,
+              assistantOpen: sizes.assistant > 0,
+              ...(sizes.navigation > 0
+                ? { navigationWidth: sizes.navigation }
+                : {}),
+              ...(sizes.assistant > 0
+                ? { assistantWidth: sizes.assistant }
+                : {}),
+            });
           }
         }}
         onPointerDownCapture={(event) => {
