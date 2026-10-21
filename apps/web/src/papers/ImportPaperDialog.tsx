@@ -104,11 +104,11 @@ export function ImportPaperDialog({
               className="w-full"
             >
               <SelectValue>
-                {folder ? folder.replaceAll("/", " / ") : "不指定分类"}
+                {folder ? folder.replaceAll("/", " / ") : "-"}
               </SelectValue>
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value="none">不指定分类</SelectItem>
+              <SelectItem value="none">-</SelectItem>
               {categories.map((name) => (
                 <SelectItem key={name} value={name}>
                   {name.replaceAll("/", " / ")}
