@@ -45,12 +45,35 @@
   --input: #4d494d;
   --ring: #777477;
 }
+/* Pure black keeps the neutral dark palette, without paper texture. */
+.dark[data-dark-contrast="high"] {
+  --background: oklch(0.16 0 0);
+  --foreground: oklch(0.92 0 0);
+  --card: oklch(0.19 0 0);
+  --card-foreground: oklch(0.92 0 0);
+  --popover: oklch(0.22 0 0);
+  --popover-foreground: oklch(0.92 0 0);
+  --primary: oklch(0.92 0 0);
+  --primary-foreground: oklch(0.205 0 0);
+  --secondary: oklch(0.25 0 0);
+  --secondary-foreground: oklch(0.92 0 0);
+  --muted: oklch(0.25 0 0);
+  --muted-foreground: oklch(0.65 0 0);
+  --accent: oklch(0.27 0 0);
+  --accent-foreground: oklch(0.92 0 0);
+  --border: oklch(0.29 0 0);
+  --input: oklch(0.34 0 0);
+  --ring: oklch(0.55 0 0);
+}
 /* Distressed paper: fine grain, fibres and soft mottling on the shell, in one
    tile of procedural noise below the app's opaque panels. */
 .dark .app {
   position: relative;
   isolation: isolate;
   background: #211e21;
+}
+.dark[data-dark-contrast="high"] .app {
+  background: color-mix(in oklch, var(--muted) 60%, var(--background));
 }
 .dark .app::before {
   content: "";
@@ -61,6 +84,9 @@
   background: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='320' height='320'%3E%3Cfilter id='g'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.85' numOctaves='2' seed='7' stitchTiles='stitch'/%3E%3CfeColorMatrix values='0 0 0 0 1 0 0 0 0 1 0 0 0 0 1 0 0 0 2.2 -1.25'/%3E%3C/filter%3E%3Cfilter id='f'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.006 .32' numOctaves='2' seed='3' stitchTiles='stitch'/%3E%3CfeColorMatrix values='0 0 0 0 1 0 0 0 0 1 0 0 0 0 1 0 0 0 3 -1.9'/%3E%3C/filter%3E%3Cfilter id='m'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.012' numOctaves='3' seed='11' stitchTiles='stitch'/%3E%3CfeColorMatrix values='0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 1.4 -.62'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23m)' opacity='.5'/%3E%3Crect width='100%25' height='100%25' filter='url(%23g)'/%3E%3Crect width='100%25' height='100%25' filter='url(%23f)' opacity='.7'/%3E%3C/svg%3E");
   opacity: 0.1;
   mix-blend-mode: soft-light;
+}
+.dark[data-dark-contrast="high"] .app::before {
+  content: none;
 }
 /* Paper: a warm light theme for the whole window. Surfaces: primary
    #f7f6f2, secondary #eeede7, tertiary #e2e1db. */
