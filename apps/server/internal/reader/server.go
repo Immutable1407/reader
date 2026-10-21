@@ -40,6 +40,7 @@ type Server struct {
 	zoteroMu               sync.Mutex
 	zoteroScans            map[string]*zoteroScan
 	endnoteScans           map[string]*endnoteScan
+	annotationCheckLocks   sync.Map
 	annotationMu           sync.Mutex
 	annotationHistory      []annotationChange
 	codexChat              codexChatCache
@@ -162,6 +163,7 @@ func (s *Server) Handler() http.Handler {
 	mux.HandleFunc("POST /api/documents/{id}/classification", s.retryClassification)
 	mux.HandleFunc("POST /api/documents/{id}/annotations/undo", s.undoAnnotation)
 	mux.HandleFunc("GET /api/documents/{id}/annotations", s.annotations)
+	mux.HandleFunc("POST /api/documents/{id}/annotations/recover", s.recoverAnnotations)
 	mux.HandleFunc("POST /api/documents/{id}/annotations", s.recordAnnotation(s.saveAnnotation))
 	mux.HandleFunc("PATCH /api/documents/{id}/annotations/{annotation}", s.recordAnnotation(s.updateAnnotationNote))
 	mux.HandleFunc("DELETE /api/documents/{id}/annotations/{annotation}", s.recordAnnotation(func(w http.ResponseWriter, r *http.Request) {
@@ -735,6 +737,11 @@ func (s *Server) saveAnnotation(w http.ResponseWriter, r *http.Request) {
 	a.DocumentID = d.ID
 	a.CreatedAt = now()
 	a.AnswerID, a.Resolved = "", false
+	if m, e := s.readTranslationSource(d.ID); e == nil {
+		if translations, e := s.visibleTranslations(d.ID, m); e == nil {
+			a = enrichTranslationAnnotation(a, translations)
+		}
+	}
 	result, err := s.Store.saveAnnotation(a)
 	if err != nil {
 		fail(w, 500, "批注保存失败")

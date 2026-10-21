@@ -18,6 +18,13 @@ export type SentenceLink = {
   }[];
 };
 export type PDFLocation = {
+  /** Independent source marks split from legacy translation-origin records. */
+  sourceAnchors?: {
+    blockId: string;
+    source: string;
+    page: number;
+    bounds: { x: number; y: number; width: number; height: number };
+  }[];
   type: "pdf";
   page: number;
   x?: number;
@@ -29,13 +36,22 @@ export type PDFLocation = {
   translation?: TranslationLocation;
   rects?: { x: number; y: number; width: number; height: number }[];
 };
-export type TranslationLocation = {
+export type TranslationRecoveryAnchor = {
+  /** Source sentence text survives changes to translation sentence boundaries. */
+  sourceText?: string;
+  /** Entire paragraph target; detects offsets shifted by preceding sentences. */
+  targetText?: string;
+  recovered?: boolean;
+  wholeSentence?: boolean;
+  matchedQuote?: string;
+};
+export type TranslationLocation = TranslationRecoveryAnchor & {
   blockId: string;
   sourceHash: string;
   sentenceIndexes: number[];
   start: number;
   end: number;
-  ranges?: {
+  ranges?: (TranslationRecoveryAnchor & {
     blockId: string;
     sourceHash: string;
     sentenceIndexes: number[];
@@ -43,7 +59,7 @@ export type TranslationLocation = {
     end: number;
     quote: string;
     location?: EPUBLocation;
-  }[];
+  })[];
 };
 export type EPUBLocation = {
   blockId?: string;

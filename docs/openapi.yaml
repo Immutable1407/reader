@@ -4,6 +4,65 @@
   "security": [{ "session": [] }],
   "paths":
     {
+      "/api/documents/{id}/annotations/recover":
+        {
+          "post":
+            {
+              "summary": "Recover translated annotations and split legacy linked marks",
+              "parameters":
+                [
+                  {
+                    "name": "id",
+                    "in": "path",
+                    "required": true,
+                    "schema": { "type": "string" },
+                  },
+                ],
+              "requestBody":
+                {
+                  "required": true,
+                  "content":
+                    {
+                      "application/json":
+                        {
+                          "schema":
+                            {
+                              "type": "object",
+                              "properties":
+                                {
+                                  "force":
+                                    { "type": "boolean", "default": false },
+                                },
+                            },
+                        },
+                    },
+                },
+              "responses":
+                {
+                  "200":
+                    {
+                      "description": "checked=false while processing or data is unavailable; no records deleted",
+                      "content":
+                        {
+                          "application/json":
+                            {
+                              "schema":
+                                {
+                                  "type": "object",
+                                  "required": ["checked"],
+                                  "properties":
+                                    { "checked": { "type": "boolean" } },
+                                },
+                            },
+                        },
+                    },
+                  "409":
+                    {
+                      "description": "Annotation check or retranslation is already starting",
+                    },
+                },
+            },
+        },
       "/api/translate-selection":
         {
           "post":
@@ -5139,6 +5198,35 @@
                     "properties":
                       {
                         "type": { "const": "pdf" },
+                        "sourceAnchors":
+                          {
+                            "type": "array",
+                            "items":
+                              {
+                                "type": "object",
+                                "required":
+                                  ["blockId", "source", "page", "bounds"],
+                                "properties":
+                                  {
+                                    "blockId": { "type": "string" },
+                                    "source": { "type": "string" },
+                                    "page": { "type": "integer" },
+                                    "bounds":
+                                      {
+                                        "type": "object",
+                                        "required":
+                                          ["x", "y", "width", "height"],
+                                        "properties":
+                                          {
+                                            "x": { "type": "number" },
+                                            "y": { "type": "number" },
+                                            "width": { "type": "number" },
+                                            "height": { "type": "number" },
+                                          },
+                                      },
+                                  },
+                              },
+                          },
                         "page": { "type": "integer", "minimum": 1 },
                         "x": { "type": "number" },
                         "y": { "type": "number" },
@@ -6355,6 +6443,11 @@
                 {
                   "blockId": { "type": "string" },
                   "sourceHash": { "type": "string" },
+                  "sourceText": { "type": "string" },
+                  "targetText": { "type": "string" },
+                  "recovered": { "type": "boolean" },
+                  "wholeSentence": { "type": "boolean" },
+                  "matchedQuote": { "type": "string" },
                   "sentenceIndexes":
                     {
                       "type": "array",
@@ -6381,6 +6474,11 @@
                             {
                               "blockId": { "type": "string" },
                               "sourceHash": { "type": "string" },
+                              "sourceText": { "type": "string" },
+                              "targetText": { "type": "string" },
+                              "recovered": { "type": "boolean" },
+                              "wholeSentence": { "type": "boolean" },
+                              "matchedQuote": { "type": "string" },
                               "sentenceIndexes":
                                 {
                                   "type": "array",
