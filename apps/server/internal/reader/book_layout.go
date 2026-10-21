@@ -6,7 +6,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"io"
+	"log/slog"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -16,8 +16,7 @@ import (
 	"time"
 )
 
-// A book chapter request parses at most this many pages at once, so a long
-// chapter or an outline-less book never runs the layout model over the book.
+// Parse long chapters in bounded worker runs, continuing automatically.
 const bookLayoutPages = 30
 
 type PageRange struct {
@@ -27,7 +26,27 @@ type PageRange struct {
 
 // runLayout parses the PDF into work. from and to bound a book chapter; zero
 // parses the whole document.
-func (s *Server) runLayout(ctx context.Context, d Document, work string, from, to int, p *Processing) error {
+func (s *Server) runLayout(ctx context.Context, d Document, work string, from, to int, p *Processing) (result error) {
+	runID := id()
+	started := time.Now()
+	lastStage := "prepare"
+	exitCode := -1
+	stderr := &layoutStderr{}
+	s.diagnosticEvent(slog.LevelInfo, "pdf.parse.start", "runId", runID, "documentId", d.ID, "fromPage", from, "toPage", to)
+	defer func() {
+		level := slog.LevelInfo
+		outcome := "complete"
+		if result != nil {
+			level = slog.LevelError
+			outcome = "failed"
+		}
+		s.diagnosticEvent(level, "pdf.parse.finish", "runId", runID, "documentId", d.ID,
+			"stage", lastStage, "outcome", outcome, "exitCode", exitCode,
+			"exitCodeHex", layoutExitHex(exitCode), "nativeDiagnostics", stderr.nativeCodes(), "nativeTrace", stderr.nativeTrace(),
+			"durationMs", time.Since(started).Milliseconds(), "stderrBytes", stderr.total,
+			"stderrFingerprint", stderr.fingerprint(), "stderrTruncated", stderr.total > int64(len(stderr.tail)),
+			"canceled", ctx.Err() != nil)
+	}()
 	worker := os.Getenv("READER_PROCESSOR")
 	node := os.Getenv("READER_NODE")
 	if worker == "" || node == "" {
@@ -43,30 +62,48 @@ func (s *Server) runLayout(ctx context.Context, d Document, work string, from, t
 		args = append(args, "--from-page", strconv.Itoa(from), "--to-page", strconv.Itoa(to))
 	}
 	cmd := exec.CommandContext(child, node, args...)
-	cmd.Env = append(os.Environ(), "ELECTRON_RUN_AS_NODE=1", "NODE_USE_ENV_PROXY=1")
+	// Disable ONNX telemetry before loading native modules to avoid its exit-time teardown crash.
+	cmd.Env = append(os.Environ(), "ELECTRON_RUN_AS_NODE=1", "NODE_USE_ENV_PROXY=1", "ORT_DISABLE_TELEMETRY=1")
 	cmd.WaitDelay = 3 * time.Second
 	cmd.Dir = s.Store.Root
-	cmd.Stderr = io.Discard
+	cmd.Stderr = stderr
 	out, err := cmd.StdoutPipe()
 	if err != nil {
 		return err
 	}
+	lastStage = "process_start"
 	if err = cmd.Start(); err != nil {
 		return errors.New("无法启动本地 PDF 解析程序")
 	}
+	lastStage = "bootstrap"
+	s.diagnosticEvent(slog.LevelInfo, "pdf.parse.spawned", "runId", runID, "documentId", d.ID, "pid", cmd.Process.Pid)
 	scan := bufio.NewScanner(out)
 	scan.Buffer(make([]byte, 4096), 1<<20)
 	var saveErr error
 	for scan.Scan() {
-		var event struct {
-			Event string `json:"event"`
-			Page  int    `json:"page"`
-			Total int    `json:"total"`
-		}
+		var event layoutDiagnostic
 		if json.Unmarshal(scan.Bytes(), &event) != nil {
 			continue
 		}
 		switch event.Event {
+		case "diagnostic":
+			if !event.valid() {
+				continue
+			}
+			lastStage = event.Stage
+			level := slog.LevelInfo
+			if event.Status == "failed" {
+				level = slog.LevelError
+			}
+			s.diagnosticEvent(level, "pdf.parse.stage", "runId", runID, "documentId", d.ID,
+				"stage", event.Stage, "status", event.Status, "page", event.Page,
+				"durationMs", event.DurationMs, "errorType", event.ErrorType,
+				"errorCode", event.ErrorCode, "errorFingerprint", event.ErrorFingerprint,
+				"onnxVersion", event.OnnxVersion, "nodeVersion", event.NodeVersion, "electronVersion", event.ElectronVersion,
+				"rssBytes", event.RSSBytes, "heapUsedBytes", event.HeapUsedBytes,
+				"externalBytes", event.ExternalBytes, "freeMemoryBytes", event.FreeMemoryBytes,
+				"totalMemoryBytes", event.TotalMemoryBytes)
+			continue
 		case "page":
 			p.PagesDone, p.PagesTotal = event.Page, event.Total
 			p.Detail = fmt.Sprintf("已解析 %d / %d 页", event.Page, event.Total)
@@ -86,6 +123,12 @@ func (s *Server) runLayout(ctx context.Context, d Document, work string, from, t
 		cancel()
 	}
 	err = cmd.Wait()
+	if cmd.ProcessState != nil {
+		exitCode = cmd.ProcessState.ExitCode()
+	}
+	if child.Err() == context.DeadlineExceeded {
+		lastStage = "timeout"
+	}
 	if ctx.Err() != nil {
 		return ctx.Err()
 	}
@@ -104,7 +147,7 @@ func parsedPage(m *layoutManifest, page int) bool {
 
 // chapterWindow returns the next pages of [from, to] that still need work:
 // it starts at the first unparsed page or the first page with untranslated
-// paragraphs and spans at most bookLayoutPages.
+// paragraphs and extends to the end of the requested chapter.
 func chapterWindow(m *layoutManifest, items []TranslationBlock, from, to int) (start, end int, ok bool) {
 	open := map[int]bool{}
 	if m != nil {
@@ -114,14 +157,14 @@ func chapterWindow(m *layoutManifest, items []TranslationBlock, from, to int) (s
 			status[t.BlockID] = t.Status
 		}
 		for _, b := range m.Blocks {
-			if s := status[b.ID]; s == "idle" || s == "failed" {
+			if s := status[b.ID]; s == "idle" || s == "failed" || s == "pending" || s == "running" {
 				open[b.Page] = true
 			}
 		}
 	}
 	for page := from; page <= to; page++ {
 		if !parsedPage(m, page) || open[page] {
-			return page, min(to, page+bookLayoutPages-1), true
+			return page, to, true
 		}
 	}
 	return 0, 0, false
@@ -152,14 +195,33 @@ func (s *Server) learnBookChapter(ctx context.Context, d Document, p *Processing
 		}
 	}
 	if start, end, ok := chapterWindow(known, items, p.Chapter.From, p.Chapter.To); ok {
-		if missing := unparsedPages(known, start, end); len(missing) > 0 {
+		for missing := unparsedPages(known, start, end); len(missing) > 0; missing = unparsedPages(known, start, end) {
+			if err := ctx.Err(); err != nil {
+				return err
+			}
 			work := filepath.Join(s.Store.Root, "cache", d.ID, "analysis-work")
-			if err := s.runLayout(ctx, d, work, missing[0], missing[len(missing)-1], p); err != nil {
+			last := missing[0]
+			for _, page := range missing[1:] {
+				if page != last+1 || page-missing[0] >= bookLayoutPages {
+					break
+				}
+				last = page
+			}
+			if err := s.runLayout(ctx, d, work, missing[0], last, p); err != nil {
 				return err
 			}
 			if err := s.mergeLayout(d.ID, work); err != nil {
 				return err
 			}
+			m, err := s.readLayout(d.ID)
+			if err != nil {
+				return err
+			}
+			if !parsedPage(&m, missing[0]) {
+				return errors.New("本章解析未返回请求的页面")
+			}
+			known = &m
+			end = min(end, m.Pages)
 		}
 	}
 	m, err := s.readLayout(d.ID)

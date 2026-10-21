@@ -117,3 +117,40 @@ func TestAnthropicDocumentRetrievalConversation(t *testing.T) {
 		t.Fatalf("conversation not persisted: %v %d", err, len(state.Messages))
 	}
 }
+
+func TestAnthropicThinkingOutputSignal(t *testing.T) {
+	for _, tt := range []struct {
+		name, block, delta string
+		want               int
+	}{
+		{"delta", `{"type":"thinking","thinking":""}`, `{"type":"thinking_delta","thinking":"private thought"}`, 1},
+		{"initial", `{"type":"thinking","thinking":"private thought"}`, `{"type":"thinking_delta","thinking":"more private thought"}`, 1},
+		{"empty", `{"type":"thinking","thinking":" "}`, `{"type":"thinking_delta","thinking":" "}`, 0},
+		{"signature", `{"type":"thinking"}`, `{"type":"signature_delta","signature":"private signature"}`, 0},
+		{"redacted", `{"type":"redacted_thinking","data":"private data"}`, "", 0},
+	} {
+		t.Run(tt.name, func(t *testing.T) {
+			thinking := fmt.Sprintf("data: {\"type\":\"content_block_start\",\"index\":1,\"content_block\":%s}\n\n", tt.block)
+			if tt.delta != "" {
+				thinking += fmt.Sprintf("data: {\"type\":\"content_block_delta\",\"index\":1,\"delta\":%s}\n\n", tt.delta)
+			}
+			thinking += "data: {\"type\":\"content_block_stop\",\"index\":1}\n\ndata: {\"type\":\"ping\"}\n\n"
+			wire := strings.Replace(anthropicTestWire("answer"), "data: {\"type\":\"content_block_start\"", thinking+"data: {\"type\":\"content_block_start\"", 1)
+			signals, text := 0, ""
+			result, err := readAnthropicStream(t.Context(), strings.NewReader(wire), APIConnection{}, func(e ProviderEvent) error {
+				if e.OutputObserved {
+					signals++
+				}
+				encoded, _ := json.Marshal(e)
+				if strings.Contains(string(encoded), "private") || e.Reasoning != "" {
+					t.Fatalf("thinking leaked: %s", encoded)
+				}
+				text += e.Text
+				return nil
+			})
+			if err != nil || signals != tt.want || text != "answer" || result.Text != "answer" || result.Reasoning != "" {
+				t.Fatalf("signals=%d want=%d result=%+v err=%v", signals, tt.want, result, err)
+			}
+		})
+	}
+}

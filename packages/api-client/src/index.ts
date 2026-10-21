@@ -13,6 +13,8 @@ export { ChatStreamError, type ChatStreamEvent } from "./chat-stream";
 import createClient from "openapi-fetch";
 import type { components, paths } from "./schema";
 import type {
+  ChatRun,
+  DocumentChatSession,
   Document,
   DocumentOverview,
   OverviewJob,
@@ -46,10 +48,14 @@ export function configureAPI(token: string) {
 export function publicationURL(documentId: string, resource: string) {
   return `/pub/${encodeURIComponent(sessionToken)}/${encodeURIComponent(documentId)}/${resource}`;
 }
-export function blockImageURL(documentId: string, blockId: string) {
+export function blockImageURL(
+  documentId: string,
+  blockId: string,
+  revision?: string,
+) {
   return publicationURL(
     documentId,
-    `assets/${encodeURIComponent(blockId)}.png`,
+    `assets/${encodeURIComponent(blockId)}.png${revision ? `?v=${encodeURIComponent(revision)}` : ""}`,
   );
 }
 export const client = createClient<paths>();
@@ -162,16 +168,34 @@ export const api = {
     request<{ available: boolean; sourceUrl?: string }>(
       `/api/documents/${encodeURIComponent(id)}/snapshot`,
     ),
+  scanEndNote: (directory: string) =>
+    request<ZoteroScan>("/api/import/endnote/scan", {
+      method: "POST",
+      body: JSON.stringify({ directory }),
+    }),
+  importEndNote: (
+    scanId: string,
+    entryId: string,
+    options?: { library: LibraryMode; allowLarge: boolean },
+  ) =>
+    request<ZoteroImportResult>("/api/import/endnote", {
+      method: "POST",
+      body: JSON.stringify({ scanId, entryId, ...options }),
+    }),
   zoteroDefaults: () => request<{ directory: string }>("/api/import/zotero"),
   scanZotero: (directory: string, linkedBase = "") =>
     request<ZoteroScan>("/api/import/zotero/scan", {
       method: "POST",
       body: JSON.stringify({ directory, linkedBase }),
     }),
-  importZotero: (scanId: string, entryId: string) =>
+  importZotero: (
+    scanId: string,
+    entryId: string,
+    options?: { library: LibraryMode; allowLarge: boolean },
+  ) =>
     request<ZoteroImportResult>("/api/import/zotero", {
       method: "POST",
-      body: JSON.stringify({ scanId, entryId }),
+      body: JSON.stringify({ scanId, entryId, ...options }),
     }),
   chatUsage: (id: string) =>
     request<ProcessingUsage>(
@@ -195,6 +219,15 @@ export const api = {
   removeTagBoard: (id: string) =>
     request<void>(`/api/tag-boards/${encodeURIComponent(id)}`, {
       method: "DELETE",
+    }),
+  translateSelection: (
+    selection: { text: string; context?: { before: string; after: string } },
+    signal: AbortSignal,
+  ) =>
+    request<{ text: string }>("/api/translate-selection", {
+      method: "POST",
+      body: JSON.stringify({ text: selection.text, ...selection.context }),
+      signal,
     }),
   translationStream: async (
     id: string,
@@ -238,12 +271,36 @@ export const api = {
     request<import("@reader/core").TranslationBlock[]>(
       `/api/documents/${id}/translations`,
     ),
+  exportTranslation: async (
+    id: string,
+    format: "markdown" | "zip",
+    signal?: AbortSignal,
+    notesMarkdown = "",
+  ): Promise<Blob> => {
+    const response = await diagnosticFetch(
+      `/api/documents/${encodeURIComponent(id)}/translations/export?format=${format}`,
+      {
+        method: notesMarkdown ? "POST" : "GET",
+        headers: {
+          Authorization: `Bearer ${sessionToken}`,
+          ...(notesMarkdown && { "Content-Type": "application/json" }),
+        },
+        ...(notesMarkdown && { body: JSON.stringify({ notesMarkdown }) }),
+        signal,
+      },
+    );
+    if (!response.ok) {
+      const data = await response.json().catch(() => ({}));
+      throw new RequestError(data.error || `导出失败 (${response.status})`);
+    }
+    return response.blob();
+  },
   translate: (id: string, blockId = "") =>
     request<{ queued: boolean }>(`/api/documents/${id}/translations`, {
       method: "POST",
       body: JSON.stringify({ blockId }),
     }),
-  /** Queues a page range, capped by the server; nextPage is where it stopped. */
+  /** Queues the entire page range through the shared translation workers. */
   translateRange: (id: string, fromPage: number, toPage: number) =>
     request<{
       queued: number;
@@ -277,7 +334,10 @@ export const api = {
     ),
   assistance: (id: string) =>
     request<Processing>(`/api/documents/${id}/assistance`),
-  setAssistance: (id: string, action: "start" | "pause" | "resume") =>
+  setAssistance: (
+    id: string,
+    action: "start" | "pause" | "resume" | "retranslate",
+  ) =>
     request<Processing>(`/api/documents/${id}/assistance`, {
       method: "POST",
       body: JSON.stringify({ action }),
@@ -315,10 +375,13 @@ export const api = {
     provider: string,
     capability?: "text" | "vision" | "tools",
     model?: string,
+    timeoutSeconds?: number,
   ) => {
     const query = new URLSearchParams();
     if (capability) query.set("capability", capability);
     if (model) query.set("model", model);
+    if (timeoutSeconds !== undefined)
+      query.set("timeoutSeconds", String(timeoutSeconds));
     return request<AICapability>(
       `/api/ai/test/${provider}${query.size ? `?${query}` : ""}`,
       { method: "POST" },
@@ -329,7 +392,7 @@ export const api = {
     if (error) throw new Error(error.error);
     return data;
   },
-  /** Papers over 50 pages fail with code "large-paper" unless allowLarge. */
+  /** Papers over 100 pages or 100 MB fail with code "large-paper" unless allowLarge. */
   import: (file: File, library: LibraryMode = "books", allowLarge = false) => {
     const form = new FormData();
     form.append("library", library);
@@ -338,10 +401,13 @@ export const api = {
     return request<Document>("/api/documents", { method: "POST", body: form });
   },
   /** Import a paper from an arXiv ID, DOI, paper link, PDF link or title. */
-  resolveDocument: (ref: string) =>
+  resolveDocument: (
+    ref: string,
+    options?: { library: LibraryMode; allowLarge: boolean },
+  ) =>
     request<Document>("/api/documents/resolve", {
       method: "POST",
-      body: JSON.stringify({ ref }),
+      body: JSON.stringify({ ref, ...options }),
     }),
   lookupMetadata: (id: string) =>
     request<Document>(
@@ -404,6 +470,11 @@ export const api = {
     request<Document>(`/api/documents/${id}`, {
       method: "PATCH",
       body: JSON.stringify(patch),
+    }),
+  recoverAnnotations: (id: string, force = false) =>
+    request<{ checked: boolean }>(`/api/documents/${id}/annotations/recover`, {
+      method: "POST",
+      body: JSON.stringify({ force }),
     }),
   annotations: (id: string) =>
     request<Annotation[]>(`/api/documents/${id}/annotations`),
@@ -471,6 +542,57 @@ export const api = {
     ),
   messages: (id: string, signal?: AbortSignal) =>
     request<Message[]>(`/api/documents/${id}/messages`, { signal }),
+  chatSessions: (id: string, signal?: AbortSignal) =>
+    request<DocumentChatSession[]>(`/api/documents/${id}/chat-sessions`, {
+      signal,
+    }),
+  createChatSession: (id: string, provider: string) =>
+    request<DocumentChatSession>(`/api/documents/${id}/chat-sessions`, {
+      method: "POST",
+      body: JSON.stringify({ provider }),
+    }),
+  updateChatSession: (
+    id: string,
+    sessionId: string,
+    patch: { title?: string; provider?: string },
+  ) =>
+    request<DocumentChatSession>(
+      `/api/documents/${id}/chat-sessions/${sessionId}`,
+      { method: "PATCH", body: JSON.stringify(patch) },
+    ),
+  sessionMessages: (id: string, sessionId: string, signal?: AbortSignal) =>
+    request<Message[]>(
+      `/api/documents/${id}/chat-sessions/${sessionId}/messages`,
+      { signal },
+    ),
+  startChatRun: (
+    id: string,
+    sessionId: string,
+    input: {
+      provider: string;
+      prompt: string;
+      context: string;
+      userMessageId?: string;
+      references: SourceReference[];
+      attachments: string[];
+      readingLocation?: DocumentLocation;
+    },
+  ) =>
+    request<ChatRun>(`/api/documents/${id}/chat-sessions/${sessionId}/chat`, {
+      method: "POST",
+      body: JSON.stringify(input),
+      signal: AbortSignal.timeout(30_000),
+    }),
+  cancelChatRun: (id: string, sessionId: string, runId: string) =>
+    request<{ ok: boolean }>(
+      `/api/documents/${id}/chat-sessions/${sessionId}/runs/${runId}/cancel`,
+      { method: "POST", signal: AbortSignal.timeout(30_000) },
+    ),
+  codexHandoff: (id: string, sessionId?: string) =>
+    request<components["schemas"]["CodexHandoff"]>(
+      `/api/documents/${encodeURIComponent(id)}/codex-handoff${sessionId ? `?sessionId=${encodeURIComponent(sessionId)}` : ""}`,
+      { method: "POST" },
+    ),
   validateEvidence: (id: string, message: string, source: string) =>
     request<{ valid: boolean }>(
       `/api/documents/${encodeURIComponent(id)}/messages/${encodeURIComponent(message)}/sources/${encodeURIComponent(source)}`,
@@ -495,6 +617,17 @@ export const api = {
       method: "PUT",
       body: JSON.stringify(preferences),
     }),
+  shortcutPreferences: () =>
+    request<Record<string, { key: string; shift: boolean }>>(
+      "/api/preferences/shortcuts",
+    ),
+  saveShortcutPreferences: (
+    preferences: Record<string, { key: string; shift: boolean }>,
+  ) =>
+    request<Record<string, { key: string; shift: boolean }>>(
+      "/api/preferences/shortcuts",
+      { method: "PUT", body: JSON.stringify(preferences) },
+    ),
   guidePreferences: () => request<GuidePreferences>("/api/preferences/guide"),
   saveGuidePreferences: (preferences: GuidePreferences) =>
     request<GuidePreferences>("/api/preferences/guide", {
@@ -564,4 +697,24 @@ export async function chat(
     });
     throw error;
   }
+}
+
+/** Attach/replay a run without starting another model request. */
+export async function watchChatRun(
+  id: string,
+  sessionId: string,
+  runId: string,
+  signal: AbortSignal,
+  emit: (event: ChatStreamEvent) => void,
+) {
+  const response = await diagnosticFetch(
+    `/api/documents/${id}/chat-sessions/${sessionId}/runs/${runId}/events`,
+    { headers: { Authorization: `Bearer ${sessionToken}` }, signal },
+  );
+  if (!response.ok) {
+    const data = await response.json().catch(() => ({}));
+    throw new Error(data.error || `读取运行失败 (${response.status})`);
+  }
+  if (!response.body) throw new Error("没有收到运行事件");
+  await consumeChatStream(response.body, signal, emit);
 }

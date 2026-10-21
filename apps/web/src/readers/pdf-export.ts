@@ -1,10 +1,10 @@
+import { sentenceTextRanges } from "./pdf-sentence-matching";
 import type { Annotation, PDFLocation } from "@reader/core";
 import type {
   DocumentInitParameters,
   PDFDocumentLoadingTask,
   PDFPageProxy,
 } from "pdfjs-dist/types/src/display/api";
-import { sentenceTextRanges } from "./pdf-sentence-matching";
 
 // Writes Reader's PDF annotations into a copy of the original as standard PDF
 // annotations, through PDF.js's own incremental save: the original bytes stay
@@ -19,7 +19,7 @@ type Quad = [number, number, number, number, number, number, number, number];
 export interface AnnotatedPDF {
   bytes: Uint8Array;
   exported: number;
-  /** Annotations that could not be placed, such as unmatched translation marks. */
+  /** Annotations that could not be placed, including translation-only marks. */
   skipped: number;
 }
 
@@ -95,113 +95,6 @@ function displayQuads(page: PDFPageProxy, rects: Rect[]): Quad[] {
   ]) as Quad[];
 }
 
-// A mark made on the translation stores the whole source block. Find the
-// source sentences inside that block in the page text and cover only them;
-// every sentence must be found, or nothing is placed for the block.
-async function sentenceQuads(
-  page: PDFPageProxy,
-  block: Rect,
-  sources: string[],
-): Promise<Quad[]> {
-  const viewport = page.getViewport({ scale: 1 });
-  const content = await page.getTextContent();
-  type Glyphs = {
-    start: number;
-    text: string;
-    transform: number[];
-    width: number;
-    height: number;
-  };
-  const items: Glyphs[] = [];
-  let text = "";
-  for (const item of content.items) {
-    if (!("str" in item) || !item.str.trim()) continue;
-    const [a, b, , , e, f] = item.transform;
-    // Only horizontal text is placed; rotated runs keep their block untouched.
-    if (Math.abs(b) > 1e-3 || a <= 0) continue;
-    const [cx, cy] = viewport.convertToViewportPoint(
-      e + item.width / 2,
-      f + item.height / 2,
-    );
-    const x = cx / viewport.width,
-      y = cy / viewport.height;
-    if (
-      x < block.x ||
-      x > block.x + block.width ||
-      y < block.y ||
-      y > block.y + block.height
-    )
-      continue;
-    const value = compact(item.str);
-    items.push({
-      start: text.length,
-      text: value,
-      transform: item.transform,
-      width: item.width,
-      height: item.height,
-    });
-    text += value;
-  }
-  const needles = sources.map(compact).filter(Boolean);
-  const ranges = sentenceTextRanges(text, text, needles);
-  if (!needles.length || ranges.length < needles.length) return [];
-  const quads: Quad[] = [];
-  for (const range of ranges)
-    for (const item of items) {
-      const from = Math.max(range.start, item.start) - item.start;
-      const to =
-        Math.min(range.end, item.start + item.text.length) - item.start;
-      if (to <= from) continue;
-      const [, , , d, e, f] = item.transform;
-      const per = item.width / item.text.length;
-      const left = e + from * per,
-        right = e + to * per;
-      const height = item.height || Math.abs(d);
-      const bottom = f - height * 0.2,
-        top = f + height * 0.85;
-      quads.push([left, top, right, top, left, bottom, right, bottom]);
-    }
-  return quads;
-}
-
-export type BlockPlaces = Record<string, { page: number; bounds: Rect }>;
-
-/**
- * The source passages of a translation mark, one per block it spans. A
- * selection across paragraphs or pages keeps every block in
- * `translation.ranges`; the sentence link carries each block's sentences.
- */
-export function translationTargets(
-  annotation: Annotation,
-  blocks: BlockPlaces,
-): { page: number; bounds: Rect; sources: string[] }[] | null {
-  const location = annotation.location as PDFLocation;
-  const mark = location.translation!;
-  const ids = [
-    ...new Set(mark.ranges?.map((r) => r.blockId) ?? [mark.blockId]),
-  ];
-  const parts = location.sentenceLink?.parts ?? [];
-  const targets = [];
-  for (const id of ids) {
-    // The first block is also stored on the mark itself.
-    const block =
-      blocks[id] ??
-      (id === mark.blockId && location.rects?.[0]
-        ? { page: location.page, bounds: location.rects[0] }
-        : undefined);
-    const linked = parts.filter((p) => p.blockId === id).map((p) => p.source);
-    // Without a sentence link only a single-block quote can be placed.
-    const sources = linked.length
-      ? linked
-      : ids.length === 1
-        ? [location.quote ?? annotation.quote]
-        : [];
-    if (!block || !sources.some((s) => s.trim())) return null;
-    targets.push({ page: block.page, bounds: block.bounds, sources });
-  }
-  return targets;
-}
-
 function bounds(quads: Quad[]) {
   const xs = quads.flatMap((q) => [q[0], q[2], q[4], q[6]]);
   const ys = quads.flatMap((q) => [q[1], q[3], q[5], q[7]]);
@@ -269,18 +162,82 @@ function editorValue(
   };
 }
 
+async function sentenceQuads(
+  page: PDFPageProxy,
+  block: Rect,
+  sources: string[],
+): Promise<Quad[]> {
+  const viewport = page.getViewport({ scale: 1 });
+  const content = await page.getTextContent();
+  type Glyphs = {
+    start: number;
+    text: string;
+    transform: number[];
+    width: number;
+    height: number;
+  };
+  const items: Glyphs[] = [];
+  let text = "";
+  for (const item of content.items) {
+    if (!("str" in item) || !item.str.trim()) continue;
+    const [a, b, , , e, f] = item.transform;
+    // Only horizontal text is placed; rotated runs keep their block untouched.
+    if (Math.abs(b) > 1e-3 || a <= 0) continue;
+    const [cx, cy] = viewport.convertToViewportPoint(
+      e + item.width / 2,
+      f + item.height / 2,
+    );
+    const x = cx / viewport.width,
+      y = cy / viewport.height;
+    if (
+      x < block.x ||
+      x > block.x + block.width ||
+      y < block.y ||
+      y > block.y + block.height
+    )
+      continue;
+    const value = compact(item.str);
+    items.push({
+      start: text.length,
+      text: value,
+      transform: item.transform,
+      width: item.width,
+      height: item.height,
+    });
+    text += value;
+  }
+  const needles = sources.map(compact).filter(Boolean);
+  const ranges = sentenceTextRanges(text, text, needles);
+  if (!needles.length || ranges.length < needles.length) return [];
+  const quads: Quad[] = [];
+  for (const range of ranges)
+    for (const item of items) {
+      const from = Math.max(range.start, item.start) - item.start;
+      const to =
+        Math.min(range.end, item.start + item.text.length) - item.start;
+      if (to <= from) continue;
+      const [, , , d, e, f] = item.transform;
+      const per = item.width / item.text.length;
+      const left = e + from * per,
+        right = e + to * per;
+      const height = item.height || Math.abs(d);
+      const bottom = f - height * 0.2,
+        top = f + height * 0.85;
+      quads.push([left, top, right, top, left, bottom, right, bottom]);
+    }
+  return quads;
+}
+
 export interface ExportContext {
   /** Chat message text by ID, for answered questions. */
   answers?: Record<string, string>;
-  /** Layout blocks by ID, for marks made on the translation. */
-  blocks?: BlockPlaces;
 }
 
 export async function annotatedPDF(
   getDocument: (params: DocumentInitParameters) => PDFDocumentLoadingTask,
   source: DocumentInitParameters,
   annotations: Annotation[],
-  { answers = {}, blocks = {} }: ExportContext = {},
+  { answers = {} }: ExportContext = {},
 ): Promise<AnnotatedPDF> {
   const task = getDocument(source);
   try {
@@ -295,20 +252,26 @@ export async function annotatedPDF(
       // Quads per page. A mark is written whole or not at all, so a partly
       // placed selection is never exported silently.
       const pages = new Map<number, Quad[]>();
+      // A translated mark has no exact range in the original PDF.
       if (location.translation) {
-        for (const target of translationTargets(annotation, blocks) ?? []) {
-          const quads = inRange(target.page)
-            ? await sentenceQuads(
-                await pdf.getPage(target.page),
-                target.bounds,
-                target.sources,
-              )
-            : [];
+        skipped++;
+        continue;
+      }
+      if (location.sourceAnchors?.length) {
+        for (const anchor of location.sourceAnchors) {
+          if (!inRange(anchor.page)) {
+            pages.clear();
+            break;
+          }
+          const page = await pdf.getPage(anchor.page);
+          const quads = await sentenceQuads(page, anchor.bounds, [
+            anchor.source,
+          ]);
           if (!quads.length) {
             pages.clear();
             break;
           }
-          pages.set(target.page, [...(pages.get(target.page) ?? []), ...quads]);
+          pages.set(anchor.page, [...(pages.get(anchor.page) ?? []), ...quads]);
         }
       } else if (inRange(location.page) && location.rects?.length) {
         const page = await pdf.getPage(location.page);

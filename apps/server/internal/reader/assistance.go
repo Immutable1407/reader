@@ -28,6 +28,10 @@ func (s *Server) setAssistance(w http.ResponseWriter, r *http.Request) {
 	if !decode(w, r, &req) {
 		return
 	}
+	if req.Action == "retranslate" {
+		s.requestRetranslation(w, r)
+		return
+	}
 	if req.Action != "start" && req.Action != "pause" && req.Action != "resume" {
 		fail(w, 400, "无效的辅助阅读操作")
 		return
@@ -46,6 +50,33 @@ func (s *Server) setAssistance(w http.ResponseWriter, r *http.Request) {
 		if d.Type == "epub" {
 			p = initialDocumentProcessing(d, "")
 		}
+	}
+	// Initial paper parsing is mandatory. Translation controls must neither
+	// cancel its worker nor discard the import-time translation preference.
+	if d.Type == "pdf" && d.Library == "papers" && p.Phase == "learning" && !p.Retranslating {
+		defer s.processingMu.Unlock()
+		if req.Action == "pause" {
+			fail(w, 409, "论文解析不能暂停；解析完成后可暂停翻译")
+			return
+		}
+		if !p.Enabled || (p.Status != "queued" && p.Status != "running") {
+			if !p.Enabled {
+				limit := 0
+				p.AutoTranslateMaxPages = &limit
+			}
+			p.Enabled, p.Status, p.Detail = true, "queued", "等待解析 PDF"
+			p.CompletedAt = ""
+			if e = s.Store.saveProcessing(p); e != nil {
+				fail(w, 500, "无法恢复解析任务")
+				return
+			}
+			if p, e = s.Store.processing(d.ID); e != nil {
+				fail(w, 500, "无法读取处理状态")
+				return
+			}
+		}
+		respond(w, 200, p)
+		return
 	}
 	if s.blockedProcessing == nil {
 		s.blockedProcessing = map[string]bool{}
@@ -81,15 +112,18 @@ func (s *Server) setAssistance(w http.ResponseWriter, r *http.Request) {
 	p.Enabled = req.Action != "pause"
 	p.CompletedAt = ""
 	if p.Enabled {
+		p.AutoTranslateMaxPages = nil
+		p.ManualTranslation = false
 		p.Status, p.Detail = "queued", "等待继续处理"
 		// Prepare the complete manifest; cached completed results remain reusable.
 		// Completed translations and formula results are reused.
-		p.Phase = "learning"
-		p.PagesDone = 0
-		p.Translating = nil
-		if d.Type == "epub" {
+		if d.Type == "epub" || p.Retranslating {
 			p.Phase = "translating"
 			p.Translating = &ProcessingStage{Status: "queued", Detail: "等待继续翻译"}
+		} else {
+			p.Phase = "learning"
+			p.PagesDone = 0
+			p.Translating = nil
 		}
 		if e = s.retryFailedTranslations(d.ID); e != nil {
 			fail(w, 500, "无法恢复译文")

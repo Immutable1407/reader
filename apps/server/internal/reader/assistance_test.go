@@ -10,7 +10,6 @@ import (
 	"strings"
 	"sync/atomic"
 	"testing"
-	"time"
 )
 
 func paperDoc(t *testing.T, s *Server, data []byte) Document {
@@ -48,6 +47,10 @@ func TestAssistancePauseSurvivesRestart(t *testing.T) {
 	if !p.Enabled || p.Status != "queued" {
 		t.Fatalf("wrong scope: %+v", p)
 	}
+	p.Phase = "translating"
+	if err := s.Store.saveProcessing(p); err != nil {
+		t.Fatal(err)
+	}
 	p = assistanceRequest(t, s, "pause")
 	s.StartProcessing(ctx)()
 	got, _ = s.Store.processing("doc")
@@ -61,6 +64,7 @@ func TestAssistancePauseSurvivesRestart(t *testing.T) {
 func TestAssistanceJoinsProcessingWithoutCancellingChat(t *testing.T) {
 	s, p := processingFixture(t)
 	s.Token = "test-secret"
+	p.Phase = "translating"
 	_ = s.Store.saveProcessing(p)
 	ctx, cancel := context.WithCancel(context.Background())
 	task := &documentTask{cancel: cancel, done: make(chan struct{})}
@@ -143,20 +147,12 @@ func TestImportWithAutoTranslationDisabledDoesNotStartBackgroundAI(t *testing.T)
 	}
 	d := paperDoc(t, s, sample(t, "reading-notes.pdf"))
 	p, e := s.Store.processing(d.ID)
-	if e != nil || p.Enabled || p.Status != "paused" {
-		t.Fatalf("import processing: %+v %v", p, e)
-	}
-	ctx, cancel := context.WithCancel(context.Background())
-	stop := s.StartProcessing(ctx)
-	defer func() { cancel(); stop() }()
-	time.Sleep(1200 * time.Millisecond)
-	p, _ = s.Store.processing(d.ID)
-	if p.Enabled || p.Status != "paused" {
-		t.Fatalf("background claimed imported PDF: %+v", p)
+	if e != nil || !p.Enabled || p.Status != "queued" || p.AutoTranslateMaxPages == nil || *p.AutoTranslateMaxPages != 0 {
+		t.Fatalf("import must queue local parsing only: %+v %v", p, e)
 	}
 }
 
-func TestFullProcessingRetainsEarlierOCRWarnings(t *testing.T) {
+func TestFullProcessingIgnoresEarlierOCRWarnings(t *testing.T) {
 	s, p := processingFixture(t)
 	m, _ := s.readLayout("doc")
 	m.Pages = 10
@@ -167,8 +163,8 @@ func TestFullProcessingRetainsEarlierOCRWarnings(t *testing.T) {
 	if e := s.learnPDF(context.Background(), &p); e != nil {
 		t.Fatal(e)
 	}
-	if !p.Incomplete {
-		t.Fatal("whole-book status forgot an earlier scanned page")
+	if p.Incomplete || p.Warning != "" {
+		t.Fatalf("obsolete no-text warning retained: %+v", p)
 	}
 }
 
@@ -193,11 +189,11 @@ func TestImportAutoTranslationPreferenceOnlyAffectsNewDocuments(t *testing.T) {
 		content := append(sample(t, "reading-notes.pdf"), []byte("\n% preference "+string(body))...)
 		next := paperDoc(t, s, content)
 		p, err := s.Store.processing(next.ID)
-		if err != nil || p.Enabled != enabled || (enabled && p.Status != "queued") || (!enabled && p.Status != "paused") {
+		if err != nil || !p.Enabled || p.Status != "queued" || p.AutoTranslateMaxPages == nil || (*p.AutoTranslateMaxPages > 0) != enabled {
 			t.Fatalf("preference ignored: %+v %v", p, err)
 		}
 		original, _ := s.Store.processing(first.ID)
-		if original.Enabled || original.Status != "paused" {
+		if original.AutoTranslateMaxPages == nil || *original.AutoTranslateMaxPages != 0 {
 			t.Fatal("changing preference enabled an existing document")
 		}
 	}
@@ -209,6 +205,7 @@ func TestImportAutoTranslationPreferenceOnlyAffectsNewDocuments(t *testing.T) {
 func TestPausedParallelProgressCannotReenableProcessing(t *testing.T) {
 	s, p := processingFixture(t)
 	p.Translating = &ProcessingStage{Status: "running"}
+	p.Phase = "translating"
 	p.Enabled, p.Status = false, "paused"
 	if err := s.Store.saveProcessing(p); err != nil {
 		t.Fatal(err)

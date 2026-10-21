@@ -1,8 +1,18 @@
 import { useEffect, useRef, useState } from "react";
-import { Pause, RotateCcw, Sparkles } from "lucide-react";
+import { Check, FileSearch, Pause, RotateCcw, Languages } from "lucide-react";
 import type { EPUBLocation, LibraryMode, Processing } from "@reader/core";
 import { api } from "@reader/api";
 import { Button } from "@reader/ui/components/button";
+import {
+  AlertDialog,
+  AlertDialogTrigger,
+  AlertDialogContent,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogCancel,
+} from "@reader/ui/components/alert-dialog";
 import { toast } from "sonner";
 import type { PageRange } from "./chapters";
 
@@ -28,6 +38,7 @@ export function AssistanceControls({
 }) {
   const [saved, setSaved] = useState<Processing>();
   const [busy, setBusy] = useState(false);
+  const [confirming, setConfirming] = useState(false);
   const serial = useRef(0);
   const job =
     saved &&
@@ -39,6 +50,7 @@ export function AssistanceControls({
     let alive = true;
     setSaved(undefined);
     setBusy(false);
+    setConfirming(false);
     void api
       .assistance(documentId)
       .then((p) => {
@@ -51,6 +63,13 @@ export function AssistanceControls({
     };
   }, [documentId]);
   const complete = job?.status === "complete";
+  const paperParsing =
+    library === "papers" &&
+    !epubChapter &&
+    job?.phase === "learning" &&
+    !job.retranslating &&
+    !complete;
+  const parsingPending = paperParsing && job.status !== "failed";
   const [action, label]: [Action, string] =
     job?.enabled && job.status === "failed"
       ? ["resume", "重试翻译"]
@@ -60,20 +79,30 @@ export function AssistanceControls({
           ? epubChapter &&
             (!job?.startedAt || job.translating?.status === "complete")
             ? ["chapter", "翻译本章"]
-            : job?.startedAt
+            : job?.startedAt && !job.manualTranslation
               ? ["resume", "继续翻译"]
-              : ["start", "开始翻译"]
+              : ["start", "翻译"]
           : library === "books"
             ? ["chapter", "翻译本章"]
             : ["start", "翻译完成"];
   const finished = complete && action !== "chapter";
+  const actionLabel = paperParsing
+    ? job.status === "failed"
+      ? "重试解析"
+      : job.status === "running"
+        ? "解析中"
+        : "等待解析"
+    : job?.retranslating
+      ? action === "pause"
+        ? "暂停重译"
+        : "继续重译"
+      : label;
   const run = async () => {
     if (action !== "chapter") return api.setAssistance(documentId, action);
     if (epubChapter) {
       const location = epubChapter();
       if (!location?.href) throw new Error("正文仍在加载，请稍后再试");
-      const result = await api.translateEPUBChapter(documentId, location);
-      if (result.hasMore) toast("本章较长，完成后可再次点击翻译本章继续");
+      await api.translateEPUBChapter(documentId, location);
       return api.assistance(documentId);
     }
     const range = chapter?.();
@@ -84,11 +113,6 @@ export function AssistanceControls({
       range.toPage,
     );
     if (result.parsing) toast("正在解析本章，完成后开始翻译");
-    else if (!result.queued) toast("本章已翻译");
-    else if (result.nextPage)
-      toast(
-        `本章较长，本次翻译至第 ${result.nextPage} 页，完成后可再次翻译本章`,
-      );
     return api.assistance(documentId);
   };
   return (
@@ -96,10 +120,10 @@ export function AssistanceControls({
       <Button
         variant="ghost"
         size="sm"
-        disabled={busy || !job || finished}
+        disabled={busy || !job || finished || parsingPending}
         title={
           action === "chapter"
-            ? "翻译当前章节，单次最多约 4 万字"
+            ? "翻译当前完整章节，复用已完成译文"
             : job?.enabled
               ? job.detail
               : epubChapter
@@ -119,15 +143,72 @@ export function AssistanceControls({
           }
         }}
       >
-        {action === "pause" ? (
+        {parsingPending ? (
+          <FileSearch />
+        ) : finished ? (
+          <Check />
+        ) : action === "pause" ? (
           <Pause />
         ) : action === "resume" && job?.status === "failed" ? (
           <RotateCcw />
         ) : (
-          <Sparkles />
+          <Languages />
         )}
-        {label}
+        {actionLabel}
       </Button>
+      {finished && library === "papers" && !epubChapter && (
+        <AlertDialog open={confirming} onOpenChange={setConfirming}>
+          <AlertDialogTrigger
+            render={
+              <Button
+                variant="ghost"
+                size="icon-sm"
+                disabled={busy}
+                title="重新翻译"
+                aria-label="重新翻译"
+              />
+            }
+          >
+            <RotateCcw />
+          </AlertDialogTrigger>
+          <AlertDialogContent>
+            <AlertDialogHeader>
+              <AlertDialogTitle>重新翻译全文？</AlertDialogTitle>
+              <AlertDialogDescription>
+                将重新解析全文版面，并使用当前 Agent
+                翻译模型和已保存的翻译提示词重新翻译。解析成功前保留现有内容；仍能对应原文的旧译文会在新结果完成后逐段替换。
+              </AlertDialogDescription>
+            </AlertDialogHeader>
+            <AlertDialogFooter>
+              <AlertDialogCancel disabled={busy}>取消</AlertDialogCancel>
+              <Button
+                disabled={busy}
+                onClick={async () => {
+                  const operation = ++serial.current;
+                  setBusy(true);
+                  try {
+                    const next = await api.setAssistance(
+                      documentId,
+                      "retranslate",
+                    );
+                    if (operation === serial.current) {
+                      setConfirming(false);
+                      setSaved(next);
+                    }
+                  } catch (e) {
+                    if (operation === serial.current)
+                      toast.error((e as Error).message);
+                  } finally {
+                    if (operation === serial.current) setBusy(false);
+                  }
+                }}
+              >
+                {busy ? "正在开始…" : "开始重新翻译"}
+              </Button>
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        </AlertDialog>
+      )}
     </div>
   );
 }

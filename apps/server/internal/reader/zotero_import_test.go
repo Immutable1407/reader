@@ -91,7 +91,7 @@ func TestZoteroMigrationRoundTrip(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if doc.Title != "迁移论文" || doc.Metadata.DOI != "10.1000/example" || doc.Metadata.Sources["doi"] != "manual" || doc.CreatedAt != "2024-01-02T03:04:05Z" || doc.Author != "Ada Lovelace, 研究小组" || len(doc.Tags) != 1 || len(doc.Folders) != 1 {
+	if doc.LastOpenedAt != "" || doc.Title != "迁移论文" || doc.Metadata.DOI != "10.1000/example" || doc.Metadata.Sources["doi"] != "manual" || doc.CreatedAt != "2024-01-02T03:04:05Z" || doc.Author != "Ada Lovelace, 研究小组" || len(doc.Tags) != 1 || len(doc.Folders) != 1 {
 		t.Fatalf("document: %+v", doc)
 	}
 	imported, err := os.ReadFile(s.Store.File(doc))
@@ -129,8 +129,8 @@ func TestZoteroMigrationRoundTrip(t *testing.T) {
 	}
 	var p Processing
 	json.Unmarshal([]byte(processingBody), &p)
-	if p.Enabled {
-		t.Fatal("migration queued AI processing")
+	if !p.Enabled || p.AutoTranslateMaxPages == nil || *p.AutoTranslateMaxPages != 50 {
+		t.Fatal("migration must use the default translation threshold")
 	}
 	// Curated Reader data, including removed imported annotations, survives a retry.
 	if _, err = s.Store.DB.Exec(`UPDATE document_notes SET body='Reader 编辑' WHERE document_id=?; DELETE FROM annotations WHERE document_id=?`, doc.ID, doc.ID); err != nil {
@@ -374,6 +374,85 @@ func TestZoteroLockedLibraryCanRetry(t *testing.T) {
 			var scan zoteroScan
 			if err := json.Unmarshal(response.Body.Bytes(), &scan); err != nil || len(scan.Entries) != 1 {
 				t.Fatalf("incomplete preview after release: %+v %v", scan, err)
+			}
+		})
+	}
+}
+
+func TestZoteroStripBraces(t *testing.T) {
+	cases := map[string]string{
+		"{NAUTILUS}: Automated {RESTful} {API} Vulnerability Detection": "NAUTILUS: Automated RESTful API Vulnerability Detection",
+		"{{A}B} and {C{D}}":         "AB and CD",
+		`Sets \{x\} in {TLS}`:       `Sets \{x\} in {TLS}`,
+		`On \textit{Fuzzing} {TLS}`: `On \textit{Fuzzing} {TLS}`,
+		"Unbalanced {TLS":           "Unbalanced {TLS",
+		"Unbalanced} {TLS}":         "Unbalanced} {TLS}",
+		"}{":                        "}{",
+		"Plain Title: No Braces":    "Plain Title: No Braces",
+		"":                          "",
+	}
+	for input, want := range cases {
+		if got := zoteroStripBraces(input); got != want {
+			t.Errorf("%q: %q != %q", input, got, want)
+		}
+	}
+}
+
+func TestZoteroImportStripsTitleBraces(t *testing.T) {
+	braced := func(t *testing.T) *zoteroEntry {
+		t.Helper()
+		dir, db := zoteroFixture(t)
+		if _, err := db.Exec(`UPDATE itemDataValues SET value='{PolyFuzz}: Holistic Greybox Fuzzing of {Multi-Language} Systems' WHERE valueID=1; INSERT INTO fields VALUES(5,'shortTitle'); INSERT INTO itemDataValues VALUES(5,'{PolyFuzz}'); INSERT INTO itemData VALUES(1,5,5)`); err != nil {
+			t.Fatal(err)
+		}
+		return mustScanZotero(t, dir).Entries[0]
+	}
+	t.Run("fresh", func(t *testing.T) {
+		s := testServer(t)
+		result, err := s.importZoteroEntry(context.Background(), braced(t))
+		if err != nil || result.Status != "imported" {
+			t.Fatal(result, err)
+		}
+		doc, err := s.Store.Document(result.DocumentID)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if doc.Title != "PolyFuzz: Holistic Greybox Fuzzing of Multi-Language Systems" || doc.Metadata.ShortTitle != "PolyFuzz" || doc.Metadata.Sources["shortTitle"] != "manual" {
+			t.Fatalf("document: %q %q %+v", doc.Title, doc.Metadata.ShortTitle, doc.Metadata.Sources)
+		}
+		var snapshot string
+		if err = s.Store.DB.QueryRow(`SELECT body FROM zotero_imports WHERE document_id=?`, doc.ID).Scan(&snapshot); err != nil {
+			t.Fatal(err)
+		}
+		if !strings.Contains(snapshot, "{PolyFuzz}") || !strings.Contains(snapshot, "{Multi-Language}") {
+			t.Fatal("migration snapshot must keep original values", snapshot)
+		}
+	})
+	for name, patch := range map[string]string{
+		"manual values": `{"title":"Reader 标题","metadata":{"shortTitle":"我的短标题"}}`,
+		"manual empty":  `{"title":"Reader 标题","metadata":{"shortTitle":""}}`,
+	} {
+		t.Run(name, func(t *testing.T) {
+			entry := braced(t)
+			s := testServer(t)
+			response := uploadTo(t, s, "papers", "original.pdf", testPDF(2))
+			if response.Code != 201 {
+				t.Fatal(response.Body.String())
+			}
+			var doc Document
+			json.Unmarshal(response.Body.Bytes(), &doc)
+			if response = request(t, s, "PATCH", "/api/documents/"+doc.ID, strings.NewReader(patch)); response.Code != 200 {
+				t.Fatal(response.Body.String())
+			}
+			var want Document
+			json.Unmarshal(response.Body.Bytes(), &want)
+			result, err := s.importZoteroEntry(context.Background(), entry)
+			if err != nil || result.Status != "merged" {
+				t.Fatal(result, err)
+			}
+			doc, err = s.Store.Document(doc.ID)
+			if err != nil || doc.Title != "Reader 标题" || doc.Metadata.ShortTitle != want.Metadata.ShortTitle {
+				t.Fatalf("manual values overwritten: %q %q %v", doc.Title, doc.Metadata.ShortTitle, err)
 			}
 		})
 	}

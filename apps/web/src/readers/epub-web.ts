@@ -1,3 +1,4 @@
+import { selectionContext } from "./selection-context";
 import {
   annotationsInRects,
   sentenceRectsAtPoint,
@@ -754,6 +755,7 @@ export class EPUBReaderAdapter implements ReaderAdapter {
       ...(last.id !== first.id ? { endBlockId: last.id } : {}),
     };
     this.selection = {
+      context: selectionContext(range, this.container),
       text: selected.toString(),
       location,
       anchor: selectionAnchor(selected, pointer),
@@ -882,18 +884,13 @@ export class EPUBReaderAdapter implements ReaderAdapter {
     for (const annotation of this.annotations) {
       if (annotation.location.type !== "epub" || annotation.kind === "bookmark")
         continue;
-      const translated =
-        annotation.location.translation?.ranges?.flatMap((r) =>
-          r.location ? [r.location] : [],
-        ) ?? [];
-      const locations = translated.length
-        ? translated
-        : [
-            {
-              ...annotation.location,
-              quote: annotation.location.quote || annotation.quote,
-            },
-          ];
+      if (annotation.location.translation) continue;
+      const locations = [
+        {
+          ...annotation.location,
+          quote: annotation.location.quote || annotation.quote,
+        },
+      ];
       const ranges: Range[] = [];
       for (const location of locations) {
         const slices = resolveEPUBLocation(location, this.blocks);

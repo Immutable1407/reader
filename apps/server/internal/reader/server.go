@@ -29,6 +29,9 @@ import (
 )
 
 type Server struct {
+	chatReservations       map[string]bool
+	chatMu                 sync.Mutex
+	chatRuns               map[string]*chatRun
 	Diagnostics            *diagnostics.Store
 	connectorMu            sync.Mutex
 	connectorAvailable     bool
@@ -36,6 +39,8 @@ type Server struct {
 	connectorRevision      atomic.Int64
 	zoteroMu               sync.Mutex
 	zoteroScans            map[string]*zoteroScan
+	endnoteScans           map[string]*endnoteScan
+	annotationCheckLocks   sync.Map
 	annotationMu           sync.Mutex
 	annotationHistory      []annotationChange
 	codexChat              codexChatCache
@@ -118,6 +123,8 @@ func (s *Server) Handler() http.Handler {
 	mux.HandleFunc("GET /api/connector/revision", s.connectorRevisionStatus)
 	mux.HandleFunc("GET /api/documents/{id}/snapshot", s.connectorSnapshotStatus)
 	mux.HandleFunc("POST /api/import/zotero/scan", s.scanZotero)
+	mux.HandleFunc("POST /api/import/endnote/scan", s.scanEndNote)
+	mux.HandleFunc("POST /api/import/endnote", s.importEndNote)
 	mux.HandleFunc("POST /api/import/zotero", s.importZotero)
 	mux.HandleFunc("POST /api/documents", s.importDocument)
 	mux.HandleFunc("POST /api/documents/resolve", s.resolveDocument)
@@ -125,6 +132,7 @@ func (s *Server) Handler() http.Handler {
 	mux.HandleFunc("PUT /api/documents/{id}/note", s.saveDocumentNote)
 	mux.HandleFunc("POST /api/documents/{id}/metadata/lookup", s.lookupMetadata)
 	mux.HandleFunc("GET /api/processing", s.processingList)
+	mux.HandleFunc("POST /api/translate-selection", s.translateSelection)
 	mux.HandleFunc("GET /api/overviews", s.listOverviewStatuses)
 	mux.HandleFunc("GET /api/documents/{id}/overview", s.getDocumentOverview)
 	mux.HandleFunc("POST /api/documents/{id}/overview", s.requestDocumentOverview)
@@ -139,6 +147,8 @@ func (s *Server) Handler() http.Handler {
 	mux.HandleFunc("GET /api/documents/{id}/epub-chapters", s.epubChapters)
 	mux.HandleFunc("GET /api/documents/{id}/epub-chapter", s.epubChapterHTML)
 	mux.HandleFunc("GET /api/documents/{id}/translations", s.documentTranslations)
+	mux.HandleFunc("GET /api/documents/{id}/translations/export", s.exportTranslation)
+	mux.HandleFunc("POST /api/documents/{id}/translations/export", s.exportTranslation)
 	mux.HandleFunc("GET /api/documents/{id}/translations/stream", s.streamTranslations)
 	mux.HandleFunc("POST /api/documents/{id}/translations", s.requestTranslation)
 	mux.HandleFunc("PATCH /api/documents/{id}", s.updateDocument)
@@ -153,6 +163,7 @@ func (s *Server) Handler() http.Handler {
 	mux.HandleFunc("POST /api/documents/{id}/classification", s.retryClassification)
 	mux.HandleFunc("POST /api/documents/{id}/annotations/undo", s.undoAnnotation)
 	mux.HandleFunc("GET /api/documents/{id}/annotations", s.annotations)
+	mux.HandleFunc("POST /api/documents/{id}/annotations/recover", s.recoverAnnotations)
 	mux.HandleFunc("POST /api/documents/{id}/annotations", s.recordAnnotation(s.saveAnnotation))
 	mux.HandleFunc("PATCH /api/documents/{id}/annotations/{annotation}", s.recordAnnotation(s.updateAnnotationNote))
 	mux.HandleFunc("DELETE /api/documents/{id}/annotations/{annotation}", s.recordAnnotation(func(w http.ResponseWriter, r *http.Request) {
@@ -169,6 +180,14 @@ func (s *Server) Handler() http.Handler {
 	mux.HandleFunc("GET /api/documents/{id}/messages", s.messages)
 	mux.HandleFunc("GET /api/documents/{id}/messages/{message}/sources/{source}", s.validateChatEvidence)
 	mux.HandleFunc("POST /api/documents/{id}/chat", s.chat)
+	mux.HandleFunc("GET /api/documents/{id}/chat-sessions", s.listChatSessions)
+	mux.HandleFunc("POST /api/documents/{id}/chat-sessions", s.createChatSession)
+	mux.HandleFunc("PATCH /api/documents/{id}/chat-sessions/{session}", s.updateChatSession)
+	mux.HandleFunc("GET /api/documents/{id}/chat-sessions/{session}/messages", s.sessionMessages)
+	mux.HandleFunc("POST /api/documents/{id}/chat-sessions/{session}/chat", s.chat)
+	mux.HandleFunc("GET /api/documents/{id}/chat-sessions/{session}/runs/{run}/events", s.sessionRunEvents)
+	mux.HandleFunc("POST /api/documents/{id}/chat-sessions/{session}/runs/{run}/cancel", s.cancelSessionRun)
+	mux.HandleFunc("POST /api/documents/{id}/codex-handoff", s.handoffCodex)
 	mux.HandleFunc("GET /api/providers", s.providers)
 	mux.HandleFunc("GET /api/documents/{id}/processing-usage", s.processingUsage)
 	mux.HandleFunc("GET /api/documents/{id}/chat-usage", s.chatUsage)
@@ -210,6 +229,13 @@ func (s *Server) Handler() http.Handler {
 		if value, exists := v["autoTranslatePDF"]; exists {
 			if _, ok := value.(bool); !ok {
 				fail(w, 400, "自动翻译设置必须为布尔值")
+				return
+			}
+		}
+		if value, exists := v["autoTranslateMaxPages"]; exists {
+			n, ok := value.(float64)
+			if !ok || n < 0 || n > 150 || n != float64(int(n)) || int(n)%10 != 0 {
+				fail(w, 400, "自动翻译页数须为 0—150 之间的 10 的整数倍")
 				return
 			}
 		}
@@ -283,9 +309,9 @@ func webContentType(name string) string {
 	return ""
 }
 func (s *Server) importDocument(w http.ResponseWriter, r *http.Request) {
-	r.Body = http.MaxBytesReader(w, r.Body, 100<<20)
+	r.Body = http.MaxBytesReader(w, r.Body, maxImportBytes+(1<<20))
 	if err := r.ParseMultipartForm(8 << 20); err != nil {
-		fail(w, 400, "文件超过 100 MB 或上传无效")
+		fail(w, 400, "文件超过 512 MB 或上传无效")
 		return
 	}
 	defer r.MultipartForm.RemoveAll()
@@ -365,6 +391,15 @@ func (s *Server) importFile(ctx context.Context, temp, filename, library string,
 	if err != nil {
 		return failure(500, "无法验证文件")
 	}
+	info, err := f.Stat()
+	if err != nil {
+		f.Close()
+		return failure(500, "无法验证文件大小")
+	}
+	if info.Size() > maxImportBytes {
+		f.Close()
+		return failure(400, "文件超过 512 MB")
+	}
 	hash := sha256.New()
 	size, err := io.Copy(hash, f)
 	f.Close()
@@ -398,11 +433,12 @@ func (s *Server) importFile(ctx context.Context, temp, filename, library string,
 		if reason := paperLimit(kind, size, temp); reason != "" {
 			return failure(400, reason)
 		}
-		if pages, e := pdfPageCount(temp); e == nil && pages > largePaperPages && !allowLarge {
-			return Document{}, 409, importError{409, fmt.Sprintf("这份 PDF 有 %d 页，篇幅较大", pages), "large-paper", pages}
+		pages, _ := pdfPageCount(temp)
+		if (pages > largePaperPages || size > largePaperBytes) && !allowLarge {
+			return Document{}, 409, importError{409, "检测到 PDF 过大，请确认是否是论文？如果是图书类，请导入图书库。", "large-paper", pages}
 		}
 	}
-	d := Document{ID: docID, Type: kind, Title: strings.TrimSuffix(filepath.Base(filename), filepath.Ext(filename)), Size: size, CreatedAt: now(), LastOpenedAt: now(), Library: library}
+	d := Document{ID: docID, Type: kind, Title: strings.TrimSuffix(filepath.Base(filename), filepath.Ext(filename)), Size: size, CreatedAt: now(), LastOpenedAt: "", Library: library}
 	d.Category, d.CategorySource, d.ClassificationStatus, d.Tags, d.Folders = "article", "default", "pending", []string{}, []string{}
 	if kind == "pdf" && library == "books" {
 		// Classification reads parsed text, which books gain chapter by chapter.
@@ -701,6 +737,11 @@ func (s *Server) saveAnnotation(w http.ResponseWriter, r *http.Request) {
 	a.DocumentID = d.ID
 	a.CreatedAt = now()
 	a.AnswerID, a.Resolved = "", false
+	if m, e := s.readTranslationSource(d.ID); e == nil {
+		if translations, e := s.visibleTranslations(d.ID, m); e == nil {
+			a = enrichTranslationAnnotation(a, translations)
+		}
+	}
 	result, err := s.Store.saveAnnotation(a)
 	if err != nil {
 		fail(w, 500, "批注保存失败")
@@ -842,6 +883,12 @@ func (s *Server) search(w http.ResponseWriter, r *http.Request) {
 	respond(w, 200, out)
 }
 func (s *Server) messages(w http.ResponseWriter, r *http.Request) {
+	var defaultID string
+	if s.Store.DB.QueryRow("SELECT id FROM chat_sessions WHERE document_id=? ORDER BY rowid LIMIT 1", r.PathValue("id")).Scan(&defaultID) == nil {
+		r.SetPathValue("session", defaultID)
+		s.sessionMessages(w, r)
+		return
+	}
 	rows, err := s.Store.DB.Query("SELECT body FROM messages WHERE document_id=? ORDER BY created_at", r.PathValue("id"))
 	if err != nil {
 		fail(w, 500, "读取对话失败")

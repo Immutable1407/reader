@@ -1,3 +1,4 @@
+import { useShortcut, loadBindings } from "./shortcuts/shortcuts";
 import { useEffect, useMemo, useRef, useState } from "react";
 import {
   BookOpen,
@@ -21,7 +22,11 @@ import {
 } from "lucide-react";
 import { version } from "../../desktop/package.json";
 import { api, RequestError } from "@reader/api";
-import { LargePaperDialog, type LargePaper } from "./LargePaperDialog";
+import {
+  LargePaperConfirmation,
+  LargePaperDialog,
+  type LargePaper,
+} from "./LargePaperDialog";
 import type { Document, LibraryMode } from "@reader/core";
 import { Button } from "@reader/ui/components/button";
 import { Input } from "@reader/ui/components/input";
@@ -99,12 +104,17 @@ export function App() {
   const [command, setCommand] = useState(false);
   const [importingPaper, setImportingPaper] = useState(false);
   const [nav, setNav] = useState(true);
+  useShortcut("libraryLeft", () => setNav((value) => !value), !active);
+  useShortcut("search", () => setCommand(true), !active);
   const fileRef = useRef<HTMLInputElement>(null);
   const hydrated = useRef(false);
   useEffect(() => {
     Promise.all([
       refreshLibrary(),
       loadLibraryPreferences(),
+      loadBindings().catch(() =>
+        toast.error("快捷键设置读取失败，暂时使用默认快捷键。"),
+      ),
       api.settings().then((value) => setTheme(value)),
     ])
       .catch((e) => setError(e.message))
@@ -135,6 +145,7 @@ export function App() {
   }, [resolvedTheme.mode, theme.appearance]);
   useEffect(() => {
     const key = (e: KeyboardEvent) => {
+      if (e.defaultPrevented) return;
       if ((e.metaKey || e.ctrlKey) && e.key === "k") {
         e.preventDefault();
         setCommand((v) => !v);
@@ -779,6 +790,7 @@ export function App() {
             </div>
           </DialogContent>
         </Dialog>
+        <LargePaperConfirmation />
         <LargePaperDialog
           papers={largePapers}
           busy={busy}

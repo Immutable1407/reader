@@ -22,15 +22,24 @@ interface Window {
       settings: import("@reader/core").ProxySettings,
     ) => Promise<import("@reader/core").ProxyCheckResult>;
     restart?: () => Promise<void>;
+    libraryLocation?: () => Promise<string>;
+    moveLibrary?: () => Promise<boolean>;
     commandLine?: () => Promise<import("@reader/core").CommandLineStatus>;
     setCommandLine?: (
       installed: boolean,
     ) => Promise<import("@reader/core").CommandLineStatus>;
     writeClipboardText: (text: string) => Promise<void>;
+    writeClipboardImage: (data: Uint8Array, text: string) => Promise<void>;
     setAppearance: (
       appearance: "light" | "sepia" | "dark" | "system",
     ) => Promise<void>;
     /** Resolves with long papers that need the reader's confirmation. */
+    findEndNoteLibraries?: (id: string) => Promise<{
+      candidates: { path: string; name: string }[];
+      timedOut: boolean;
+    }>;
+    cancelEndNoteSearch?: (id: string) => Promise<void>;
+    chooseEndNoteLibrary?: (directory?: boolean) => Promise<string | null>;
     chooseZoteroDirectory?: () => Promise<string | null>;
     importFiles: (
       library: "books" | "papers",
@@ -42,6 +51,7 @@ interface Window {
     showDocumentFile: (id: string, type: "pdf" | "epub") => Promise<void>;
     openDocumentFile: (id: string, type: "pdf" | "epub") => Promise<void>;
     openExternal: (url: string) => Promise<void>;
+    openCodexThread?: (threadId: string) => Promise<void>;
     onOpenLink?: (
       callback: (target: import("@reader/core").ReaderLinkTarget) => void,
     ) => () => void;

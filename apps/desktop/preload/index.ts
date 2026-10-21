@@ -35,11 +35,15 @@ contextBridge.exposeInMainWorld("readerDesktop", {
   checkProxy: (settings: ProxySettings) =>
     proxyRequest("reader:check-proxy", settings),
   restart: () => proxyRequest("reader:restart"),
+  libraryLocation: () => proxyRequest("reader:library-location"),
+  moveLibrary: () => proxyRequest("reader:move-library"),
   commandLine: () => proxyRequest("reader:command-line"),
   setCommandLine: (installed: boolean) =>
     proxyRequest("reader:set-command-line", installed),
   writeClipboardText: (text: string) =>
     ipcRenderer.invoke("reader:clipboard-write", text),
+  writeClipboardImage: (data: Uint8Array, text: string) =>
+    ipcRenderer.invoke("reader:clipboard-write-image", data, text),
   onBeforeClose: (callback: () => Promise<void>) => {
     const listener = () => {
       void callback().then(
@@ -52,6 +56,12 @@ contextBridge.exposeInMainWorld("readerDesktop", {
   },
   setAppearance: (appearance: "light" | "sepia" | "dark" | "system") =>
     ipcRenderer.invoke("reader:appearance", appearance),
+  findEndNoteLibraries: (id: string) =>
+    ipcRenderer.invoke("reader:find-endnote", id),
+  cancelEndNoteSearch: (id: string) =>
+    ipcRenderer.invoke("reader:cancel-endnote-search", id),
+  chooseEndNoteLibrary: (directory = false) =>
+    ipcRenderer.invoke("reader:choose-endnote", directory),
   chooseZoteroDirectory: () =>
     ipcRenderer.invoke("reader:choose-zotero-directory"),
   importFiles: (library: "books" | "papers") =>
@@ -64,6 +74,8 @@ contextBridge.exposeInMainWorld("readerDesktop", {
     ipcRenderer.invoke("reader:document-file", id, type, "open"),
   openExternal: (url: string) =>
     ipcRenderer.invoke("reader:open-external", url),
+  openCodexThread: (threadId: string) =>
+    ipcRenderer.invoke("reader:open-codex-thread", threadId),
   onOpenLink: (callback: (target: unknown) => void) => {
     const listener = (_event: unknown, target: unknown) => callback(target);
     ipcRenderer.on("reader:open-link", listener);

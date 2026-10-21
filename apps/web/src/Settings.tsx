@@ -1,3 +1,5 @@
+import { AutoTranslationSettings } from "./papers/AutoTranslationSettings";
+import { TranslationPromptSettings } from "./TranslationPromptSettings";
 import { useEffect, useRef, useState } from "react";
 import {
   ChevronLeft,
@@ -15,6 +17,7 @@ import {
   X,
 } from "lucide-react";
 import { DiagnosticExport } from "./DiagnosticExport";
+import { LibraryLocationSettings } from "./LibraryLocationSettings";
 import { CommandLineSettings } from "./CommandLineSettings";
 import { ProviderIdentity } from "./ProviderIdentity";
 import { TaskModels } from "./TaskModels";
@@ -27,6 +30,7 @@ import type {
   APIConnection,
   LibraryMode,
   JournalRankConfig,
+  PaperColumn,
   Provider,
 } from "@reader/core";
 import { Button } from "@reader/ui/components/button";
@@ -67,6 +71,8 @@ import {
 import { libraryModes } from "./LibraryModeSwitcher";
 import { Checkbox } from "@reader/ui/components/checkbox";
 import { toast } from "sonner";
+import { columnLabels, defaultColumns, toggleColumn } from "./papers/model";
+import { savePaperPreferences } from "./papers/actions";
 // Checks run automatically for this many API models; the rest on demand.
 const autoAPIChecks = 12;
 export function Settings({
@@ -88,9 +94,10 @@ export function Settings({
   const [apiModels, setAPIModels] = useState<AgentModel[]>([]);
   const [apiModelsError, setAPIModelsError] = useState("");
   const [apiDetails, setAPIDetails] = useState(false);
-  const [connector, setConnector] = useState<Awaited<
-    ReturnType<typeof api.connectorStatus>
-  > | null>(null);
+  const [probeWait, setProbeWait] = useState("");
+  const probeSeconds = Number(probeWait);
+  const validProbeWait =
+    Number.isInteger(probeSeconds) && probeSeconds >= 0 && probeSeconds <= 600;
   const [journalRank, setJournalRank] = useState<JournalRankConfig | null>(
     null,
   );
@@ -136,13 +143,6 @@ export function Settings({
   useEffect(() => {
     if (!open) setAPIDetails(false);
   }, [open]);
-  useEffect(() => {
-    if (open)
-      void api
-        .connectorStatus()
-        .then(setConnector)
-        .catch(() => setConnector(null));
-  }, [open]);
   const {
     theme,
     setTheme,
@@ -159,10 +159,15 @@ export function Settings({
     id: string,
     first: "text" | "vision",
     snapshot: AIConfig,
+    timeoutSeconds?: number,
   ) => {
     const model = id.startsWith("api:") ? id.slice(4) : undefined;
     const run = (stage: "text" | "vision") =>
-      model ? api.testAI("api", stage, model) : api.testAI(id, stage);
+      model
+        ? timeoutSeconds
+          ? api.testAI("api", stage, model, timeoutSeconds)
+          : api.testAI("api", stage, model)
+        : api.testAI(id, stage);
     let stage = first;
     const update = (capability: AICapability) => {
       const current = useReaderStore.getState().aiConfig;
@@ -204,6 +209,7 @@ export function Settings({
     ids: string[],
     firstStage: (id: string) => "text" | "vision",
     snapshot: AIConfig,
+    timeoutSeconds?: number,
   ) => {
     setTesting((current) => {
       const next = new Map(current);
@@ -217,7 +223,9 @@ export function Settings({
         ),
       ),
     );
-    await Promise.all(ids.map((id) => check(id, firstStage(id), snapshot)));
+    await Promise.all(
+      ids.map((id) => check(id, firstStage(id), snapshot, timeoutSeconds)),
+    );
   };
   const warnWithoutVision = (models: AgentModel[]) => {
     const capabilities = useReaderStore.getState().aiConfig?.capabilities;
@@ -303,9 +311,14 @@ export function Settings({
   }, [open]);
   const checkModel = async (model: AgentModel) => {
     const snapshot = useReaderStore.getState().aiConfig;
-    if (!snapshot) return;
+    if (!snapshot || !validProbeWait) return;
     checked.current.add(JSON.stringify(["api", model.id]));
-    await checkAll([`api:${model.id}`], () => "text", snapshot);
+    await checkAll(
+      [`api:${model.id}`],
+      () => "text",
+      snapshot,
+      probeSeconds || undefined,
+    );
     warnWithoutVision(apiModels);
   };
   const checkTools = async (model: AgentModel) => {
@@ -339,23 +352,25 @@ export function Settings({
       setAIConfig(await api.saveAIConfig(change(await api.aiConfig())));
     } catch (e) {
       toast.error((e as Error).message);
-      return;
+      return false;
     } finally {
       setSaving(false);
     }
     await refresh();
+    return true;
   };
-  const saveAPI = (connection: APIConnection) => {
+  const saveAPI = async (connection: APIConnection) => {
     // A new address or key is a new connection: test its models again.
     for (const key of checked.current)
       if (key.startsWith('["api"')) checked.current.delete(key);
-    return saveConfig((latest) => ({ ...latest, api: connection }));
+    await saveConfig((latest) => ({ ...latest, api: connection }));
   };
-  const saveAPIModels = (change: (models: string[]) => string[]) =>
-    saveConfig((latest) => ({
+  const saveAPIModels = async (change: (models: string[]) => string[]) => {
+    await saveConfig((latest) => ({
       ...latest,
       apiModels: change(latest.apiModels ?? []),
     }));
+  };
   const checkStatus = (id: string, capability?: AICapability) => (
     <div className="flex flex-wrap gap-x-5">
       {(
@@ -499,14 +514,60 @@ export function Settings({
                 providers.some((p) => p.id === "api" && p.installed) && (
                   <div className="mt-6">
                     <h3 className="mb-1 text-sm font-medium">模型</h3>
+                    <label className="mb-1 flex items-center gap-3 text-xs text-muted-foreground">
+                      检测等待上限（秒）
+                      <Input
+                        type="number"
+                        min={0}
+                        max={600}
+                        step={1}
+                        value={probeWait}
+                        onChange={(event) => setProbeWait(event.target.value)}
+                        aria-label="检测等待上限（秒）"
+                        aria-describedby="api-probe-wait-help"
+                        aria-invalid={!validProbeWait}
+                        placeholder="默认"
+                        className="h-7 w-24"
+                      />
+                    </label>
+                    <p
+                      id="api-probe-wait-help"
+                      className="mb-3 text-xs text-muted-foreground"
+                    >
+                      仅用于手动检测，每阶段最多 600 秒；留空或 0 使用文本 45
+                      秒、图片 90 秒
+                    </p>
+                    {!validProbeWait && (
+                      <p className="mb-2 text-xs text-destructive" role="alert">
+                        请输入 0–600 的整数
+                      </p>
+                    )}
                     <ul className="api-model-list">
                       {apiModels.map((model) => {
                         const id = `api:${model.id}`;
                         const result = config.capabilities[id];
+                        const error =
+                          errors[`${id}:vision`] ||
+                          errors[`${id}:text`] ||
+                          result?.error;
+                        const retry = result || error;
+                        const timings = [
+                          !errors[`${id}:text`] &&
+                          result?.textFirstOutputMs != null
+                            ? `文本首输出 ${(result.textFirstOutputMs / 1000).toFixed(2)} s`
+                            : "",
+                          !errors[`${id}:text`] &&
+                          !errors[`${id}:vision`] &&
+                          result?.visionFirstOutputMs != null
+                            ? `图片首输出 ${(result.visionFirstOutputMs / 1000).toFixed(2)} s`
+                            : "",
+                        ]
+                          .filter(Boolean)
+                          .join(" · ");
                         return (
                           <li
                             key={model.id}
-                            className="flex min-h-9 items-center gap-3"
+                            className="flex min-h-9 flex-wrap items-center gap-x-3 gap-y-1 py-1"
                           >
                             <span
                               className="min-w-0 flex-1 truncate text-sm"
@@ -514,20 +575,19 @@ export function Settings({
                             >
                               {model.name}
                             </span>
-                            {testing.has(id) ||
-                            result ||
-                            errors[`${id}:text`] ? (
-                              checkStatus(id, result)
-                            ) : (
-                              <Button
-                                variant="ghost"
-                                size="sm"
-                                disabled={saving}
-                                onClick={() => void checkModel(model)}
-                              >
-                                检测
-                              </Button>
-                            )}
+                            {(testing.has(id) || result || error) &&
+                              checkStatus(id, result)}
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              disabled={
+                                saving || testing.has(id) || !validProbeWait
+                              }
+                              aria-label={`${retry ? "重新检测" : "检测"} ${model.id}`}
+                              onClick={() => void checkModel(model)}
+                            >
+                              {retry ? "重新检测" : "检测"}
+                            </Button>
                             {result?.text && (
                               <Button
                                 variant="ghost"
@@ -556,6 +616,16 @@ export function Settings({
                               >
                                 <X />
                               </Button>
+                            )}
+                            {!testing.has(id) && (timings || error) && (
+                              <div className="w-full break-words text-xs text-muted-foreground">
+                                {timings && (
+                                  <p title="本次首次收到思考或正文的耗时，不含模型列表加载，受网络和服务负载影响">
+                                    {timings}
+                                  </p>
+                                )}
+                                {error && <p>{error}</p>}
+                              </div>
                             )}
                           </li>
                         );
@@ -720,14 +790,14 @@ export function Settings({
                       {
                         preserve: "保持原色（透明底补白）",
                         invert: "图片全部反色",
-                        adaptive: "矢量图适配深色，位图保留原色",
+                        adaptive: "自适应深色（处理图片白底）",
                       }[theme.pdfDarkImageMode ?? "adaptive"]
                     }
                   </SelectValue>
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="adaptive">
-                    矢量图适配深色，位图保留原色
+                    自适应深色（处理图片白底）
                   </SelectItem>
                   <SelectItem value="preserve">
                     保持原色（透明底补白）
@@ -742,20 +812,6 @@ export function Settings({
           </TabsContent>
           <TabsContent value="reading" className="settings-panel" keepMounted>
             <section className="mb-6 space-y-4">
-              <label className="flex items-start gap-2 text-sm">
-                <Checkbox
-                  checked={theme.autoGenerateOverview ?? false}
-                  onCheckedChange={(checked) =>
-                    setTheme({ autoGenerateOverview: !!checked })
-                  }
-                />
-                <span>
-                  导入后生成文档概要
-                  <span className="block text-xs text-muted-foreground">
-                    使用已配置的文字模型，单独记录用量；已有文档按需生成。
-                  </span>
-                </span>
-              </label>
               <label className="block text-sm">
                 文档上下文上限（可选）
                 <Input
@@ -812,9 +868,9 @@ export function Settings({
                   }
                 />
                 <span>
-                  译文原文划线关联
+                  原文译文悬停关联
                   <span className="block text-xs text-muted-foreground">
-                    悬停与批注同步到另一侧对应的完整句子
+                    悬停时提示另一侧对应的完整句子
                   </span>
                 </span>
               </label>
@@ -825,23 +881,13 @@ export function Settings({
             </section>
           </TabsContent>
           <TabsContent value="papers" className="settings-panel" keepMounted>
-            <section>
-              <h3 className="mb-3 text-sm font-medium">论文库</h3>
-              <div className="mb-5 rounded-md border p-3 text-sm">
-                <div className="font-medium">浏览器收录插件</div>
-                <p className="mt-1 text-xs text-muted-foreground">
-                  启动 Reader 后，Chrome 插件会自动连接本机论文库。
-                </p>
-                {connector && !connector.available && (
-                  <p
-                    className={`mt-2 text-xs ${connector.reason === "disabled" ? "text-muted-foreground" : "text-destructive"}`}
-                  >
-                    {connector.reason === "disabled"
-                      ? "开发模式未启用插件连接。"
-                      : "本机端口 17841 被占用，插件连接不可用。"}
-                  </p>
-                )}
+            {window.readerDesktop?.libraryLocation && (
+              <div className="mb-6">
+                <LibraryLocationSettings open={open} />
               </div>
+            )}
+            <section>
+              <h3 className="mb-3 text-sm font-medium">导入设置</h3>
               <label className="flex items-start gap-2 text-sm">
                 <Checkbox
                   className="mt-0.5"
@@ -863,19 +909,52 @@ export function Settings({
               <label className="mt-4 flex items-start gap-2 text-sm">
                 <Checkbox
                   className="mt-0.5"
-                  checked={theme.autoTranslatePDF ?? true}
+                  checked={theme.autoGenerateOverview ?? false}
                   onCheckedChange={(checked) =>
-                    setTheme({ autoTranslatePDF: !!checked })
+                    setTheme({ autoGenerateOverview: !!checked })
                   }
                 />
                 <span>
-                  导入后自动翻译
+                  导入后生成文档概要
                   <span className="block text-xs text-muted-foreground">
-                    开启后，新导入的论文会自动翻译全文。
+                    使用已配置的文字模型，单独记录用量；已有文档按需生成。
                   </span>
                 </span>
               </label>
+              <AutoTranslationSettings theme={theme} setTheme={setTheme} />
             </section>
+            <fieldset className="mt-7 border-t pt-5">
+              <legend className="text-sm font-medium">表格显示列</legend>
+              <p className="mb-3 text-xs text-muted-foreground">
+                标题始终显示。以下选择应用于论文库的表格视图。
+              </p>
+              <div className="grid grid-cols-2 gap-x-4 gap-y-3">
+                {(Object.keys(columnLabels) as PaperColumn[]).map((column) => (
+                  <label
+                    key={column}
+                    htmlFor={`paper-column-${column}`}
+                    className="flex items-center gap-2 text-sm"
+                  >
+                    <Checkbox
+                      id={`paper-column-${column}`}
+                      checked={(
+                        paperPreferences.columns ?? defaultColumns
+                      ).includes(column)}
+                      onCheckedChange={() =>
+                        void savePaperPreferences((prefs) => ({
+                          ...prefs,
+                          columns: toggleColumn(
+                            prefs.columns ?? defaultColumns,
+                            column,
+                          ),
+                        }))
+                      }
+                    />
+                    {columnLabels[column]}
+                  </label>
+                ))}
+              </div>
+            </fieldset>
             <section className="mt-7 border-t pt-5">
               <h3 className="mb-3 text-sm font-medium">期刊指标</h3>
               <label className="flex items-start gap-2 text-sm">
@@ -1074,6 +1153,13 @@ export function Settings({
                       ? "只列出通过检测的模型：问答与翻译需通过文本推理，图片需通过图片理解。公式转换与主动图片提问使用图片模型。"
                       : "问答与翻译分别使用上方模型；未指定时，问答使用主力模型，翻译使用快速模型。公式转换与主动图片提问会向此 Agent 发送图片。"}
                   </p>
+                  <TranslationPromptSettings
+                    value={config.translationPrompt ?? ""}
+                    disabled={saving || aiModelSaving || testing.size > 0}
+                    onSave={(translationPrompt) =>
+                      saveConfig((latest) => ({ ...latest, translationPrompt }))
+                    }
+                  />
                 </div>
               )}
               <div className="grid grid-cols-1 items-start gap-3 sm:grid-cols-2">

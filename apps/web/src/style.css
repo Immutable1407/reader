@@ -149,6 +149,12 @@
     cursor: default;
   }
 }
+svg:is(.lucide-trash, .lucide-trash-2) {
+  color: var(--destructive);
+}
+.dark svg:is(.lucide-trash, .lucide-trash-2) {
+  color: #f87171;
+}
 kbd {
   font-size: 10px;
   font-family: inherit;
@@ -746,12 +752,23 @@ kbd {
   > canvas:not([data-pdf-dark-ready]) {
   visibility: hidden;
 }
-.pdf-container .canvasWrapper > .pdf-dark-preview {
-  pointer-events: none;
+/* Keep every page canvas inside a single stacking context below the text,
+   search and Reader annotation layers. Native PDF.js selection lives inside it. */
+.pdf-container .canvasWrapper {
+  isolation: isolate;
 }
-/* Detail results must remain above the temporary full-page preview. */
 .pdf-container .canvasWrapper > canvas[data-pdf-dark-detail] {
+  z-index: 0;
+}
+.pdf-container .canvasWrapper > .selection,
+.pdf-container .canvasWrapper > svg.highlight,
+.pdf-container .canvasWrapper > svg.highlightOutline {
   z-index: 1;
+}
+/* Native PDF.js highlight blending must brighten dark paper rather than
+   multiply it toward black. Reader annotations use the same dark-mode rule. */
+.pdf-container[data-theme="dark"] .canvasWrapper > svg.highlight {
+  --blend-mode: screen;
 }
 .pdfViewer {
   --page-margin: 20px auto;
@@ -1802,6 +1819,9 @@ kbd {
   max-height: 16rem;
   overflow-y: auto;
 }
+.api-model-list .agent-check-status {
+  margin-top: 0;
+}
 .api-model-list > li + li {
   border-top: 1px solid var(--border);
 }
@@ -2530,6 +2550,11 @@ kbd {
 .paper-row[data-picked] {
   background: color-mix(in oklch, var(--foreground) 7%, transparent);
 }
+.paper-table-tags {
+  display: flex;
+  gap: 4px;
+  overflow: hidden;
+}
 .paper-table table {
   table-layout: fixed;
 }
@@ -2889,6 +2914,27 @@ textarea.paper-title-input {
 .paper-chip:focus-within > [data-slot="button"]:last-child {
   opacity: 1;
 }
+.paper-tag-chips .paper-chip {
+  position: relative;
+}
+.paper-tag-chips .paper-chip > [data-slot="button"]:first-child {
+  padding-inline: 9px;
+}
+.paper-tag-chips .paper-chip > [data-slot="button"]:last-child {
+  position: absolute;
+  inset-block-start: -4px;
+  inset-inline-end: -4px;
+  z-index: 1;
+  width: 16px;
+  height: 16px;
+  margin: 0;
+  background: var(--background);
+  box-shadow: 0 0 0 1px var(--border);
+}
+.paper-tag-chips .paper-chip > [data-slot="button"]:last-child svg {
+  width: 12px;
+  height: 12px;
+}
 .paper-chip-input.paper-chip-input {
   width: 140px;
   height: 24px;
@@ -3079,14 +3125,116 @@ textarea.paper-note-input {
   border-left-color: color-mix(in oklch, var(--primary) 45%, transparent);
 }
 .link-preview {
-  width: min(480px, calc(100vw - 24px));
-  pointer-events: none;
+  width: min(600px, calc(100vw - 24px));
+  max-height: calc(100dvh - 24px);
+  overflow: hidden;
 }
 .link-preview img {
   width: 100%;
+  min-height: 0;
+  object-fit: contain;
   border-radius: 6px;
   background: white;
-  box-shadow: 0 0 0 1px var(--border);
+}
+.link-preview-header {
+  display: flex;
+  align-items: center;
+  flex-shrink: 0;
+  gap: 2px;
+}
+.link-preview-label {
+  flex: 1;
+  color: var(--muted-foreground);
+  font-size: 12px;
+}
+.link-preview-window {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 10px;
+  max-width: none;
+  max-height: none;
+  min-width: 0;
+  translate: none;
+  transform: none;
+  animation: none;
+  transition: none;
+  overflow: hidden;
+  box-shadow:
+    0 12px 40px rgb(0 0 0 / 16%),
+    0 2px 8px rgb(0 0 0 / 8%);
+}
+.link-preview-drag {
+  flex: 1;
+  justify-content: flex-start;
+  min-width: 0;
+  cursor: grab;
+  touch-action: none;
+  user-select: none;
+}
+.link-preview-drag:active,
+.link-preview-viewport:active {
+  cursor: grabbing;
+}
+.link-preview-viewport {
+  flex: 1;
+  min-height: 0;
+  min-width: 0;
+  overflow: auto;
+  overscroll-behavior: contain;
+  border-radius: 6px;
+  background: var(--muted);
+  cursor: grab;
+  touch-action: none;
+  scrollbar-width: none;
+}
+.link-preview-viewport::-webkit-scrollbar {
+  display: none;
+}
+.link-preview-stage {
+  display: grid;
+  place-items: center;
+}
+.link-preview-stage img {
+  display: block;
+  max-width: none;
+  user-select: none;
+  pointer-events: none;
+}
+.link-preview-zoom {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  gap: 4px;
+  padding-inline: 24px;
+}
+.link-preview-scale {
+  min-width: 3.5em;
+  text-align: center;
+  font-size: 12px;
+  color: var(--muted-foreground);
+  font-variant-numeric: tabular-nums;
+}
+.link-preview-resize {
+  position: absolute;
+  bottom: 6px;
+  right: 6px;
+  cursor: nwse-resize;
+  touch-action: none;
+  color: var(--muted-foreground);
+}
+.link-preview-status {
+  position: absolute;
+  bottom: 48px;
+  left: 18px;
+  max-width: calc(100% - 36px);
+  padding: 3px 6px;
+  border-radius: 4px;
+  background: var(--popover);
+  color: var(--muted-foreground);
+  font-size: 11px;
+  pointer-events: none;
 }
 .color-swatches {
   display: inline-flex;
@@ -3204,4 +3352,157 @@ textarea.paper-note-input {
 }
 .reading-appearance-slider [data-slot="slider-range"] {
   background: var(--foreground);
+}
+
+/* Navigation feedback is independent of the native selection and remains above
+   page canvases and saved marks in every reading appearance. */
+.reader-location-highlight {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  z-index: 8;
+}
+.reader-location-highlight > div {
+  background: rgb(0 90 255 / 24%);
+  border-radius: 2px;
+}
+.pdf-container[data-theme="dark"] .reader-location-highlight > div {
+  background: rgb(100 170 255 / 36%);
+}
+
+/* Column labels support dragging independently from resize boundaries. */
+.paper-column-heading {
+  display: flex;
+  align-items: center;
+  min-width: 0;
+}
+.paper-column-heading > :last-child {
+  min-width: 0;
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.paper-column-grip.paper-column-grip {
+  width: 16px;
+  min-width: 16px;
+  padding: 0;
+  color: var(--muted-foreground);
+  cursor: grab;
+  opacity: 0.45;
+}
+.paper-column-grip:hover,
+.paper-column-grip:focus-visible {
+  opacity: 1;
+}
+.paper-column-grip:active {
+  cursor: grabbing;
+}
+.paper-column-option {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 5px 2px;
+  border-radius: 4px;
+}
+.paper-columns-popover {
+  max-height: min(70vh, 440px);
+  overflow-y: auto;
+  scrollbar-width: none;
+}
+.paper-columns-popover::-webkit-scrollbar {
+  display: none;
+}
+@media (prefers-reduced-motion: no-preference) {
+  .paper-column-option,
+  .paper-table th,
+  .paper-column-grip {
+    transition:
+      opacity 140ms ease,
+      background-color 140ms ease;
+  }
+  .paper-column-grip:active svg {
+    transform: scale(0.9);
+  }
+}
+
+.paper-column-drag-preview {
+  z-index: 10000;
+  pointer-events: none;
+  overflow: hidden;
+  border-radius: 6px;
+  background: var(--popover);
+  color: var(--popover-foreground);
+  box-shadow: 0 3px 12px #0002;
+}
+.paper-column-source {
+  opacity: 0.4;
+}
+
+/* Temporary paper tags share the current category and text search. */
+.paper-tag-filter {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.paper-tag-match {
+  display: flex;
+  padding: 2px;
+  border-radius: 8px;
+  background: var(--muted);
+}
+.paper-tag-match > button {
+  flex: 1;
+}
+.paper-tag-match > button[aria-pressed="true"] {
+  background: var(--background);
+  box-shadow: 0 1px 3px #00000012;
+}
+.paper-tag-options {
+  align-content: flex-start;
+  max-height: 200px;
+  overflow-y: auto;
+  scrollbar-width: none;
+}
+.paper-tag-options::-webkit-scrollbar {
+  display: none;
+}
+.paper-tag-summary {
+  -webkit-app-region: no-drag;
+  display: flex;
+  min-width: 0;
+  align-items: center;
+  gap: 6px;
+  overflow-x: auto;
+  white-space: nowrap;
+  font-size: 11px;
+  color: var(--muted-foreground);
+}
+@media (prefers-reduced-motion: no-preference) {
+  .paper-tag-filter,
+  .paper-tag-summary {
+    animation: paper-tag-enter 150ms ease-out;
+  }
+  .paper-tag-option {
+    transition:
+      background-color 150ms ease,
+      color 150ms ease,
+      opacity 150ms ease,
+      transform 150ms ease;
+  }
+  .paper-tag-option:active {
+    transform: scale(0.98);
+  }
+}
+
+@keyframes paper-tag-enter {
+  from {
+    opacity: 0;
+    transform: translateY(2px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
 }

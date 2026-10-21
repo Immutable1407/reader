@@ -18,22 +18,40 @@ export type SentenceLink = {
   }[];
 };
 export type PDFLocation = {
+  /** Independent source marks split from legacy translation-origin records. */
+  sourceAnchors?: {
+    blockId: string;
+    source: string;
+    page: number;
+    bounds: { x: number; y: number; width: number; height: number };
+  }[];
   type: "pdf";
   page: number;
   x?: number;
   y?: number;
   quote?: string;
+  /** Search-only paragraph context and UTF-16 offset of the selected match. */
+  quoteContext?: { text: string; start: number };
   sentenceLink?: SentenceLink;
   translation?: TranslationLocation;
   rects?: { x: number; y: number; width: number; height: number }[];
 };
-export type TranslationLocation = {
+export type TranslationRecoveryAnchor = {
+  /** Source sentence text survives changes to translation sentence boundaries. */
+  sourceText?: string;
+  /** Entire paragraph target; detects offsets shifted by preceding sentences. */
+  targetText?: string;
+  recovered?: boolean;
+  wholeSentence?: boolean;
+  matchedQuote?: string;
+};
+export type TranslationLocation = TranslationRecoveryAnchor & {
   blockId: string;
   sourceHash: string;
   sentenceIndexes: number[];
   start: number;
   end: number;
-  ranges?: {
+  ranges?: (TranslationRecoveryAnchor & {
     blockId: string;
     sourceHash: string;
     sentenceIndexes: number[];
@@ -41,7 +59,7 @@ export type TranslationLocation = {
     end: number;
     quote: string;
     location?: EPUBLocation;
-  }[];
+  })[];
 };
 export type EPUBLocation = {
   blockId?: string;
@@ -59,7 +77,7 @@ export type EPUBLocation = {
 };
 export type DocumentLocation = PDFLocation | EPUBLocation;
 export type DocumentCategory = "book" | "article" | "paper";
-/** Books and papers are separate libraries; papers are PDFs up to 150 pages and 50 MB. */
+/** Books and papers are separate libraries; large PDFs require confirmation. */
 export type LibraryMode = "books" | "papers";
 export type PaperItemType =
   | "journal"
@@ -113,14 +131,29 @@ export type PaperSort =
   | "opened"
   | "added"
   | "year"
+  | "published"
+  | "progress"
+  | "size"
   | "title"
   | "author"
   | "venue"
   | "status"
   | "notes";
-/** Optional columns of the paper table; the title is always shown. */
+/** Metadata columns of the paper table. */
 export type PaperColumn =
-  "authors" | "year" | "venue" | "added" | "opened" | "notes" | "status";
+  | "authors"
+  | "year"
+  | "published"
+  | "tags"
+  | "progress"
+  | "doi"
+  | "arxiv"
+  | "size"
+  | "venue"
+  | "added"
+  | "opened"
+  | "notes"
+  | "status";
 export interface JournalRankBadge {
   key: string;
   name: string;
@@ -163,8 +196,12 @@ export interface PaperLibraryPreferences {
   layout?: "list" | "table";
   /** Visible table columns in order. */
   columns?: PaperColumn[];
-  /** Widths of resized table columns in CSS pixels; the title fills the rest. */
-  columnWidths?: Partial<Record<PaperColumn, number>>;
+  /** Whether the title column is shown (default on). */
+  showTitle?: boolean;
+  /** Order of all table columns, including hidden ones. */
+  columnOrder?: ("title" | PaperColumn)[];
+  /** Widths of resized table columns in CSS pixels. */
+  columnWidths?: Partial<Record<"title" | PaperColumn, number>>;
   /** Width of the paper detail panel in CSS pixels. */
   detailWidth?: number;
   /** Look up metadata from the DOI or arXiv ID printed in imported PDFs. */
@@ -264,6 +301,8 @@ export interface SelectionAnchor {
   bottom: number;
 }
 export interface ReaderSelection {
+  /** Nearby source text, captured before the DOM selection is cleared. */
+  context?: { before: string; after: string };
   /** Transient renderer viewport position; never persist as a document anchor. */
   anchor?: SelectionAnchor;
   text: string;
@@ -278,6 +317,8 @@ export interface ReaderTheme {
   /** Opt in to copying text selections and selected annotations. */
   autoCopySelection?: boolean;
   autoTranslatePDF?: boolean;
+  /** 0 means manual only; otherwise auto translate papers up to this many pages. */
+  autoTranslateMaxPages?: number;
   /** How figures and embedded images are displayed when a PDF uses dark mode. */
   pdfDarkImageMode?: "preserve" | "invert" | "adaptive";
   /** Contrast used for PDF text and paper while the dark reading appearance is active. */
@@ -357,6 +398,10 @@ export interface LinkPreview {
   image: string;
   /** Image width divided by height. */
   ratio: number;
+  /** Exact target for the preview's explicit navigation control. */
+  location?: PDFLocation;
+  /** Re-render the crop from the PDF at the requested physical pixel width. */
+  renderImage?: (width: number, signal: AbortSignal) => Promise<string>;
 }
 export interface ReaderEvents {
   /** Show (or hide with null) a preview of an internal link's target. */
@@ -476,6 +521,7 @@ export interface ImageAttachment {
   caption?: string;
 }
 export interface Message {
+  sessionId?: string;
   /** Provider-returned thinking, displayed separately and never added to answer context. */
   reasoning?: string;
   /** Navigation snapshot at send time; not an original-text citation. */
@@ -496,6 +542,10 @@ export interface ProcessingStage {
   warning?: string;
 }
 export interface Processing {
+  retranslating?: boolean;
+  layoutRevision?: string;
+  autoTranslateMaxPages?: number;
+  manualTranslation?: boolean;
   enabled?: boolean;
   translating?: ProcessingStage;
   usageTracked?: boolean;
@@ -550,6 +600,9 @@ export interface TranslationBlock {
   error?: string;
 }
 export interface AICapability {
+  /** Observed time to first reasoning or text output, excluding catalog lookup. */
+  textFirstOutputMs?: number;
+  visionFirstOutputMs?: number;
   tools?: "passed" | "unsupported" | "failed";
   toolSchemaVersion?: string;
   toolError?: string;
@@ -575,6 +628,8 @@ export interface AIConfig {
   efforts?: Record<string, Record<string, ReasoningEffort>>;
   translationModels?: Record<string, string>;
   translationEfforts?: Record<string, Record<string, ReasoningEffort>>;
+  /** Translation style and terminology preferences. Empty uses the default. */
+  translationPrompt?: string;
   /** Image-input model of the "api" agent; other agents use their chat model. */
   visionModels?: Record<string, string>;
   visionEfforts?: Record<string, Record<string, ReasoningEffort>>;
@@ -726,3 +781,24 @@ export type {
 } from "./proxy-settings";
 export type { UpdateProgress } from "./update-progress";
 export type { CommandLineStatus } from "./command-line";
+
+export interface ChatRun {
+  id: string;
+  sessionId: string;
+  documentId: string;
+  userMessageId: string;
+  provider: string;
+  status: "running" | "completed" | "failed" | "cancelled" | "interrupted";
+  error?: string;
+  startedAt: string;
+  finishedAt?: string;
+}
+export interface DocumentChatSession {
+  id: string;
+  documentId: string;
+  title: string;
+  provider: string;
+  createdAt: string;
+  updatedAt: string;
+  latestRun?: ChatRun;
+}

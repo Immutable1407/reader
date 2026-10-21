@@ -52,16 +52,22 @@ run(process.execPath, [
   "--config.node-linker=hoisted",
   processor,
 ]);
-await cp(join(processor, "dist/main.mjs"), join(processor, "main.mjs"));
-await cp(join(processor, "dist/corpus.mjs"), join(processor, "corpus.mjs"));
+run(process.execPath, [
+  pnpm,
+  "--filter",
+  "@reader/agent",
+  "deploy",
+  "--prod",
+  "--config.inject-workspace-packages=true",
+  "--config.node-linker=hoisted",
+  join(staging, "agent"),
+]);
 await cp(
-  join(processor, "dist/render-pages.mjs"),
-  join(processor, "render-pages.mjs"),
+  join(root, "scripts/agent-smoke.mjs"),
+  join(staging, "agent/smoke.mjs"),
 );
-await cp(join(processor, "dist/model.mjs"), join(processor, "model.mjs"));
-await cp(join(processor, "dist/models"), join(processor, "models"), {
-  recursive: true,
-});
+// Include lazy worker/shared chunks as well as entrypoints and the model.
+await cp(join(processor, "dist"), processor, { recursive: true });
 await rm(join(processor, "dist"), { recursive: true });
 await cp(
   join(root, "scripts/processor-smoke.mjs"),

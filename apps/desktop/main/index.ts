@@ -10,9 +10,16 @@ import {
 import { spawn, type ChildProcess } from "node:child_process";
 import { join, resolve } from "node:path";
 import { createInterface } from "node:readline";
-import { readFile } from "node:fs/promises";
+import { readFile, realpath, lstat } from "node:fs/promises";
+import {
+  libraryDirectory,
+  migrateLibrary,
+  stopLibraryServer,
+} from "./library-location";
 import { randomBytes } from "node:crypto";
 import { homedir } from "node:os";
+import { agentPath } from "./agent-path";
+import { codexThreadURL } from "../../../packages/reader-core/src/codex-link";
 import { annotationUndoShortcut } from "../../../packages/reader-core/src/undo-shortcut";
 import { zoomCommand } from "../../../packages/reader-core/src/zoom-shortcut";
 import {
@@ -20,7 +27,7 @@ import {
   parseReaderLink,
   type ReaderLinkTarget,
 } from "../../../packages/reader-core/src/reader-link";
-import { writeClipboardText } from "./clipboard";
+import { writeClipboardImage, writeClipboardText } from "./clipboard";
 import {
   ProxySettingsService,
   electronProxyConfiguration,
@@ -28,6 +35,7 @@ import {
 import { startUpdateService } from "./update-service";
 import { devIsolation } from "./dev-isolation";
 import { startDiagnosticService } from "./diagnostic-service";
+import { discoverEndNote } from "./endnote-discovery";
 import { commandLineStatus, setCommandLine } from "./command-line";
 const isolation = devIsolation({
   isPackaged: app.isPackaged,
@@ -49,6 +57,10 @@ let closing = false;
 let flushed = false;
 let restartRequested = false;
 let proxySettings: ProxySettingsService;
+let activeLibrary: string | undefined;
+let choosingLibrary = false;
+let pendingLibraryMove:
+  { destination: string; resolve: (moved: boolean) => void } | undefined;
 const root = resolve(__dirname, "../..");
 function bundledBinary(name: "reader-server" | "reader") {
   const file = process.platform === "win32" ? `${name}.exe` : name;
@@ -74,15 +86,7 @@ async function startServer() {
   const web = app.isPackaged
     ? join(process.resourcesPath, "web")
     : join(root, "web", "dist");
-  const pathValue = [
-    join(homedir(), ".local", "bin"),
-    join(homedir(), ".kimi-code", "bin"),
-    "/opt/homebrew/bin",
-    "/usr/local/bin",
-    process.env.PATH,
-  ]
-    .filter(Boolean)
-    .join(process.platform === "win32" ? ";" : ":");
+  const pathValue = await agentPath(childEnv, homedir(), process.platform);
   child = spawn(
     binary,
     [
@@ -93,7 +97,8 @@ async function startServer() {
       "--session",
       diagnostics!.logs.sessionId,
       "--data",
-      join(app.getPath("userData"), "library"),
+      activeLibrary!,
+      "--shutdown-on-stdin",
       "--web",
       web,
       ...(!isolation.enableConnector ? ["--connector=false"] : []),
@@ -104,11 +109,14 @@ async function startServer() {
         READER_TOKEN: serverToken,
         PATH: pathValue,
         READER_NODE: process.execPath,
+        READER_AGENT: app.isPackaged
+          ? join(process.resourcesPath, "agent", "dist", "main.mjs")
+          : join(root, "agent", "dist", "main.mjs"),
         READER_PROCESSOR: app.isPackaged
           ? join(process.resourcesPath, "processor", "main.mjs")
           : join(root, "processor", "dist", "main.mjs"),
       },
-      stdio: ["ignore", "pipe", "pipe"],
+      stdio: ["pipe", "pipe", "pipe"],
     },
   );
   const stderrLines = createInterface({ input: child.stderr! });
@@ -251,7 +259,10 @@ app
   .whenReady()
   .then(async () => {
     if (!primary) return;
-    diagnostics = startDiagnosticService(() => window);
+    diagnostics = startDiagnosticService(
+      () => window,
+      () => activeLibrary,
+    );
     ipcMain.on("reader:diagnostic-event", (event, value) =>
       diagnostics!.receive(event, value),
     );
@@ -276,6 +287,7 @@ app
     await session.defaultSession.setProxy(
       electronProxyConfiguration(proxySettings.activeSettings),
     );
+    activeLibrary = await libraryDirectory(app.getPath("userData"));
     const url = await startServer();
     session.defaultSession.setPermissionRequestHandler(
       (contents, permission, callback, details) => {
@@ -371,10 +383,16 @@ app
           return;
         void finish(error);
       };
+      let finished = false;
       const finish = async (error: string | null) => {
+        if (finished) return;
+        finished = true;
         clearTimeout(timer);
         ipcMain.removeListener("reader:flushed", handler);
         if (error) {
+          // A failed flush must never produce a migrated, stale snapshot.
+          pendingLibraryMove?.resolve(false);
+          pendingLibraryMove = undefined;
           diagnostics?.record("reading.flush_failed", new Error(error));
           const result = await dialog.showMessageBox(window!, {
             type: "warning",
@@ -388,6 +406,33 @@ app
             closing = false;
             restartRequested = false;
             return;
+          }
+        }
+        if (pendingLibraryMove) {
+          const move = pendingLibraryMove;
+          pendingLibraryMove = undefined;
+          quitting = true; // This server exit is intentional.
+          updateService?.stop();
+          proxySettings?.stop();
+          try {
+            await migrateLibrary(
+              app.getPath("userData"),
+              activeLibrary!,
+              move.destination,
+              serverBinary(),
+              async () => {
+                if (child) await stopLibraryServer(child);
+              },
+            );
+            move.resolve(true);
+          } catch (error) {
+            await dialog.showMessageBox(window!, {
+              type: "error",
+              message: "书库迁移失败",
+              detail: `${(error as Error).message}\n原书库已保留，将重新打开原来的位置。`,
+              buttons: ["重新打开 Reader"],
+            });
+            move.resolve(false);
           }
         }
         flushed = true;
@@ -431,6 +476,11 @@ app
     ipcMain.handle("reader:clipboard-write", (event, text: unknown) =>
       writeClipboardText(event, text, window?.webContents, url),
     );
+    ipcMain.handle(
+      "reader:clipboard-write-image",
+      (event, data: unknown, text: unknown) =>
+        writeClipboardImage(event, data, text, window?.webContents, url),
+    );
     const settingsSender = (event: Electron.IpcMainInvokeEvent) => {
       if (
         event.sender !== window?.webContents ||
@@ -439,6 +489,53 @@ app
       )
         throw new Error("Invalid sender");
     };
+    ipcMain.handle("reader:library-location", (event) => {
+      settingsSender(event);
+      return activeLibrary;
+    });
+    ipcMain.handle("reader:move-library", async (event) => {
+      settingsSender(event);
+      if (choosingLibrary || closing || restartRequested) return false;
+      choosingLibrary = true;
+      try {
+        const selected = await dialog.showOpenDialog(window!, {
+          title: "选择书库保存位置（将在其中新建 Reader Library）",
+          properties: ["openDirectory", "createDirectory"],
+        });
+        if (selected.canceled || !selected.filePaths[0]) return false;
+        const destination = join(
+          await realpath(selected.filePaths[0]),
+          "Reader Library",
+        );
+        // The server's SQLite DSN treats ? as the start of query parameters.
+        if (destination.includes("?"))
+          throw new Error("书库路径不能包含 ?，请选择其他位置。");
+        try {
+          await lstat(destination);
+          throw new Error(
+            "所选位置已有 Reader Library 文件夹，请选择其他位置。",
+          );
+        } catch (error) {
+          if ((error as NodeJS.ErrnoException).code !== "ENOENT") throw error;
+        }
+        const confirmed = await dialog.showMessageBox(window!, {
+          type: "question",
+          message: "迁移书库并重启 Reader？",
+          detail: `新位置：${destination}\nPDF、笔记、批注和阅读记录将一起复制。原书库保留。`,
+          buttons: ["迁移并重启", "取消"],
+          defaultId: 0,
+          cancelId: 1,
+        });
+        if (confirmed.response !== 0 || closing || quitting) return false;
+        return await new Promise<boolean>((resolve) => {
+          pendingLibraryMove = { destination, resolve };
+          restartRequested = true;
+          app.quit();
+        });
+      } finally {
+        choosingLibrary = false;
+      }
+    });
     ipcMain.handle("reader:proxy-settings", (event) => {
       settingsSender(event);
       return proxySettings.state();
@@ -500,8 +597,7 @@ app
         )
           throw new Error("Invalid document");
         const file = join(
-          app.getPath("userData"),
-          "library",
+          activeLibrary!,
           type === "pdf" ? "papers" : "books",
           `${id}.${type}`,
         );
@@ -521,6 +617,17 @@ app
       linksClaimed = true;
       return pendingLinks.splice(0);
     });
+    ipcMain.handle(
+      "reader:open-codex-thread",
+      async (event, threadId: unknown) => {
+        if (
+          event.sender !== window?.webContents ||
+          event.senderFrame !== window.webContents.mainFrame
+        )
+          throw new Error("Invalid sender");
+        await shell.openExternal(codexThreadURL(threadId));
+      },
+    );
     ipcMain.handle("reader:open-external", async (event, url: unknown) => {
       if (
         event.sender !== window?.webContents ||
@@ -531,6 +638,64 @@ app
         throw new Error("Invalid link");
       await shell.openExternal(new URL(url).toString());
     });
+    let endnoteSearch: { id: string; controller: AbortController } | undefined;
+    const checkEndnoteSender = (event: Electron.IpcMainInvokeEvent) => {
+      if (
+        event.sender !== window?.webContents ||
+        event.senderFrame !== window.webContents.mainFrame
+      )
+        throw new Error("Invalid sender");
+    };
+    ipcMain.handle("reader:find-endnote", async (event, id: unknown) => {
+      checkEndnoteSender(event);
+      if (typeof id !== "string" || id.length > 100)
+        throw new Error("Invalid search");
+      endnoteSearch?.controller.abort();
+      const search = { id, controller: new AbortController() };
+      endnoteSearch = search;
+      const roots = [
+        app.getPath("documents"),
+        app.getPath("desktop"),
+        app.getPath("downloads"),
+        join(homedir(), "Developer"),
+      ];
+      if (process.env.OneDrive)
+        roots.push(join(process.env.OneDrive, "Documents"));
+      try {
+        return await discoverEndNote(
+          roots,
+          process.platform,
+          search.controller.signal,
+        );
+      } finally {
+        if (endnoteSearch === search) endnoteSearch = undefined;
+      }
+    });
+    ipcMain.handle("reader:cancel-endnote-search", (event, id: unknown) => {
+      checkEndnoteSender(event);
+      if (endnoteSearch && endnoteSearch.id === id)
+        endnoteSearch.controller.abort();
+    });
+    ipcMain.handle(
+      "reader:choose-endnote",
+      async (event, directory: unknown) => {
+        checkEndnoteSender(event);
+        const selected = await dialog.showOpenDialog(window!, {
+          title: directory
+            ? "选择 EndNote 文献库所在目录"
+            : "选择 EndNote 文献库",
+          properties: directory ? ["openDirectory"] : ["openFile"],
+          ...(!directory
+            ? {
+                filters: [
+                  { name: "EndNote 文献库", extensions: ["enl", "enlp"] },
+                ],
+              }
+            : {}),
+        });
+        return selected.canceled ? null : selected.filePaths[0] || null;
+      },
+    );
     ipcMain.handle("reader:choose-zotero-directory", async (event) => {
       if (
         event.sender !== window?.webContents ||

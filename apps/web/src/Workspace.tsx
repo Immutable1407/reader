@@ -1,6 +1,10 @@
+import { useShortcut } from "./shortcuts/shortcuts";
+import { SelectionTranslation } from "./SelectionTranslation";
+import { LinkPreviewPanel } from "./LinkPreviewPanel";
 import { AnnotationHoverCard } from "./AnnotationHoverCard";
 import { AnnotationQuote } from "./AnnotationQuote";
 import {
+  useCallback,
   useEffect,
   useLayoutEffect,
   useMemo,
@@ -10,6 +14,7 @@ import {
   type CSSProperties,
 } from "react";
 import {
+  Languages,
   ChartColumn,
   ArrowLeft,
   BookOpen,
@@ -38,6 +43,7 @@ import {
 import { api, blockImageURL } from "@reader/api";
 import {
   locationLabel,
+  type DocumentChatSession,
   type Annotation,
   type Document as ReaderDocument,
   type DocumentLocation,
@@ -94,7 +100,10 @@ import { ProcessingUsageDialog } from "./ProcessingUsage";
 import { ModelSelector } from "./ModelSelector";
 import { SourceReferences } from "./SourceReferences";
 import { ChatSession } from "./chat/chat-session";
+import { getChatSession } from "./chat/session-registry";
+import { SessionPicker } from "./chat/SessionPicker";
 import { AssistantPanel } from "./chat/AssistantPanel";
+import { CodexHandoffButton } from "./chat/CodexHandoffButton";
 import { ImagePreview, imageLabel } from "./ImagePreview";
 import { readingContext } from "./chat/reading-context";
 import { referenceLabel } from "./references";
@@ -112,7 +121,7 @@ import { ColorSwatches } from "./ColorSwatches";
 import { useSelectionClipboard } from "./useSelectionClipboard";
 import { copyImage, copyText } from "./chat/clipboard";
 import { NotesPanel } from "./NotesPanel";
-import { ExportNotesDialog } from "./ExportNotesDialog";
+import { ExportDocumentDialog } from "./ExportDocumentDialog";
 import { EPUBReadingView } from "./translation/EPUBReadingView";
 import { PDFReadingView } from "./translation/PDFReadingView";
 import { useReaderStore } from "./store";
@@ -271,8 +280,12 @@ export function Workspace({
   const [location, setLocation] = useState<DocumentLocation | undefined>(
     doc.progress,
   );
+  const [translationSelection, setTranslationSelection] =
+    useState<ReaderSelection | null>(null);
   const [selection, setSelection] = useState<ReaderSelection | null>(null);
   const [annotations, setAnnotations] = useState<Annotation[]>([]);
+  const recoveryDocument = useRef(doc.id);
+  recoveryDocument.current = doc.id;
   const annotationSaving = useRef(false);
   const [noteSaving, setNoteSaving] = useState(false);
   const selectionClipboard = useSelectionClipboard(theme.autoCopySelection);
@@ -359,12 +372,88 @@ export function Workspace({
     null,
   );
   const readingPane = useRef<HTMLDivElement>(null);
+  const [sessionCatalog, setSessionCatalog] = useState<{
+    documentId: string;
+    items: DocumentChatSession[];
+  }>({ documentId: doc.id, items: [] });
+  const [selectedSession, setSelectedSession] = useState<{
+    documentId: string;
+    id: string;
+  }>({ documentId: doc.id, id: "" });
+  const [sessionError, setSessionError] = useState("");
+  const currentDocument = useRef(doc.id);
+  currentDocument.current = doc.id;
+  const sessions =
+    sessionCatalog.documentId === doc.id ? sessionCatalog.items : [];
+  let preferred =
+    selectedSession.documentId === doc.id ? selectedSession.id : "";
+  if (!preferred) {
+    try {
+      preferred = localStorage.getItem(`reader.chat-session.${doc.id}`) || "";
+    } catch {}
+  }
+  const currentSession =
+    sessions.find((s) => s.id === preferred) ?? sessions[0];
   const provider = aiConfig?.primary ?? "";
+  const sessionListSerial = useRef(0);
+  const refreshSessions = useCallback(async () => {
+    const serial = ++sessionListSerial.current;
+    const items = await api.chatSessions(doc.id, AbortSignal.timeout(15_000));
+    if (
+      currentDocument.current === doc.id &&
+      serial === sessionListSerial.current
+    ) {
+      setSessionCatalog({ documentId: doc.id, items });
+      setSessionError("");
+    }
+  }, [doc.id]);
+  const selectSession = (id: string) => {
+    setSelectedSession({ documentId: doc.id, id });
+    try {
+      localStorage.setItem(`reader.chat-session.${doc.id}`, id);
+    } catch {}
+  };
+  useEffect(() => {
+    let alive = true;
+    let timer: ReturnType<typeof setTimeout>;
+    const poll = async () => {
+      try {
+        await refreshSessions();
+      } catch (error) {
+        if (alive) setSessionError((error as Error).message);
+      } finally {
+        if (alive) timer = setTimeout(poll, 3000);
+      }
+    };
+    void poll();
+    return () => {
+      alive = false;
+      clearTimeout(timer);
+    };
+  }, [refreshSessions]);
   const [prompt, setPrompt] = useState("");
   const [quotes, setQuotes] = useState<ReaderSelection[]>([]);
   const [images, setImages] = useState<ImageAttachment[]>([]);
   const [previewImage, setPreviewImage] = useState<ImageAttachment>();
   const composeInput = useRef<HTMLTextAreaElement>(null);
+  const composerDrafts = useRef(
+    new Map<
+      string,
+      { prompt: string; quotes: ReaderSelection[]; images: ImageAttachment[] }
+    >(),
+  );
+  const composerValue = useRef({ prompt, quotes, images });
+  composerValue.current = { prompt, quotes, images };
+  const composerKey = `${doc.id}:${currentSession?.id ?? ""}`;
+  useEffect(() => {
+    const saved = composerDrafts.current.get(composerKey);
+    setPrompt(saved?.prompt ?? "");
+    setQuotes(saved?.quotes ?? []);
+    setImages(saved?.images ?? []);
+    return () => {
+      composerDrafts.current.set(composerKey, composerValue.current);
+    };
+  }, [composerKey]);
   useEffect(() => {
     let alive = true;
     void api
@@ -379,10 +468,29 @@ export function Workspace({
       alive = false;
     };
   }, [setAIConfig]);
-  const session = useMemo(() => new ChatSession(doc.id), [doc.id]);
+  const emptySession = useMemo(() => new ChatSession(doc.id), [doc.id]);
+  const session = currentSession
+    ? getChatSession(doc.id, currentSession.id)
+    : emptySession;
   const chat = useSyncExternalStore(session.subscribe, session.getSnapshot);
+  useEffect(() => {
+    if (
+      !currentSession ||
+      currentSession.latestRun?.status !== "running" ||
+      chat.busy
+    )
+      return;
+    const timer = setTimeout(() => void session.load(), 3000);
+    return () => clearTimeout(timer);
+  }, [
+    currentSession?.latestRun?.id,
+    currentSession?.latestRun?.status,
+    chat.busy,
+    session,
+  ]);
   const sendSerial = useRef(0);
-  const [sending, setSending] = useState(false);
+  const [preparing, setSending] = useState(false);
+  const sending = preparing || chat.busy;
   const [pageInput, setPageInput] = useState("");
   const abort = useRef<AbortController | null>(null);
   const searchSerial = useRef(0);
@@ -393,31 +501,23 @@ export function Workspace({
     setSearchedQuery("");
     setSearching(false);
   }, [doc.id]);
-  useEffect(() => {
-    const find = (event: KeyboardEvent) => {
-      if (
-        (event.metaKey || event.ctrlKey) &&
-        !event.shiftKey &&
-        !event.altKey &&
-        event.key.toLowerCase() === "f"
-      ) {
-        event.preventDefault();
-        setLeft(true);
-        setLeftTab("search");
-        requestAnimationFrame(() => searchInput.current?.focus());
-      }
-    };
-    window.addEventListener("keydown", find);
-    return () => window.removeEventListener("keydown", find);
-  }, []);
+  useShortcut("readerLeft", () => setLeft((value) => !value));
+  useShortcut("readerRight", () => setRight((value) => !value));
+  useShortcut("search", () => {
+    setLeft(true);
+    setLeftTab("search");
+    requestAnimationFrame(() => searchInput.current?.focus());
+  });
   useEffect(() => {
     let alive = true;
     session.activate();
     abort.current = null;
-    void session.load();
+    if (currentSession) void session.load();
     setSending(false);
     api
-      .annotations(doc.id)
+      .recoverAnnotations(doc.id)
+      .catch((e) => toast.error(e.message))
+      .then(() => api.annotations(doc.id))
       .then((a) => {
         if (alive) {
           setAnnotations(a);
@@ -429,7 +529,7 @@ export function Workspace({
       alive = false;
       sendSerial.current++;
       abort.current?.abort();
-      session.dispose();
+      // A viewer switch must not abort its independently owned run.
       void flushProgress().catch((e) => toast.error(e.message));
     };
   }, [doc.id, session]);
@@ -445,7 +545,13 @@ export function Workspace({
     return () => {
       alive = false;
     };
-  }, [doc.id, doc.type, processing?.phase, processing?.status]);
+  }, [
+    doc.id,
+    doc.type,
+    processing?.phase,
+    processing?.status,
+    processing?.layoutRevision,
+  ]);
   const move = (next: DocumentLocation) => {
     void adapter?.goTo(next).catch((e) => toast.error(e.message));
   };
@@ -472,6 +578,7 @@ export function Workspace({
         .catch((e) => toast.error(e.message));
   }, [linkTarget, adapter, annotationsLoaded, annotations, doc.id, doc.type]);
   const saveLocation = (next: DocumentLocation, percent: number) => {
+    setTranslationSelection(null);
     setLocation(next);
     if (navigationRef.current?.settle()) setReturnLocation(undefined);
     if (next.type === "pdf") setPageInput(String(next.page));
@@ -543,6 +650,7 @@ export function Workspace({
     ? activeAnnotation(annotations, annotationTarget.ids)
     : undefined;
   const selectAnnotation = (target: ReaderAnnotationTarget | null) => {
+    if (target) setTranslationSelection(null);
     setHoveredAnnotation(null);
     setAnnotationTarget(target);
     const annotation = target
@@ -551,7 +659,10 @@ export function Workspace({
     selectionClipboard.annotation(annotation);
   };
   const selectText = (next: ReaderSelection | null) => {
-    if (next) setHoveredAnnotation(null);
+    if (next) {
+      setHoveredAnnotation(null);
+      setTranslationSelection(null);
+    }
     setSelection(next);
     selectionClipboard.selection(next);
   };
@@ -756,14 +867,14 @@ export function Workspace({
     const current = useReaderStore.getState();
     if (abort.current || session.getSnapshot().busy || current.aiModelSaving)
       return;
-    if (!current.aiConfig?.primary) {
+    if (!provider) {
       onSettings();
       return;
     }
     const serial = ++sendSerial.current;
     setSending(true);
     try {
-      await session.regenerate(current.aiConfig.primary);
+      await session.regenerate(provider);
     } catch (error) {
       if (serial === sendSerial.current) toast.error((error as Error).message);
     } finally {
@@ -774,7 +885,7 @@ export function Workspace({
     if (action === "copy") {
       if (block.image)
         void copyImage(
-          blockImageURL(doc.id, block.id),
+          blockImageURL(doc.id, block.id, block.image),
           (block.caption || block.text).trim(),
         );
       else void copyText(block.text.trim(), "已复制");
@@ -1297,6 +1408,7 @@ export function Workspace({
                 doc.type === "pdf" ? PDFReadingView : EPUBReadingView;
               return (
                 <ReadingView
+                  sidebarsOpen={{ left, right }}
                   document={doc}
                   theme={theme}
                   annotations={annotations}
@@ -1403,6 +1515,16 @@ export function Workspace({
                 <IconButton label="引用到对话" onClick={addQuote}>
                   <Quote />
                 </IconButton>
+                <IconButton
+                  label="划词翻译"
+                  onClick={() => {
+                    setTranslationSelection(selection);
+                    setSelection(null);
+                    adapter?.clearSelection();
+                  }}
+                >
+                  <Languages />
+                </IconButton>
               </SelectionToolbar>
             )}
           </div>
@@ -1445,6 +1567,20 @@ export function Workspace({
                 >
                   <ChartColumn />
                 </Button>
+                {rightTab === "ai" && provider === "codex" && (
+                  <CodexHandoffButton
+                    key={doc.id}
+                    documentId={doc.id}
+                    sessionId={currentSession?.id}
+                    disabled={
+                      sending ||
+                      !chat.loaded ||
+                      !chat.messages.some(
+                        (message) => message.role === "assistant",
+                      )
+                    }
+                  />
+                )}
               </TabsList>
               <TabsContent
                 value="ai"
@@ -1453,11 +1589,50 @@ export function Workspace({
                   { "--assistant-font-scale": assistantSize } as CSSProperties
                 }
               >
+                <SessionPicker
+                  documentId={doc.id}
+                  sessions={sessions}
+                  current={currentSession}
+                  provider={provider}
+                  running={sending}
+                  onChange={selectSession}
+                  onRefresh={refreshSessions}
+                />
+                {sessionError && (
+                  <div
+                    className="px-3 py-2 text-sm text-destructive"
+                    role="alert"
+                  >
+                    {sessionError}
+                    <Button
+                      variant="link"
+                      size="sm"
+                      onClick={() =>
+                        void refreshSessions().catch((error) =>
+                          toast.error(error.message),
+                        )
+                      }
+                    >
+                      重试
+                    </Button>
+                  </div>
+                )}
                 <AssistantPanel
-                  key={doc.id}
+                  key={currentSession?.id ?? doc.id}
                   session={session}
                   onRegenerate={() => void regenerate()}
                   regenerateDisabled={aiModelSaving || sending}
+                  renderAnswer={(message, content) => (
+                    <SourceReferences
+                      key={message.id}
+                      message={message}
+                      toc={toc}
+                      adapter={adapter}
+                      onNavigate={visitReference}
+                    >
+                      {content}
+                    </SourceReferences>
+                  )}
                   empty={
                     <div className="chat-empty">
                       <p>
@@ -1575,7 +1750,11 @@ export function Workspace({
                     }}
                   />
                   <div className="compose-footer">
-                    <ModelSelector disabled={sending} onSettings={onSettings} />
+                    <ModelSelector
+                      key={provider}
+                      disabled={sending || !currentSession}
+                      onSettings={onSettings}
+                    />
                     {sending ? (
                       <Button
                         size="icon-sm"
@@ -1620,6 +1799,20 @@ export function Workspace({
                   onResolve={(a, resolved) => void resolveQuestion(a, resolved)}
                   onShowAnswer={showAnswer}
                   onExport={() => setExportingNotes(true)}
+                  onRecover={async () => {
+                    try {
+                      const result = await api.recoverAnnotations(doc.id, true);
+                      if (!result.checked) {
+                        toast.error("请等待文档解析和翻译完成后再定位批注");
+                        return;
+                      }
+                      const items = await api.annotations(doc.id);
+                      if (recoveryDocument.current === doc.id)
+                        setAnnotations(items);
+                    } catch (e) {
+                      toast.error((e as Error).message);
+                    }
+                  }}
                 />
               </TabsContent>
             </Tabs>
@@ -1627,42 +1820,27 @@ export function Workspace({
         </ResizablePanel>
       </ResizablePanelGroup>
 
+      <SelectionTranslation
+        key={doc.id}
+        selection={translationSelection}
+        onClose={() => setTranslationSelection(null)}
+      />
       <AnnotationHoverCard
         target={!selection && !noteOpen ? hoveredAnnotation : null}
         annotations={annotations}
         onEdit={editAnnotationNote}
       />
-      <Popover
-        open={!!linkPreview}
-        onOpenChange={(open) => !open && setLinkPreview(null)}
-      >
-        {linkPreview && (
-          <PopoverContent
-            anchor={{
-              getBoundingClientRect: () =>
-                DOMRect.fromRect({
-                  x: linkPreview.anchor.left,
-                  y: linkPreview.anchor.top,
-                  width: linkPreview.anchor.width,
-                  height: linkPreview.anchor.height,
-                }),
-            }}
-            side="bottom"
-            initialFocus={false}
-            finalFocus={false}
-            className="link-preview"
-          >
-            <img
-              src={linkPreview.image}
-              alt={`第 ${linkPreview.page} 页链接目标`}
-              style={{ aspectRatio: linkPreview.ratio }}
-            />
-            <span className="text-xs text-muted-foreground">
-              第 {linkPreview.page} 页 · 点击跳转
-            </span>
-          </PopoverContent>
-        )}
-      </Popover>
+      <LinkPreviewPanel
+        key={doc.id}
+        preview={linkPreview}
+        onDismiss={() => setLinkPreview(null)}
+        onNavigate={(location) =>
+          void visitReference(location, "").catch((error) =>
+            toast.error(String(error)),
+          )
+        }
+        renderKey={`${theme.mode}:${theme.pdfDarkImageMode}:${theme.pdfDarkContrast}`}
+      />
       {previewImage && (
         <ImagePreview
           key={previewImage.id}
@@ -1756,7 +1934,8 @@ export function Workspace({
         </DialogContent>
       </Dialog>
       {exportingNotes && (
-        <ExportNotesDialog
+        <ExportDocumentDialog
+          key={`export-${doc.id}`}
           document={doc}
           annotations={annotations}
           messages={chat.messages}

@@ -708,16 +708,6 @@ export function PaperSidebar({
             .filter((item) => !hidden.includes(`smart:${item.id}`))
             .map((item) => smartRow(item))}
           {categories.length > 0 && count("unfiled") > 0 && viewRow("unfiled")}
-          {!categories.length && !smart.length && (
-            <Button
-              variant="ghost"
-              className="nav-item paper-nav-item text-muted-foreground"
-              onClick={onNewCategory}
-            >
-              <Plus className="size-4" />
-              新建分类
-            </Button>
-          )}
         </nav>
         {hiddenItems.length > 0 && (
           <DropdownMenu>

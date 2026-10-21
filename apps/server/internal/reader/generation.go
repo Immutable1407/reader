@@ -60,6 +60,9 @@ type ProviderEvent struct {
 	Text       string
 	Fallback   string
 	Metrics    []ModelTokens
+
+	// OutputObserved signals nonempty withheld content without carrying its text.
+	OutputObserved bool
 }
 type GenerateRequest struct{ Input AIInput }
 type GenerateResult struct {
@@ -78,11 +81,11 @@ type generationConnection struct {
 	Incremental                  bool
 }
 type GenerationService struct {
-	timeout       time.Duration // Zero keeps the normal three-minute request limit.
-	primary       string
-	connections   map[string]generationConnection
-	attemptFailed func(string, bool, error)
-	usageSink     func(UsageCall) error
+	translationInstructions string
+	timeout                 time.Duration // Zero keeps the normal three-minute request limit.
+	primary                 string
+	connections             map[string]generationConnection
+	usageSink               func(UsageCall) error
 }
 
 func (s *Server) generationService(config AIConfig) *GenerationService {
@@ -94,22 +97,13 @@ func (s *Server) taskGenerationService(config AIConfig, task modelTask) *Generat
 	models, efforts := config.Models, config.Efforts
 	if task == taskTranslation {
 		models, efforts = config.TranslationModels, config.TranslationEfforts
-	}
-	g.attemptFailed = func(provider string, vision bool, err error) {
-		// Capability checks cover the chat model; a failing translation model
-		// must not mark the agent unusable for chat.
-		if task == taskTranslation && validAgent(provider) {
-			return
-		}
-		// API checks are per model; a runtime failure does not say which
-		// model's check is stale.
-		if provider == "api" {
-			return
-		}
-		if saveErr := s.recordCapabilityFailure(config, provider, vision, err); saveErr != nil {
-			log.Printf("cannot persist %s capability failure: %v", provider, saveErr)
+		if config.TranslationPrompt != nil {
+			g.translationInstructions = *config.TranslationPrompt
 		}
 	}
+	// Capability checks describe a tested configuration. Runtime failures are
+	// reported per attempt below; they must not revoke a successful probe.
+
 	for _, p := range []string{"codex", "claude", "kimi", "api", "text-api", "image-api"} {
 		model := models[p]
 		level := efforts[p][model]
@@ -307,7 +301,7 @@ func (g *GenerationService) attempt(ctx context.Context, provider string, in AII
 		slog.Log(ctx, level, "generation.finish", "attemptId", attemptID, "requestId", requestID(ctx), "provider", provider, "durationMs", time.Since(started).Milliseconds(), "errorCode", kind)
 	}()
 	sink := g.usageSink
-	structuredUsage := in.Chat != nil && in.Chat.Agent != nil && (provider == "codex" || provider == "api" || provider == "text-api")
+	structuredUsage := in.Chat != nil && ((in.Chat.Agent != nil && provider == "codex") || ((in.Chat.Agent != nil || in.Chat.SessionID != "") && (provider == "api" || provider == "text-api" || provider == "image-api")))
 	if structuredUsage {
 		in.UsageSink = g.usageSink
 		in.UsageProvider = provider
@@ -316,10 +310,7 @@ func (g *GenerationService) attempt(ctx context.Context, provider string, in AII
 	result, err = trackModelUsage(UsageCall{ID: attemptID, Provider: provider}, sink, emit, func(send func(ProviderEvent) error) (GenerateResult, error) {
 		return runAttempt(ctx, g.connections[provider].Adapter, in, send)
 	})
-	// User cancellation and a disconnected consumer do not invalidate the agent.
-	if err != nil && !errors.Is(ctx.Err(), context.Canceled) && errorKind(err) != ErrorCanceled && g.attemptFailed != nil {
-		g.attemptFailed(provider, len(in.images()) > 0, err)
-	}
+
 	return result, err
 }
 func (g *GenerationService) generate(ctx context.Context, in AIInput, interactive, exposeText bool, emit func(ProviderEvent) error) (AIResult, error) {

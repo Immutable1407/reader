@@ -1,4 +1,4 @@
-import type { Document } from "@reader/core";
+import type { Annotation, Document } from "@reader/core";
 import { api, publicationURL } from "@reader/api";
 import workerURL from "pdfjs-dist/build/pdf.worker.min.mjs?url";
 import { toast } from "sonner";
@@ -6,26 +6,21 @@ import { downloadBlob, fileTitle } from "./download";
 import { annotatedPDF } from "./readers/pdf-export";
 
 /** Saves a copy of the PDF with Reader's annotations written into it. */
-export async function exportAnnotatedPDF(doc: Document) {
+export async function exportAnnotatedPDF(
+  doc: Document,
+  kinds?: Annotation["kind"][],
+) {
   const [annotations, messages] = await Promise.all([
     api.annotations(doc.id),
     api.messages(doc.id),
   ]);
   const marks = annotations.filter(
-    (a) => a.kind !== "bookmark" && a.location.type === "pdf",
+    (a) =>
+      a.kind !== "bookmark" &&
+      a.location.type === "pdf" &&
+      (!kinds || kinds.includes(a.kind)),
   );
   if (!marks.length) throw new Error("这份 PDF 还没有可导出的批注");
-  // Marks made on the translation are placed through their source blocks.
-  const blocks = marks.some(
-    (a) => "translation" in a.location && a.location.translation,
-  )
-    ? Object.fromEntries(
-        (await api.blocks(doc.id)).map((b) => [
-          b.id,
-          { page: b.page, bounds: b.bounds },
-        ]),
-      )
-    : {};
   // Loaded on demand so the library does not carry the PDF engine.
   const pdfjs = await import("pdfjs-dist");
   pdfjs.GlobalWorkerOptions.workerSrc ||= workerURL;
@@ -41,10 +36,12 @@ export async function exportAnnotatedPDF(doc: Document) {
     marks,
     {
       answers: Object.fromEntries(messages.map((m) => [m.id, m.content])),
-      blocks,
     },
   );
-  if (!result.exported) throw new Error("批注无法在原文中定位，没有导出");
+  if (!result.exported)
+    throw new Error(
+      "没有可写入原文的批注：译文批注不写入原文，其他批注可能无法定位",
+    );
   downloadBlob(
     new Blob([result.bytes as Uint8Array<ArrayBuffer>], {
       type: "application/pdf",
@@ -55,14 +52,17 @@ export async function exportAnnotatedPDF(doc: Document) {
 }
 
 /** Runs the export with progress and result toasts. */
-export function exportAnnotatedPDFWithToast(doc: Document) {
+export function exportAnnotatedPDFWithToast(
+  doc: Document,
+  kinds?: Annotation["kind"][],
+) {
   const id = toast.loading("正在导出带批注的 PDF…");
-  return exportAnnotatedPDF(doc).then(
+  return exportAnnotatedPDF(doc, kinds).then(
     ({ exported, skipped }) =>
       toast.success(`已导出 ${exported} 条批注`, {
         id,
         description: skipped
-          ? `${skipped} 条无法在原文中定位，未写入`
+          ? `${skipped} 条为译文批注或无法定位，未写入`
           : undefined,
       }),
     (error: Error) => toast.error(error.message, { id }),

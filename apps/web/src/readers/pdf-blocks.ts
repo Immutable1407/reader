@@ -196,7 +196,9 @@ export class PDFBlockOverlay {
     if ((event.target as Element)?.closest(blockActionTarget)) return;
     const pressed = this.pressed;
     this.pressed = undefined;
+    // The annotation listener runs first on this host and claims marked text.
     if (
+      event.defaultPrevented ||
       !pressed ||
       Math.hypot(event.clientX - pressed.x, event.clientY - pressed.y) > 5 ||
       window.getSelection()?.toString().trim()
