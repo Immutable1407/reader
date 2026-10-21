@@ -250,7 +250,10 @@ export function PaperLibrary({
   const visibleIds = visible.map((d) => d.id);
   const selected = documents.find((d) => d.id === selectedId);
   const pickedDocs = documents.filter((d) => picked.has(d.id));
-  const pickedPDFs = pickedDocs.filter((doc) => doc.type === "pdf");
+  const pickedById = new Map(pickedDocs.map((doc) => [doc.id, doc]));
+  const pickedPDFs = [...picked]
+    .map((id) => pickedById.get(id))
+    .filter((doc): doc is Document => doc?.type === "pdf");
   const [exportingPDFs, setExportingPDFs] = useState(false);
   const pdfExportRunning = useRef(false);
   const exportPickedPDFs = async () => {

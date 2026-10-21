@@ -640,19 +640,19 @@ it("exports selected PDFs sequentially and prevents duplicate batch exports", as
   expect(button("导出").disabled).toBe(true);
   await act(async () => usePaperUI.getState().setPicked(["epub"]));
   expect(button("导出").disabled).toBe(true);
-  await act(async () => usePaperUI.getState().setPicked(["a", "b", "epub"]));
+  await act(async () => usePaperUI.getState().setPicked(["b", "a", "epub"]));
   const trigger = button("导出");
   await act(async () => {
     trigger.click();
     trigger.click();
   });
-  expect(exportAnnotatedPDFWithToast).toHaveBeenCalledExactlyOnceWith(docs[0]);
+  expect(exportAnnotatedPDFWithToast).toHaveBeenCalledExactlyOnceWith(docs[1]);
   expect(trigger.disabled).toBe(true);
   // Changing the selection during export does not change the captured batch.
   await act(async () => usePaperUI.getState().setPicked(["epub"]));
   await act(async () => finishFirst(1));
   expect(exportAnnotatedPDFWithToast).toHaveBeenCalledTimes(2);
-  expect(exportAnnotatedPDFWithToast).toHaveBeenNthCalledWith(2, docs[1]);
+  expect(exportAnnotatedPDFWithToast).toHaveBeenNthCalledWith(2, docs[0]);
   expect(button("导出").disabled).toBe(true);
 });
 
