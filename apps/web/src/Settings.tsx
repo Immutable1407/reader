@@ -733,7 +733,7 @@ export function Settings({
             </section>
             <section>
               <h3 className="mb-3 text-sm font-medium">界面主题</h3>
-              <AppearancePicker theme={theme} setTheme={setTheme} />
+              <AppearancePicker theme={theme} setTheme={setTheme} buttons />
             </section>
             <section className="mt-6">
               <label
