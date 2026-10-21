@@ -7,6 +7,8 @@ import (
 	"net/http"
 	"os"
 	"strings"
+	"unicode"
+	"unicode/utf8"
 
 	"rsc.io/pdf"
 )
@@ -20,6 +22,18 @@ const (
 )
 
 func validLibrary(library string) bool { return library == "books" || library == "papers" }
+
+func validImportFolder(folder string) bool {
+	if utf8.RuneCountInString(folder) > 40 || strings.ContainsFunc(folder, unicode.IsControl) {
+		return false
+	}
+	for _, part := range strings.Split(folder, "/") {
+		if part == "" || part != strings.TrimSpace(part) {
+			return false
+		}
+	}
+	return true
+}
 
 // pdfPageCount reads the page tree without rendering. Malformed or unsupported
 // encrypted files report an error instead of a guess.

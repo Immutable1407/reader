@@ -7,6 +7,7 @@ import { toast } from "sonner";
 import { ImportPaperDialog } from "./ImportPaperDialog";
 import { looksLikeReference } from "./actions";
 import { usePaperUI } from "./state";
+import { useReaderStore } from "../store";
 import { paper } from "./fixtures";
 vi.mock("@reader/api", async (importOriginal) => ({
   RequestError: (await importOriginal<typeof import("@reader/api")>())
@@ -28,6 +29,7 @@ beforeEach(async () => {
     tagFilter: { tags: ["missing"], match: "all" },
     selectedId: null,
   });
+  useReaderStore.setState({ documents: [], libraryPreferences: {} });
   host = document.createElement("div");
   document.body.append(host);
   root = createRoot(host);
@@ -36,6 +38,55 @@ beforeEach(async () => {
       <ImportPaperDialog open onOpenChange={close} onChooseFiles={choose} />,
     ),
   );
+});
+it("uses the current paper category for file and reference imports", async () => {
+  useReaderStore.setState({
+    documents: [paper({ folders: ["Security/Web"] })],
+    libraryPreferences: { papers: { categories: ["Security/Web"] } },
+  });
+  usePaperUI.getState().setView("folder:Security/Web");
+  await act(async () =>
+    root.render(
+      <ImportPaperDialog
+        open={false}
+        onOpenChange={close}
+        onChooseFiles={choose}
+      />,
+    ),
+  );
+  await act(async () =>
+    root.render(
+      <ImportPaperDialog open onOpenChange={close} onChooseFiles={choose} />,
+    ),
+  );
+  const folder = document.querySelector<HTMLButtonElement>(
+    '[aria-labelledby="import-paper-folder-label"]',
+  );
+  expect(folder?.textContent).toContain("Security / Web");
+  const fileButton = Array.from(document.querySelectorAll("button")).find(
+    (button) => button.textContent?.includes("选择 PDF 文件"),
+  )!;
+  await act(async () => fileButton.click());
+  expect(choose).toHaveBeenCalledWith("Security/Web");
+
+  vi.mocked(api.resolveDocument).mockResolvedValue(
+    paper({ id: "new", folders: ["Security/Web"] }),
+  );
+  const input = document.querySelector<HTMLInputElement>(
+    '[aria-label="论文标识或链接"]',
+  )!;
+  await act(async () => type(input, "1706.03762"));
+  await act(async () =>
+    input.form!.dispatchEvent(
+      new SubmitEvent("submit", { bubbles: true, cancelable: true }),
+    ),
+  );
+  expect(api.resolveDocument).toHaveBeenCalledWith("1706.03762", {
+    library: "papers",
+    allowLarge: false,
+    folder: "Security/Web",
+  });
+  expect(usePaperUI.getState().view).toBe("folder:Security/Web");
 });
 afterEach(async () => {
   await act(async () => root.unmount());

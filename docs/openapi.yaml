@@ -1015,6 +1015,11 @@
                                       "enum": ["1"],
                                       "description": "Confirms a paper over 100 pages or 100 MB. Without it such a paper fails with 409, code large-paper and its page count.",
                                     },
+                                  "folder":
+                                    {
+                                      "type": "string",
+                                      "description": "Optional target paper category. Applied only to a newly imported paper; an existing document keeps its folders.",
+                                    },
                                 },
                               "required": ["file"],
                             },
@@ -4044,6 +4049,11 @@
                                     },
                                   "allowLarge":
                                     { "type": "boolean", "default": false },
+                                  "folder":
+                                    {
+                                      "type": "string",
+                                      "description": "Optional target paper category. Applied only to a newly imported paper; an existing document keeps its folders.",
+                                    },
                                 },
                               "required": ["ref"],
                             },

@@ -252,21 +252,33 @@ export const looksLikeReference = (text: string) =>
   text.length <= 500 && referencePattern.test(text.trim());
 
 /** Download a paper by identifier, link or title and show it in the list. */
-export async function importReference(ref: string) {
+export async function importReference(ref: string, folder = "") {
   let doc;
   try {
-    doc = await api.resolveDocument(ref.trim());
+    doc = folder
+      ? await api.resolveDocument(ref.trim(), {
+          library: "papers",
+          allowLarge: false,
+          folder,
+        })
+      : await api.resolveDocument(ref.trim());
   } catch (error) {
     if (!(error instanceof RequestError) || error.code !== "large-paper")
       throw error;
     const library = await confirmLargePaper();
     if (!library) throw new Error("已取消导入");
-    doc = await api.resolveDocument(ref.trim(), { library, allowLarge: true });
+    doc = await api.resolveDocument(ref.trim(), {
+      library,
+      allowLarge: true,
+      ...(library === "papers" && folder ? { folder } : {}),
+    });
   }
   await refreshLibrary().catch(() => {});
   const ui = usePaperUI.getState();
   if (doc.library === "papers") {
-    ui.setView("all");
+    ui.setView(
+      folder && doc.folders.includes(folder) ? `folder:${folder}` : "all",
+    );
     ui.setQuery("");
     ui.setTagFilter({ ...ui.tagFilter, tags: [] });
     ui.select(doc.id);

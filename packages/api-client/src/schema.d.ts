@@ -932,6 +932,8 @@ export interface paths {
                          * @enum {unknown}
                          */
                         allowLarge?: "1";
+                        /** @description Optional target paper category. Applied only to a newly imported paper; an existing document keeps its folders. */
+                        folder?: string;
                     };
                 };
             };
@@ -3522,6 +3524,8 @@ export interface paths {
                         library?: "papers" | "books";
                         /** @default false */
                         allowLarge?: boolean;
+                        /** @description Optional target paper category. Applied only to a newly imported paper; an existing document keeps its folders. */
+                        folder?: string;
                     };
                 };
             };

@@ -50,6 +50,58 @@ func upload(t *testing.T, s *Server, name string, data []byte) *httptest.Respons
 	s.Handler().ServeHTTP(w, r)
 	return w
 }
+
+func uploadToFolder(t *testing.T, s *Server, name string, data []byte, library, folder string) *httptest.ResponseRecorder {
+	t.Helper()
+	var body bytes.Buffer
+	m := multipart.NewWriter(&body)
+	_ = m.WriteField("library", library)
+	_ = m.WriteField("folder", folder)
+	f, _ := m.CreateFormFile("file", name)
+	_, _ = f.Write(data)
+	_ = m.Close()
+	r := httptest.NewRequest("POST", "http://127.0.0.1:17840/api/documents", &body)
+	r.Header.Set("Authorization", "Bearer test-secret")
+	r.Header.Set("Content-Type", m.FormDataContentType())
+	w := httptest.NewRecorder()
+	s.Handler().ServeHTTP(w, r)
+	return w
+}
+
+func TestImportPaperIntoFolderKeepsExistingAssignment(t *testing.T) {
+	s := testServer(t)
+	data := sample(t, "reading-notes.pdf")
+	first := uploadToFolder(t, s, "reading-notes.pdf", data, "papers", "Security/Web")
+	if first.Code != 201 {
+		t.Fatalf("import: %d %s", first.Code, first.Body.String())
+	}
+	var doc Document
+	if err := json.Unmarshal(first.Body.Bytes(), &doc); err != nil {
+		t.Fatal(err)
+	}
+	saved, err := s.Store.Document(doc.ID)
+	if err != nil || len(saved.Folders) != 1 || saved.Folders[0] != "Security/Web" {
+		t.Fatalf("folder not persisted: %+v %v", saved.Folders, err)
+	}
+	duplicate := uploadToFolder(t, s, "reading-notes.pdf", data, "papers", "Other")
+	if duplicate.Code != 200 {
+		t.Fatalf("duplicate: %d %s", duplicate.Code, duplicate.Body.String())
+	}
+	saved, err = s.Store.Document(doc.ID)
+	if err != nil || len(saved.Folders) != 1 || saved.Folders[0] != "Security/Web" {
+		t.Fatalf("duplicate changed folders: %+v %v", saved.Folders, err)
+	}
+	for _, folder := range []string{"Security/", " Security", strings.Repeat("x", 41)} {
+		invalid := uploadToFolder(t, s, "reading-notes.pdf", data, "papers", folder)
+		if invalid.Code != 400 {
+			t.Fatalf("invalid folder %q: %d %s", folder, invalid.Code, invalid.Body.String())
+		}
+	}
+	wrongLibrary := uploadToFolder(t, s, "reading-notes.pdf", data, "books", "Security")
+	if wrongLibrary.Code != 400 {
+		t.Fatalf("book folder: %d %s", wrongLibrary.Code, wrongLibrary.Body.String())
+	}
+}
 func sample(t *testing.T, name string) []byte {
 	t.Helper()
 	b, e := os.ReadFile(filepath.Join("../../../web/public/samples", name))

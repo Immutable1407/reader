@@ -43,10 +43,12 @@ interface Window {
     chooseZoteroDirectory?: () => Promise<string | null>;
     importFiles: (
       library: "books" | "papers",
+      folder?: string,
     ) => Promise<Array<{ id: string; name: string; pages: number }>>;
     importLargePapers: (
       ids: string[],
       library: "books" | "papers",
+      folder?: string,
     ) => Promise<void>;
     showDocumentFile: (id: string, type: "pdf" | "epub") => Promise<void>;
     openDocumentFile: (id: string, type: "pdf" | "epub") => Promise<void>;

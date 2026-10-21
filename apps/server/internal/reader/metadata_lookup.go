@@ -174,6 +174,7 @@ func (s *Server) resolveDocument(w http.ResponseWriter, r *http.Request) {
 		Ref        string `json:"ref"`
 		Library    string `json:"library"`
 		AllowLarge bool   `json:"allowLarge"`
+		Folder     string `json:"folder"`
 	}
 	if !decode(w, r, &v) {
 		return
@@ -183,6 +184,10 @@ func (s *Server) resolveDocument(w http.ResponseWriter, r *http.Request) {
 	}
 	if !validLibrary(v.Library) {
 		fail(w, 400, "未知书库")
+		return
+	}
+	if v.Folder != "" && (v.Library != "papers" || !validImportFolder(v.Folder)) {
+		fail(w, 400, "目标分类无效")
 		return
 	}
 	ctx, cancel := context.WithTimeout(r.Context(), 3*time.Minute)
@@ -214,7 +219,7 @@ func (s *Server) resolveDocument(w http.ResponseWriter, r *http.Request) {
 		fail(w, 500, "无法保存文件")
 		return
 	}
-	d, status, err := s.importFile(ctx, temp.Name(), result.Filename, v.Library, v.AllowLarge)
+	d, status, err := s.importFileWithFolder(ctx, temp.Name(), result.Filename, v.Library, v.AllowLarge, v.Folder)
 	var imp importError
 	if errors.As(err, &imp) && imp.code != "" {
 		respond(w, status, map[string]any{"error": imp.message, "code": imp.code, "pages": imp.pages})
