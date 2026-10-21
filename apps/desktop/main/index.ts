@@ -182,7 +182,7 @@ async function startServer() {
 /** Window background before the renderer paints, matching the theme. */
 function windowBackground(appearance: unknown) {
   if (appearance === "sepia") return "#eeede7";
-  return nativeTheme.shouldUseDarkColors ? "#171717" : "#ffffff";
+  return nativeTheme.shouldUseDarkColors ? "#211e21" : "#ffffff";
 }
 // Long papers wait for the reader's choice. The renderer refers to them by
 // one-time IDs, never by path.

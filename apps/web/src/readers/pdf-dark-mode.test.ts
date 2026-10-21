@@ -33,8 +33,8 @@ describe("PDF dark appearance colors", () => {
       foreground: "#ffffff",
     });
     expect(pdfDarkPalette("soft")).toEqual({
-      background: "#242424",
-      foreground: "#dedede",
+      background: "#2f2c2f",
+      foreground: "#dcd7d2",
     });
   });
 
@@ -164,8 +164,8 @@ it("adapts connected neutral image backgrounds and ink while preserving colored 
     [],
     "adaptive",
   );
-  expect([...result.slice(0, 3)]).toEqual([36, 36, 36]);
-  expect([...result.slice(4, 7)]).toEqual([222, 222, 222]);
+  expect([...result.slice(0, 3)]).toEqual([47, 44, 47]);
+  expect([...result.slice(4, 7)]).toEqual([220, 215, 210]);
   expect([...result.slice(8, 11)]).toEqual([255, 0, 0]);
 });
 
@@ -195,16 +195,16 @@ it("preserves enclosed colored-image interiors and never floods outside bitmap b
     [],
     "adaptive",
   );
-  expect([...result.slice(0, 3)]).toEqual([36, 36, 36]);
+  expect([...result.slice(0, 3)]).toEqual([47, 44, 47]);
   expect([...result.slice(8, 11)]).toEqual([100, 100, 100]);
-  expect([...result.slice(12, 15)]).toEqual([36, 36, 36]);
+  expect([...result.slice(12, 15)]).toEqual([47, 44, 47]);
 });
 
 it("adapts transparent image borders while preserve mode still composites on white", () => {
   const region = [{ x: 0, y: 0, width: 1, height: 1 }];
   for (const [mode, expected] of [
-    ["adaptive", 36],
-    ["preserve", 255],
+    ["adaptive", [47, 44, 47]],
+    ["preserve", [255, 255, 255]],
   ] as const) {
     const result = processPDFPagePixels(
       new Uint8ClampedArray([0, 0, 0, 0]),
@@ -214,6 +214,6 @@ it("adapts transparent image borders while preserve mode still composites on whi
       [],
       mode,
     );
-    expect([...result]).toEqual([expected, expected, expected, 255]);
+    expect([...result]).toEqual([...expected, 255]);
   }
 });

@@ -23,25 +23,44 @@
   --ring: oklch(0.708 0 0);
   --radius: 0.6rem;
 }
+/* Graphite: a warm charcoal paper. Shell #211e21, surface #2f2c2f,
+   wear #777477. */
 .dark {
   color-scheme: dark;
-  --background: oklch(0.16 0 0);
-  --foreground: oklch(0.92 0 0);
-  --card: oklch(0.19 0 0);
-  --card-foreground: oklch(0.92 0 0);
-  --popover: oklch(0.22 0 0);
-  --popover-foreground: oklch(0.92 0 0);
-  --primary: oklch(0.92 0 0);
-  --primary-foreground: oklch(0.205 0 0);
-  --secondary: oklch(0.25 0 0);
-  --secondary-foreground: oklch(0.92 0 0);
-  --muted: oklch(0.25 0 0);
-  --muted-foreground: oklch(0.65 0 0);
-  --accent: oklch(0.27 0 0);
-  --accent-foreground: oklch(0.92 0 0);
-  --border: oklch(0.29 0 0);
-  --input: oklch(0.34 0 0);
-  --ring: oklch(0.55 0 0);
+  --background: #2f2c2f;
+  --foreground: #e4dfda;
+  --card: #2f2c2f;
+  --card-foreground: #e4dfda;
+  --popover: #383438;
+  --popover-foreground: #e4dfda;
+  --primary: #e4dfda;
+  --primary-foreground: #2f2c2f;
+  --secondary: #3a363a;
+  --secondary-foreground: #e4dfda;
+  --muted: #3a363a;
+  --muted-foreground: #a39ea1;
+  --accent: #423e42;
+  --accent-foreground: #e4dfda;
+  --border: #423e42;
+  --input: #4d494d;
+  --ring: #777477;
+}
+/* Distressed paper: fine grain, fibres and soft mottling on the shell, in one
+   tile of procedural noise below the app's opaque panels. */
+.dark .app {
+  position: relative;
+  isolation: isolate;
+  background: #211e21;
+}
+.dark .app::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  pointer-events: none;
+  background: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='320' height='320'%3E%3Cfilter id='g'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.85' numOctaves='2' seed='7' stitchTiles='stitch'/%3E%3CfeColorMatrix values='0 0 0 0 1 0 0 0 0 1 0 0 0 0 1 0 0 0 2.2 -1.25'/%3E%3C/filter%3E%3Cfilter id='f'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.006 .32' numOctaves='2' seed='3' stitchTiles='stitch'/%3E%3CfeColorMatrix values='0 0 0 0 1 0 0 0 0 1 0 0 0 0 1 0 0 0 3 -1.9'/%3E%3C/filter%3E%3Cfilter id='m'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.012' numOctaves='3' seed='11' stitchTiles='stitch'/%3E%3CfeColorMatrix values='0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 1.4 -.62'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23m)' opacity='.5'/%3E%3Crect width='100%25' height='100%25' filter='url(%23g)'/%3E%3Crect width='100%25' height='100%25' filter='url(%23f)' opacity='.7'/%3E%3C/svg%3E");
+  opacity: 0.1;
+  mix-blend-mode: soft-light;
 }
 /* Paper: a warm light theme for the whole window. Surfaces: primary
    #f7f6f2, secondary #eeede7, tertiary #e2e1db. */
@@ -692,8 +711,8 @@ kbd {
 }
 .reader-stage[data-theme="dark"],
 .pdf-reading[data-theme="dark"] {
-  --pdf-dark-paper: #242424;
-  --pdf-dark-ink: #dedede;
+  --pdf-dark-paper: #2f2c2f;
+  --pdf-dark-ink: #dcd7d2;
 }
 .reader-stage[data-theme="dark"][data-dark-contrast="high"],
 .pdf-reading[data-theme="dark"][data-dark-contrast="high"] {
@@ -743,7 +762,7 @@ kbd {
   box-shadow: 0 1px 8px #0000000f;
 }
 .pdf-container[data-theme="dark"] .pdfViewer .page {
-  background: var(--pdf-dark-paper, #242424);
+  background: var(--pdf-dark-paper, #2f2c2f);
   box-shadow: 0 1px 8px #00000050;
 }
 /* PDF.js may show partially rendered white canvases before the dark worker finishes. */
