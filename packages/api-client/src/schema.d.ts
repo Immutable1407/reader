@@ -4,6 +4,124 @@
  */
 
 export interface paths {
+    "/api/documents/{id}/navigation": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Read document navigation overrides */
+        get: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    id: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description Saved navigation overrides */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            revision: number;
+                            entries: {
+                                [key: string]: {
+                                    label?: string;
+                                    /** @enum {string} */
+                                    kind?: "heading" | "bookmark";
+                                    parentId?: string | null;
+                                    collapsed?: boolean;
+                                };
+                            };
+                        };
+                    };
+                };
+                /** @description Document not found */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+            };
+        };
+        /** Save navigation overrides with optimistic concurrency */
+        put: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    id: string;
+                };
+                cookie?: never;
+            };
+            requestBody: {
+                content: {
+                    "application/json": {
+                        revision: number;
+                        entries: {
+                            [key: string]: {
+                                label?: string;
+                                /** @enum {string} */
+                                kind?: "heading" | "bookmark";
+                                parentId?: string | null;
+                                collapsed?: boolean;
+                            };
+                        };
+                    };
+                };
+            };
+            responses: {
+                /** @description Saved navigation overrides */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            revision: number;
+                            entries: {
+                                [key: string]: {
+                                    label?: string;
+                                    /** @enum {string} */
+                                    kind?: "heading" | "bookmark";
+                                    parentId?: string | null;
+                                    collapsed?: boolean;
+                                };
+                            };
+                        };
+                    };
+                };
+                /** @description Invalid navigation */
+                400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+                /** @description Stale revision; reload before editing */
+                409: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+            };
+        };
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/documents/{id}/annotations/recover": {
         parameters: {
             query?: never;

@@ -4,6 +4,198 @@
   "security": [{ "session": [] }],
   "paths":
     {
+      "/api/documents/{id}/navigation":
+        {
+          "get":
+            {
+              "summary": "Read document navigation overrides",
+              "parameters":
+                [
+                  {
+                    "name": "id",
+                    "in": "path",
+                    "required": true,
+                    "schema": { "type": "string" },
+                  },
+                ],
+              "responses":
+                {
+                  "200":
+                    {
+                      "description": "Saved navigation overrides",
+                      "content":
+                        {
+                          "application/json":
+                            {
+                              "schema":
+                                {
+                                  "type": "object",
+                                  "required": ["revision", "entries"],
+                                  "properties":
+                                    {
+                                      "revision":
+                                        { "type": "integer", "minimum": 0 },
+                                      "entries":
+                                        {
+                                          "type": "object",
+                                          "maxProperties": 10000,
+                                          "additionalProperties":
+                                            {
+                                              "type": "object",
+                                              "additionalProperties": false,
+                                              "properties":
+                                                {
+                                                  "label":
+                                                    {
+                                                      "type": "string",
+                                                      "minLength": 1,
+                                                      "maxLength": 500,
+                                                    },
+                                                  "kind":
+                                                    {
+                                                      "type": "string",
+                                                      "enum":
+                                                        ["heading", "bookmark"],
+                                                    },
+                                                  "parentId":
+                                                    {
+                                                      "type":
+                                                        ["string", "null"],
+                                                    },
+                                                  "collapsed":
+                                                    { "type": "boolean" },
+                                                },
+                                            },
+                                        },
+                                    },
+                                },
+                            },
+                        },
+                    },
+                  "404": { "description": "Document not found" },
+                },
+            },
+          "put":
+            {
+              "summary": "Save navigation overrides with optimistic concurrency",
+              "parameters":
+                [
+                  {
+                    "name": "id",
+                    "in": "path",
+                    "required": true,
+                    "schema": { "type": "string" },
+                  },
+                ],
+              "requestBody":
+                {
+                  "required": true,
+                  "content":
+                    {
+                      "application/json":
+                        {
+                          "schema":
+                            {
+                              "type": "object",
+                              "required": ["revision", "entries"],
+                              "properties":
+                                {
+                                  "revision":
+                                    { "type": "integer", "minimum": 0 },
+                                  "entries":
+                                    {
+                                      "type": "object",
+                                      "maxProperties": 10000,
+                                      "additionalProperties":
+                                        {
+                                          "type": "object",
+                                          "additionalProperties": false,
+                                          "properties":
+                                            {
+                                              "label":
+                                                {
+                                                  "type": "string",
+                                                  "minLength": 1,
+                                                  "maxLength": 500,
+                                                },
+                                              "kind":
+                                                {
+                                                  "type": "string",
+                                                  "enum":
+                                                    ["heading", "bookmark"],
+                                                },
+                                              "parentId":
+                                                { "type": ["string", "null"] },
+                                              "collapsed":
+                                                { "type": "boolean" },
+                                            },
+                                        },
+                                    },
+                                },
+                            },
+                        },
+                    },
+                },
+              "responses":
+                {
+                  "200":
+                    {
+                      "description": "Saved navigation overrides",
+                      "content":
+                        {
+                          "application/json":
+                            {
+                              "schema":
+                                {
+                                  "type": "object",
+                                  "required": ["revision", "entries"],
+                                  "properties":
+                                    {
+                                      "revision":
+                                        { "type": "integer", "minimum": 0 },
+                                      "entries":
+                                        {
+                                          "type": "object",
+                                          "maxProperties": 10000,
+                                          "additionalProperties":
+                                            {
+                                              "type": "object",
+                                              "additionalProperties": false,
+                                              "properties":
+                                                {
+                                                  "label":
+                                                    {
+                                                      "type": "string",
+                                                      "minLength": 1,
+                                                      "maxLength": 500,
+                                                    },
+                                                  "kind":
+                                                    {
+                                                      "type": "string",
+                                                      "enum":
+                                                        ["heading", "bookmark"],
+                                                    },
+                                                  "parentId":
+                                                    {
+                                                      "type":
+                                                        ["string", "null"],
+                                                    },
+                                                  "collapsed":
+                                                    { "type": "boolean" },
+                                                },
+                                            },
+                                        },
+                                    },
+                                },
+                            },
+                        },
+                    },
+                  "409":
+                    { "description": "Stale revision; reload before editing" },
+                  "400": { "description": "Invalid navigation" },
+                },
+            },
+        },
       "/api/documents/{id}/annotations/recover":
         {
           "post":
