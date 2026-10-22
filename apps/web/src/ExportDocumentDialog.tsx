@@ -118,9 +118,6 @@ export function ExportDocumentDialog({
   if (selected.includes("highlights")) kinds.push("highlight", "underline");
   if (selected.includes("notes")) kinds.push("note");
   if (selected.includes("questions")) kinds.push("question");
-  const canExportPDF = annotations.some(
-    (a) => a.location.type === "pdf" && kinds.includes(a.kind),
-  );
   const toggle = (part: DocumentExportPart, on: boolean) => {
     const next = on ? [...parts, part] : parts.filter((item) => item !== part);
     setParts(next);
@@ -275,11 +272,11 @@ export function ExportDocumentDialog({
         {doc.type === "pdf" && (
           <div className="flex items-center gap-3 border-t pt-4">
             <p className="flex-1 text-xs leading-5 text-muted-foreground">
-              将勾选的批注、划线和问答写入原文 PDF 副本，不包含译文和论文笔记。
+              导出目录、书签及勾选的批注、划线和问答。不包含译文和论文笔记。
             </p>
             <Button
               variant="outline"
-              disabled={!canExportPDF || !!busy}
+              disabled={!!busy}
               onClick={async () => {
                 setBusy("pdf");
                 await exportAnnotatedPDFWithToast(doc, kinds);

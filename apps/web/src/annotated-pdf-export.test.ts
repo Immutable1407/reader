@@ -5,6 +5,7 @@ const mocks = vi.hoisted(() => ({
   annotations: vi.fn(),
   messages: vi.fn(),
   blocks: vi.fn(),
+  navigation: vi.fn(),
   annotatedPDF: vi.fn(),
   downloadBlob: vi.fn(),
   toast: { loading: vi.fn(() => "t"), success: vi.fn(), error: vi.fn() },
@@ -14,6 +15,7 @@ vi.mock("@reader/api", () => ({
     annotations: mocks.annotations,
     messages: mocks.messages,
     blocks: mocks.blocks,
+    navigation: mocks.navigation,
   },
   publicationURL: (id: string, name: string) => `/pub/x/${id}/${name}`,
 }));
@@ -44,6 +46,8 @@ const mark = (id: string, value: Partial<Annotation>) =>
 
 beforeEach(() => {
   vi.clearAllMocks();
+  mocks.blocks.mockResolvedValue([]);
+  mocks.navigation.mockResolvedValue({ revision: 0, entries: {} });
   mocks.messages.mockResolvedValue([{ id: "m1", content: "回答" }]);
   mocks.annotatedPDF.mockResolvedValue({
     bytes: new Uint8Array([37, 80, 68, 70]),
@@ -65,11 +69,14 @@ it("writes annotations and answers into a downloaded copy", async () => {
   const [, source, marks, context] = mocks.annotatedPDF.mock.calls[0];
   expect(source.url).toBe("/pub/x/d1/original.pdf");
   expect(marks.map((a: Annotation) => a.id)).toEqual(["h", "q"]);
-  expect(context).toEqual({ answers: { m1: "回答" } });
-  expect(mocks.blocks).not.toHaveBeenCalled();
+  expect(context).toMatchObject({
+    answers: { m1: "回答" },
+    navigation: expect.any(Function),
+  });
+  expect(mocks.blocks).toHaveBeenCalledWith(doc.id);
 });
 
-it("does not fetch source blocks to project translated marks", async () => {
+it("loads blocks for navigation without projecting translated marks", async () => {
   const bounds = { x: 0.1, y: 0.2, width: 0.5, height: 0.1 };
   mocks.annotations.mockResolvedValue([
     mark("t", {
@@ -90,17 +97,23 @@ it("does not fetch source blocks to project translated marks", async () => {
     { id: "p2-b3", page: 2, bounds, label: "text", text: "" },
   ]);
   await exportAnnotatedPDF(doc);
-  expect(mocks.blocks).not.toHaveBeenCalled();
+  expect(mocks.blocks).toHaveBeenCalledWith(doc.id);
   const [blob, name] = mocks.downloadBlob.mock.calls[0];
   expect(blob.type).toBe("application/pdf");
   expect(name).toBe("A-B- -C--批注.pdf");
 });
 
-it("reports a PDF without annotations instead of saving a copy", async () => {
+it("exports bookmarks even without text annotations", async () => {
   mocks.annotations.mockResolvedValue([mark("b", { kind: "bookmark" })]);
-  await expect(exportAnnotatedPDF(doc)).rejects.toThrow("还没有可导出的批注");
-  expect(mocks.annotatedPDF).not.toHaveBeenCalled();
-  expect(mocks.downloadBlob).not.toHaveBeenCalled();
+  mocks.annotatedPDF.mockResolvedValue({
+    bytes: new Uint8Array([37, 80, 68, 70]),
+    exported: 0,
+    skipped: 0,
+    navigationExported: 1,
+  });
+  await exportAnnotatedPDF(doc);
+  expect(mocks.downloadBlob).toHaveBeenCalled();
+  expect(mocks.annotatedPDF.mock.calls[0][3].navigation).toBeTypeOf("function");
 });
 
 it("filters the PDF annotations by the selected content kinds", async () => {
@@ -114,21 +127,23 @@ it("filters the PDF annotations by the selected content kinds", async () => {
     mocks.annotatedPDF.mock.calls[0][2].map((a: Annotation) => a.id),
   ).toEqual(["n"]);
   mocks.downloadBlob.mockClear();
-  await expect(exportAnnotatedPDF(doc, [])).rejects.toThrow(
-    "还没有可导出的批注",
-  );
-  expect(mocks.downloadBlob).not.toHaveBeenCalled();
+  await exportAnnotatedPDF(doc, []);
+  expect(mocks.annotatedPDF.mock.calls.at(-1)?.[2]).toEqual([]);
+  expect(mocks.downloadBlob).toHaveBeenCalled();
 });
 
-it("does not save when nothing could be placed", async () => {
+it("still exports the original when no annotation can be placed", async () => {
   mocks.annotations.mockResolvedValue([mark("h", {})]);
   mocks.annotatedPDF.mockResolvedValue({
     bytes: new Uint8Array(),
     exported: 0,
     skipped: 1,
   });
-  await expect(exportAnnotatedPDF(doc)).rejects.toThrow("没有可写入原文的批注");
-  expect(mocks.downloadBlob).not.toHaveBeenCalled();
+  await expect(exportAnnotatedPDF(doc)).resolves.toMatchObject({
+    exported: 0,
+    skipped: 1,
+  });
+  expect(mocks.downloadBlob).toHaveBeenCalled();
 });
 
 it("shows progress, the count and skipped marks in one toast", async () => {
