@@ -180,9 +180,24 @@ async function startServer() {
   });
 }
 /** Window background before the renderer paints, matching the theme. */
-function windowBackground(appearance: unknown) {
-  if (appearance === "sepia") return "#eeede7";
-  return nativeTheme.shouldUseDarkColors ? "#171717" : "#ffffff";
+function windowBackground(appearance: unknown, palettes: unknown) {
+  const option = (key: string) =>
+    typeof palettes === "object" && palettes !== null && key in palettes
+      ? (palettes as Record<string, unknown>)[key]
+      : undefined;
+  const system = appearance !== "light" && appearance !== "sepia";
+  const dark =
+    appearance === "dark" || (system && nativeTheme.shouldUseDarkColors);
+  if (!dark)
+    return appearance === "sepia" ||
+      (system && option("systemLightMode") === "sepia")
+      ? "#eeede7"
+      : "#ffffff";
+  // Pure black keeps the neutral dark window; graphite is the default.
+  const contrast = option(
+    appearance === "dark" ? "pdfDarkContrast" : "systemDarkContrast",
+  );
+  return contrast === "high" ? "#171717" : "#211e21";
 }
 // Long papers wait for the reader's choice. The renderer refers to them by
 // one-time IDs, never by path.
@@ -349,7 +364,7 @@ app
             trafficLightPosition: { x: 20, y: 20 },
           }
         : { autoHideMenuBar: true }),
-      backgroundColor: windowBackground(appearance),
+      backgroundColor: windowBackground(appearance, preferences),
       webPreferences: {
         preload: join(__dirname, "preload.cjs"),
         contextIsolation: true,
@@ -576,23 +591,26 @@ app
       restartRequested = true;
       app.quit();
     });
-    ipcMain.handle("reader:appearance", (event, appearance: unknown) => {
-      if (
-        event.sender !== window?.webContents ||
-        event.senderFrame !== window.webContents.mainFrame
-      )
-        throw new Error("Invalid sender");
-      if (
-        appearance !== "light" &&
-        appearance !== "sepia" &&
-        appearance !== "dark" &&
-        appearance !== "system"
-      )
-        throw new Error("Invalid appearance");
-      // Paper is a light theme for native chrome with its own background.
-      nativeTheme.themeSource = appearance === "sepia" ? "light" : appearance;
-      window.setBackgroundColor(windowBackground(appearance));
-    });
+    ipcMain.handle(
+      "reader:appearance",
+      (event, appearance: unknown, palettes: unknown) => {
+        if (
+          event.sender !== window?.webContents ||
+          event.senderFrame !== window.webContents.mainFrame
+        )
+          throw new Error("Invalid sender");
+        if (
+          appearance !== "light" &&
+          appearance !== "sepia" &&
+          appearance !== "dark" &&
+          appearance !== "system"
+        )
+          throw new Error("Invalid appearance");
+        // Paper is a light theme for native chrome with its own background.
+        nativeTheme.themeSource = appearance === "sepia" ? "light" : appearance;
+        window.setBackgroundColor(windowBackground(appearance, palettes));
+      },
+    );
     ipcMain.handle(
       "reader:document-file",
       async (event, id: unknown, type: unknown, action: unknown) => {

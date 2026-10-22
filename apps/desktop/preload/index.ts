@@ -54,8 +54,14 @@ contextBridge.exposeInMainWorld("readerDesktop", {
     ipcRenderer.on("reader:flush", listener);
     return () => ipcRenderer.removeListener("reader:flush", listener);
   },
-  setAppearance: (appearance: "light" | "sepia" | "dark" | "system") =>
-    ipcRenderer.invoke("reader:appearance", appearance),
+  setAppearance: (
+    appearance: "light" | "sepia" | "dark" | "system",
+    palettes: {
+      pdfDarkContrast?: "high" | "soft";
+      systemLightMode?: "light" | "sepia";
+      systemDarkContrast?: "high" | "soft";
+    },
+  ) => ipcRenderer.invoke("reader:appearance", appearance, palettes),
   findEndNoteLibraries: (id: string) =>
     ipcRenderer.invoke("reader:find-endnote", id),
   cancelEndNoteSearch: (id: string) =>

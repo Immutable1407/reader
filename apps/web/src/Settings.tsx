@@ -6,7 +6,6 @@ import {
   ChevronLeft,
   FileText,
   Bot,
-  Check,
   CircleCheck,
   CircleHelp,
   Highlighter,
@@ -74,6 +73,7 @@ import { Checkbox } from "@reader/ui/components/checkbox";
 import { toast } from "sonner";
 import { columnLabels, defaultColumns, toggleColumn } from "./papers/model";
 import { savePaperPreferences } from "./papers/actions";
+import { AppearancePicker } from "./AppearancePicker";
 // Checks run automatically for this many API models; the rest on demand.
 const autoAPIChecks = 12;
 export function Settings({
@@ -734,35 +734,7 @@ export function Settings({
             </section>
             <section>
               <h3 className="mb-3 text-sm font-medium">界面主题</h3>
-              <div className="flex gap-2">
-                {(["light", "sepia", "dark", "system"] as const).map(
-                  (mode, i) => (
-                    <Button
-                      key={mode}
-                      aria-pressed={(theme.appearance ?? "system") === mode}
-                      variant={
-                        (theme.appearance ?? "system") === mode
-                          ? "default"
-                          : "outline"
-                      }
-                      onClick={() =>
-                        setTheme({
-                          appearance: mode,
-                          mode:
-                            mode === "dark" || mode === "sepia"
-                              ? mode
-                              : "light",
-                        })
-                      }
-                    >
-                      {["浅色", "纸张", "深色", "跟随系统"][i]}
-                      {(theme.appearance ?? "system") === mode && (
-                        <Check className="size-3" />
-                      )}
-                    </Button>
-                  ),
-                )}
-              </div>
+              <AppearancePicker theme={theme} setTheme={setTheme} buttons />
             </section>
             <section className="mt-6">
               <label
