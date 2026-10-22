@@ -23,6 +23,10 @@ func (s *codexSession) control(ctx context.Context, method string, params any) (
 	life := newRPCLifecycle(ctx, s.cmd, s.stdin, s.stdout)
 	defer life.finish()
 	result, err := s.callRPC(ctx, life, method, params, denyCodexClientRequest(life))
+	var rpcError *codexRPCError
+	if errors.As(err, &rpcError) && rpcError.activeWriter {
+		return nil, generationError(ErrorBusy, "会话仍由 Codex App 占用，请先退出 Codex App 后重试；历史已保留")
+	}
 	if errors.Is(err, errCodexRPCResponse) {
 		return nil, generationError(ErrorCapability, "当前 Codex 版本不支持文档工具隔离")
 	}

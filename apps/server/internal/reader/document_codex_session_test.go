@@ -73,6 +73,10 @@ func runPersistentDocumentProcess() {
 			if p.Thread != thread {
 				os.Exit(4)
 			}
+			if failure := os.Getenv("READER_CONVERSATION_RESUME_ERROR"); failure != "" {
+				_ = enc.Encode(map[string]any{"id": r.ID, "error": json.RawMessage(failure)})
+				continue
+			}
 			reply(map[string]any{"thread": map[string]any{"id": thread}, "model": "test"})
 		case "thread/turns/list":
 			state := load()
@@ -158,6 +162,49 @@ func runPersistentDocumentProcess() {
 			save(state)
 			notify("turn/completed", map[string]any{"turn": map[string]string{"id": turn, "status": status}})
 		}
+	}
+}
+
+func TestCodexConversationReportsActiveWriterAndPreservesHistory(t *testing.T) {
+	s, a := prepareConversationFixture(t)
+	fakeAgent(t, "codex", "document-conversation")
+	capture := filepath.Join(t.TempDir(), "capture.jsonl")
+	t.Setenv("READER_CONVERSATION_CAPTURE", capture)
+	t.Setenv("READER_DOCUMENT_TEST_BLOCK", a.corpus.Passages[1].ID)
+	if out := conversationRequest(t, s, "codex", "记住 CIVET-42"); !strings.Contains(out.Body.String(), "event: done") {
+		t.Fatal(out.Body.String())
+	}
+	var before string
+	if err := s.Store.DB.QueryRow("SELECT body FROM document_conversations WHERE document_id='doc' AND provider='codex'").Scan(&before); err != nil {
+		t.Fatal(err)
+	}
+	s.Close()
+	s = NewServer(s.Store, "test-secret", "")
+	t.Cleanup(s.Close)
+	t.Setenv("READER_CONVERSATION_RESUME_ERROR", `{"code":-32600,"message":"thread private-thread already has an active writer: PRIVATE-TOKEN","data":{"secret":"PRIVATE-DATA"}}`)
+	out := conversationRequest(t, s, "codex", "继续解释")
+	text := out.Body.String()
+	if !strings.Contains(text, "event: error") || !strings.Contains(text, "会话仍由 Codex App 占用") || strings.Contains(text, "event: done") || strings.Contains(text, "PRIVATE-") || strings.Contains(text, "private-thread") {
+		t.Fatal("occupied thread did not produce a safe, actionable error", text)
+	}
+	var after string
+	if err := s.Store.DB.QueryRow("SELECT body FROM document_conversations WHERE document_id='doc' AND provider='codex'").Scan(&after); err != nil || after != before {
+		t.Fatal("resume failure changed the committed conversation", err)
+	}
+	history := chatMessages(t, s)
+	if len(history) != 3 || history[0].Role != "user" || history[1].Role != "assistant" || history[2].Role != "user" {
+		t.Fatal("resume failure lost history or saved a failed answer", history)
+	}
+	data, err := os.ReadFile(capture)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if strings.Count(string(data), `"method":"thread/start"`) != 1 || strings.Count(string(data), `"method":"turn/start"`) != 1 || strings.Count(string(data), `"method":"thread/resume"`) != 1 || strings.Contains(string(data), `"method":"thread/revert"`) {
+		t.Fatal("occupied thread was retried, replaced or reverted", string(data))
+	}
+	t.Setenv("READER_CONVERSATION_RESUME_ERROR", "")
+	if out := conversationRequest(t, s, "codex", "占用已释放，继续解释"); !strings.Contains(out.Body.String(), "event: done") || !strings.Contains(out.Body.String(), "CIVET-42") {
+		t.Fatal("same conversation did not recover after the writer was released", out.Body.String())
 	}
 }
 func TestCodexConversationRetainsThreadAndSources(t *testing.T) {

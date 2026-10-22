@@ -6,6 +6,7 @@ import (
 	"encoding/json"
 	"errors"
 	"io"
+	"log/slog"
 	"os"
 	"os/exec"
 	"strings"
@@ -437,6 +438,16 @@ type codexRPCMessage struct {
 
 var errCodexRPCResponse = errors.New("Codex RPC request failed")
 
+// Keep the code and a known reason, never the upstream message or error data:
+// those may contain private document text, paths or credentials.
+type codexRPCError struct {
+	Code         int
+	activeWriter bool
+}
+
+func (e *codexRPCError) Error() string { return errCodexRPCResponse.Error() }
+func (e *codexRPCError) Unwrap() error { return errCodexRPCResponse }
+
 func (s *codexSession) readRPCMessage(ctx context.Context) (codexRPCMessage, error) {
 	var msg codexRPCMessage
 	if !s.scan.Scan() {
@@ -470,6 +481,20 @@ func (s *codexSession) callRPC(ctx context.Context, life *rpcLifecycle, method s
 		var responseID int
 		if msg.Method == "" && json.Unmarshal(msg.ID, &responseID) == nil && responseID == serial {
 			if len(msg.Error) > 0 && string(msg.Error) != "null" {
+				var detail struct {
+					Code    *int   `json:"code"`
+					Message string `json:"message"`
+				}
+				if json.Unmarshal(msg.Error, &detail) == nil && detail.Code != nil {
+					failure := &codexRPCError{Code: *detail.Code}
+					failure.activeWriter = failure.Code == -32600 && strings.HasPrefix(detail.Message, "thread ") && strings.Contains(detail.Message, " already has an active writer")
+					reason := "rpc_error"
+					if failure.activeWriter {
+						reason = "active_writer"
+					}
+					slog.WarnContext(ctx, "codex.rpc.error", "method", method, "rpcCode", failure.Code, "reason", reason, "requestId", requestID(ctx))
+					return nil, failure
+				}
 				return nil, errCodexRPCResponse
 			}
 			return msg.Result, nil

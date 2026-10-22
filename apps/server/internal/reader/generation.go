@@ -23,6 +23,7 @@ const (
 	ErrorConfiguration  ErrorKind = "configuration"
 	ErrorAuthentication ErrorKind = "authentication"
 	ErrorCapability     ErrorKind = "capability"
+	ErrorBusy           ErrorKind = "busy"
 	ErrorProtocol       ErrorKind = "protocol"
 	ErrorUpstream       ErrorKind = "upstream"
 	ErrorLimit          ErrorKind = "limit"
@@ -171,7 +172,7 @@ func (a configuredCLIAdapter) streamWith(ctx context.Context, req GenerateReques
 		}
 		return nil
 	})
-	if err == nil || !automatic || cli.model == "" || visible.Load() || emitFailed.Load() || ctx.Err() != nil || errorKind(err) == ErrorCanceled {
+	if err == nil || !automatic || cli.model == "" || visible.Load() || emitFailed.Load() || ctx.Err() != nil || errorKind(err) == ErrorCanceled || errorKind(err) == ErrorBusy {
 		return result, err
 	}
 	log.Printf("%s %s model %s failed before output, retrying with the CLI default: %v", a.provider, a.task, cli.model, err)
@@ -359,7 +360,7 @@ func (g *GenerationService) generate(ctx context.Context, in AIInput, interactiv
 	if ctx.Err() != nil {
 		return AIResult{}, ctx.Err()
 	}
-	if errorKind(err) == ErrorSave {
+	if errorKind(err) == ErrorSave || errorKind(err) == ErrorBusy {
 		return AIResult{}, err
 	}
 	if visible {

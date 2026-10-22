@@ -168,6 +168,17 @@ func TestAutomaticModelFallsBackToCLIDefault(t *testing.T) {
 		return configuredCLIAdapter{cliAdapter{"", "claude", model}, "medium", taskTranslation,
 			func(context.Context, string) ([]AgentModel, error) { return models, nil }}
 	}
+	t.Run("occupied thread does not retry another model", func(t *testing.T) {
+		calls := 0
+		busy := generationError(ErrorBusy, "会话仍由 Codex App 占用")
+		_, err := adapter("").streamWith(t.Context(), GenerateRequest{}, nil, func(cliAdapter, GenerateRequest, func(ProviderEvent) error) (GenerateResult, error) {
+			calls++
+			return GenerateResult{}, busy
+		})
+		if calls != 1 || !errors.Is(err, busy) {
+			t.Fatal("occupied thread retried with another model", calls, err)
+		}
+	})
 	for _, tt := range []struct {
 		name       string
 		configured string
