@@ -1,4 +1,5 @@
 import { useShortcut } from "./shortcuts/shortcuts";
+import { useDocumentTheme } from "./useDocumentTheme";
 import {
   readerLayout,
   sidebarLayout,
@@ -221,18 +222,25 @@ function TOCTree({
 }
 export function Workspace({
   document: doc,
-  theme,
+  active = true,
+  theme: sharedTheme,
   processing,
   onBack,
   onSettings,
 }: {
   document: ReaderDocument;
+  active?: boolean;
   theme: ReaderTheme;
   processing?: Processing;
   onBack: () => void;
   onSettings: () => void;
 }) {
-  const { setTheme, aiConfig, setAIConfig, aiModelSaving } = useReaderStore();
+  const { aiConfig, setAIConfig, aiModelSaving } = useReaderStore();
+  const { theme, setTheme, onZoom } = useDocumentTheme(
+    sharedTheme,
+    doc,
+    active,
+  );
   const translationSize = theme.translationFontSize ?? 1;
   const assistantSize = theme.assistantFontScale ?? 1;
   const linkTarget = useReaderStore((s) => s.linkTarget);
@@ -311,10 +319,14 @@ export function Workspace({
   const layout = readerLayout(theme.readerLayout);
   const left = layout.navigationOpen;
   const right = layout.assistantOpen;
-  const setLeft = (navigationOpen: boolean) =>
+  const setLeft = (navigationOpen: boolean) => {
+    adapter?.cancelBlockFocus?.();
     updateReaderLayout({ navigationOpen });
-  const setRight = (assistantOpen: boolean) =>
+  };
+  const setRight = (assistantOpen: boolean) => {
+    adapter?.cancelBlockFocus?.();
     updateReaderLayout({ assistantOpen });
+  };
   const initialLayout = useRef(sidebarLayout(layout));
   const leftPanel = usePanelRef();
   const rightPanel = usePanelRef();
@@ -1297,8 +1309,10 @@ export function Workspace({
         onPointerDownCapture={(event) => {
           if (
             (event.target as Element).closest('[data-slot="resizable-handle"]')
-          )
+          ) {
+            adapter?.cancelBlockFocus?.();
             panelGroup.current?.removeAttribute("data-toggling");
+          }
         }}
       >
         <ResizablePanel
@@ -1421,7 +1435,7 @@ export function Workspace({
                     setTOC(items);
                   }}
                   events={{
-                    zoom: (zoom) => setTheme({ zoom }),
+                    zoom: onZoom,
                     location: saveLocation,
                     selection: selectText,
                     annotation: selectAnnotation,
