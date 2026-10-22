@@ -25,6 +25,7 @@ type Document struct {
 	NoteCount         int           `json:"noteCount"`
 	HighlightCount    int           `json:"highlightCount"`
 	OpenQuestionCount int           `json:"openQuestionCount"`
+	AttachmentCount   int           `json:"attachmentCount"`
 	// Related lists documents the user linked to this one, in both directions.
 	Related      []string        `json:"related"`
 	ID           string          `json:"id"`
@@ -73,7 +74,7 @@ type Store struct {
 }
 
 func OpenStore(root string) (*Store, error) {
-	for _, dir := range []string{"books", "papers", "cache", "ai-work"} {
+	for _, dir := range []string{"books", "papers", "attachments", "cache", "ai-work"} {
 		if err := os.MkdirAll(filepath.Join(root, dir), 0700); err != nil {
 			return nil, err
 		}
@@ -104,6 +105,10 @@ func OpenStore(root string) (*Store, error) {
  CREATE TABLE IF NOT EXISTS journal_rank_cache(name TEXT NOT NULL,key_hash TEXT NOT NULL,body TEXT NOT NULL,checked_at TEXT NOT NULL,PRIMARY KEY(name,key_hash));
  CREATE TABLE IF NOT EXISTS document_notes(document_id TEXT PRIMARY KEY REFERENCES documents(id) ON DELETE CASCADE,body TEXT NOT NULL,updated_at TEXT NOT NULL);
  CREATE TABLE IF NOT EXISTS document_relations(a TEXT NOT NULL REFERENCES documents(id) ON DELETE CASCADE,b TEXT NOT NULL REFERENCES documents(id) ON DELETE CASCADE,created_at TEXT NOT NULL,PRIMARY KEY(a,b),CHECK(a<b));
+ CREATE TABLE IF NOT EXISTS paper_attachments(id TEXT PRIMARY KEY,document_id TEXT NOT NULL REFERENCES documents(id) ON DELETE CASCADE,kind TEXT NOT NULL CHECK(kind IN ('file','link')),title TEXT NOT NULL,filename TEXT NOT NULL DEFAULT '',media_type TEXT NOT NULL DEFAULT '',size INTEGER NOT NULL DEFAULT 0,sha256 TEXT NOT NULL DEFAULT '',url TEXT NOT NULL DEFAULT '',created_at TEXT NOT NULL);
+ CREATE UNIQUE INDEX IF NOT EXISTS paper_attachment_file ON paper_attachments(document_id,sha256) WHERE kind='file';
+ CREATE UNIQUE INDEX IF NOT EXISTS paper_attachment_link ON paper_attachments(document_id,url) WHERE kind='link';
+ CREATE INDEX IF NOT EXISTS paper_attachment_hash ON paper_attachments(sha256) WHERE kind='file';
  CREATE TABLE IF NOT EXISTS connector_snapshots(document_id TEXT PRIMARY KEY REFERENCES documents(id) ON DELETE CASCADE,source_url TEXT NOT NULL,body TEXT NOT NULL,created_at TEXT NOT NULL);
  CREATE INDEX IF NOT EXISTS document_relations_b ON document_relations(b);
  CREATE VIRTUAL TABLE IF NOT EXISTS search_index USING fts5(document_id UNINDEXED,href UNINDEXED,content,tokenize='unicode61');
@@ -149,14 +154,15 @@ const documentColumns = `id,type,title,author,size,created_at,last_opened_at,fav
 	`(SELECT count(*) FROM annotations a WHERE a.document_id=documents.id AND json_extract(a.body,'$.kind')='note'),` +
 	`(SELECT count(*) FROM annotations a WHERE a.document_id=documents.id AND json_extract(a.body,'$.kind') IN ('highlight','underline')),` +
 	`(SELECT count(*) FROM annotations a WHERE a.document_id=documents.id AND json_extract(a.body,'$.kind')='question' AND COALESCE(json_extract(a.body,'$.answerId'),'')='' AND NOT COALESCE(json_extract(a.body,'$.resolved'),0)),` +
-	`(SELECT json_group_array(CASE WHEN r.a=documents.id THEN r.b ELSE r.a END) FROM document_relations r WHERE r.a=documents.id OR r.b=documents.id)`
+	`(SELECT json_group_array(CASE WHEN r.a=documents.id THEN r.b ELSE r.a END) FROM document_relations r WHERE r.a=documents.id OR r.b=documents.id),` +
+	`(SELECT count(*) FROM paper_attachments a WHERE a.document_id=documents.id)`
 
 type rowScanner interface{ Scan(...any) error }
 
 func scanDocument(row rowScanner) (Document, error) {
 	var d Document
 	var progress, tags, folders, metadata, related string
-	err := row.Scan(&d.ID, &d.Type, &d.Title, &d.Author, &d.Size, &d.CreatedAt, &d.LastOpenedAt, &d.Favorite, &progress, &d.Percentage, &d.Category, &d.CategorySource, &d.ClassificationStatus, &d.ClassificationError, &tags, &folders, &d.Library, &d.DeletedAt, &metadata, &d.ReadingStatus, &d.NoteCount, &d.HighlightCount, &d.OpenQuestionCount, &related)
+	err := row.Scan(&d.ID, &d.Type, &d.Title, &d.Author, &d.Size, &d.CreatedAt, &d.LastOpenedAt, &d.Favorite, &progress, &d.Percentage, &d.Category, &d.CategorySource, &d.ClassificationStatus, &d.ClassificationError, &tags, &folders, &d.Library, &d.DeletedAt, &metadata, &d.ReadingStatus, &d.NoteCount, &d.HighlightCount, &d.OpenQuestionCount, &related, &d.AttachmentCount)
 	if err == nil {
 		err = json.Unmarshal([]byte(tags), &d.Tags)
 	}

@@ -4,6 +4,262 @@
   "security": [{ "session": [] }],
   "paths":
     {
+      "/api/documents/{id}/attachments":
+        {
+          "parameters":
+            [
+              {
+                "name": "id",
+                "in": "path",
+                "required": true,
+                "schema": { "type": "string" },
+              },
+            ],
+          "get":
+            {
+              "summary": "List child attachments of a PDF paper",
+              "responses":
+                {
+                  "200":
+                    {
+                      "description": "Success",
+                      "content":
+                        {
+                          "application/json":
+                            {
+                              "schema":
+                                {
+                                  "type": "array",
+                                  "items":
+                                    {
+                                      "$ref": "#/components/schemas/PaperAttachment",
+                                    },
+                                },
+                            },
+                        },
+                    },
+                  "400": { "description": "Invalid input or a non-PDF parent" },
+                  "401": { "description": "Authentication required" },
+                  "404":
+                    {
+                      "description": "Paper or attachment is missing or trashed",
+                    },
+                  "500": { "description": "Storage failure" },
+                },
+            },
+          "post":
+            {
+              "summary": "Attach a stored file copy (up to 512 MB) or HTTP(S) link; duplicates return the existing attachment without renaming it",
+              "requestBody":
+                {
+                  "required": true,
+                  "content":
+                    {
+                      "multipart/form-data":
+                        {
+                          "schema":
+                            {
+                              "type": "object",
+                              "required": ["file"],
+                              "properties":
+                                {
+                                  "file":
+                                    { "type": "string", "format": "binary" },
+                                },
+                            },
+                        },
+                      "application/json":
+                        {
+                          "schema":
+                            {
+                              "type": "object",
+                              "required": ["url"],
+                              "additionalProperties": false,
+                              "properties":
+                                {
+                                  "title":
+                                    { "type": "string", "maxLength": 255 },
+                                  "url":
+                                    {
+                                      "type": "string",
+                                      "format": "uri",
+                                      "maxLength": 8192,
+                                    },
+                                },
+                            },
+                        },
+                    },
+                },
+              "responses":
+                {
+                  "200":
+                    {
+                      "description": "Success",
+                      "content":
+                        {
+                          "application/json":
+                            {
+                              "schema":
+                                {
+                                  "$ref": "#/components/schemas/PaperAttachment",
+                                },
+                            },
+                        },
+                    },
+                  "201":
+                    {
+                      "description": "Success",
+                      "content":
+                        {
+                          "application/json":
+                            {
+                              "schema":
+                                {
+                                  "$ref": "#/components/schemas/PaperAttachment",
+                                },
+                            },
+                        },
+                    },
+                  "400": { "description": "Invalid input or a non-PDF parent" },
+                  "401": { "description": "Authentication required" },
+                  "404":
+                    {
+                      "description": "Paper or attachment is missing or trashed",
+                    },
+                  "500": { "description": "Storage failure" },
+                },
+            },
+        },
+      "/api/documents/{id}/attachments/{attachment}":
+        {
+          "parameters":
+            [
+              {
+                "name": "id",
+                "in": "path",
+                "required": true,
+                "schema": { "type": "string" },
+              },
+              {
+                "name": "attachment",
+                "in": "path",
+                "required": true,
+                "schema": { "type": "string" },
+              },
+            ],
+          "patch":
+            {
+              "summary": "Rename the attachment label; original filename remains unchanged",
+              "requestBody":
+                {
+                  "required": true,
+                  "content":
+                    {
+                      "application/json":
+                        {
+                          "schema":
+                            {
+                              "type": "object",
+                              "required": ["title"],
+                              "additionalProperties": false,
+                              "properties":
+                                {
+                                  "title":
+                                    {
+                                      "type": "string",
+                                      "minLength": 1,
+                                      "maxLength": 255,
+                                    },
+                                },
+                            },
+                        },
+                    },
+                },
+              "responses":
+                {
+                  "200":
+                    {
+                      "description": "Success",
+                      "content":
+                        {
+                          "application/json":
+                            {
+                              "schema":
+                                {
+                                  "$ref": "#/components/schemas/PaperAttachment",
+                                },
+                            },
+                        },
+                    },
+                  "400": { "description": "Invalid input or a non-PDF parent" },
+                  "401": { "description": "Authentication required" },
+                  "404":
+                    {
+                      "description": "Paper or attachment is missing or trashed",
+                    },
+                  "500": { "description": "Storage failure" },
+                },
+            },
+          "delete":
+            {
+              "summary": "Remove this attachment and delete stored bytes only after the last owner disappears",
+              "responses":
+                {
+                  "204": { "description": "Removed" },
+                  "400": { "description": "Invalid input or a non-PDF parent" },
+                  "401": { "description": "Authentication required" },
+                  "404":
+                    {
+                      "description": "Paper or attachment is missing or trashed",
+                    },
+                  "500": { "description": "Storage failure" },
+                },
+            },
+        },
+      "/api/documents/{id}/attachments/{attachment}/file":
+        {
+          "parameters":
+            [
+              {
+                "name": "id",
+                "in": "path",
+                "required": true,
+                "schema": { "type": "string" },
+              },
+              {
+                "name": "attachment",
+                "in": "path",
+                "required": true,
+                "schema": { "type": "string" },
+              },
+            ],
+          "get":
+            {
+              "summary": "Download the stored file with its original filename; never serve active content inline",
+              "responses":
+                {
+                  "200":
+                    {
+                      "description": "Attachment file",
+                      "content":
+                        {
+                          "application/octet-stream":
+                            {
+                              "schema":
+                                { "type": "string", "format": "binary" },
+                            },
+                        },
+                    },
+                  "400": { "description": "Invalid input or a non-PDF parent" },
+                  "401": { "description": "Authentication required" },
+                  "404":
+                    {
+                      "description": "Paper or attachment is missing or trashed",
+                    },
+                  "500": { "description": "Storage failure" },
+                },
+            },
+        },
       "/api/documents/{id}/annotations/recover":
         {
           "post":
@@ -4835,6 +5091,34 @@
       "securitySchemes": { "session": { "type": "http", "scheme": "bearer" } },
       "schemas":
         {
+          "PaperAttachment":
+            {
+              "type": "object",
+              "required":
+                [
+                  "id",
+                  "documentId",
+                  "title",
+                  "filename",
+                  "mediaType",
+                  "url",
+                  "createdAt",
+                  "kind",
+                  "size",
+                ],
+              "properties":
+                {
+                  "id": { "type": "string" },
+                  "documentId": { "type": "string" },
+                  "title": { "type": "string" },
+                  "filename": { "type": "string" },
+                  "mediaType": { "type": "string" },
+                  "url": { "type": "string" },
+                  "createdAt": { "type": "string" },
+                  "kind": { "type": "string", "enum": ["file", "link"] },
+                  "size": { "type": "integer", "minimum": 0 },
+                },
+            },
           "CodexHandoff":
             {
               "type": "object",
@@ -5337,6 +5621,7 @@
                   "metadata": { "$ref": "#/components/schemas/PaperMetadata" },
                   "readingStatus": { "enum": ["unread", "reading", "done"] },
                   "noteCount": { "type": "number" },
+                  "attachmentCount": { "type": "integer", "minimum": 0 },
                   "highlightCount":
                     {
                       "type": "number",

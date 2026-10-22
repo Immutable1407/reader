@@ -250,6 +250,8 @@ export interface Document {
   metadata: PaperMetadata;
   readingStatus: ReadingStatus;
   noteCount: number;
+  /** Additional files and links, excluding the primary PDF. */
+  attachmentCount?: number;
   /** Highlights and underlines. */
   highlightCount: number;
   /** Questions without an answer that are not resolved. */

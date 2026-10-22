@@ -1,5 +1,9 @@
 import { diagnosticFetch, reportDiagnostic } from "./diagnostics";
 import {
+  uploadAttachment,
+  type AttachmentUploadOptions,
+} from "./attachment-upload";
+import {
   diagnosticError,
   diagnosticRoute,
 } from "../../reader-core/src/diagnostics";
@@ -141,7 +145,62 @@ function annotationRequest<T>(path: string, init: RequestInit): Promise<T> {
 }
 export type ZoteroScan = components["schemas"]["ZoteroScan"];
 export type ZoteroImportResult = components["schemas"]["ZoteroImportResult"];
+export type PaperAttachment = components["schemas"]["PaperAttachment"];
 export const api = {
+  paperAttachments: (id: string) =>
+    request<PaperAttachment[]>(
+      `/api/documents/${encodeURIComponent(id)}/attachments`,
+    ),
+  addPaperAttachment: (
+    id: string,
+    file: File,
+    options?: AttachmentUploadOptions,
+  ) =>
+    uploadAttachment<PaperAttachment>(
+      `/api/documents/${encodeURIComponent(id)}/attachments`,
+      sessionToken,
+      file,
+      options,
+    ),
+  addPaperLink: (id: string, title: string, url: string) =>
+    request<PaperAttachment>(
+      `/api/documents/${encodeURIComponent(id)}/attachments`,
+      {
+        method: "POST",
+        body: JSON.stringify({ title, url }),
+      },
+    ),
+  renamePaperAttachment: (id: string, attachment: string, title: string) =>
+    request<PaperAttachment>(
+      `/api/documents/${encodeURIComponent(id)}/attachments/${encodeURIComponent(attachment)}`,
+      {
+        method: "PATCH",
+        body: JSON.stringify({ title }),
+      },
+    ),
+  removePaperAttachment: (id: string, attachment: string) =>
+    request<void>(
+      `/api/documents/${encodeURIComponent(id)}/attachments/${encodeURIComponent(attachment)}`,
+      { method: "DELETE" },
+    ),
+  downloadPaperAttachment: async (
+    id: string,
+    attachment: string,
+    signal?: AbortSignal,
+  ): Promise<Blob> => {
+    const response = await diagnosticFetch(
+      `/api/documents/${encodeURIComponent(id)}/attachments/${encodeURIComponent(attachment)}/file`,
+      {
+        headers: { Authorization: `Bearer ${sessionToken}` },
+        signal,
+      },
+    );
+    if (!response.ok) {
+      const data = await response.json().catch(() => ({}));
+      throw new RequestError(data.error || `附件下载失败 (${response.status})`);
+    }
+    return response.blob();
+  },
   journalRankConfig: () =>
     request<JournalRankConfig>("/api/journal-ranks/config"),
   saveJournalRankConfig: (config: {
