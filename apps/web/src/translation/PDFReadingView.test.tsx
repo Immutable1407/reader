@@ -605,6 +605,52 @@ function translationGeometry(height = 200) {
     new DOMRect(40, 600 - pane.scrollTop, 520, height);
   return { pane, block };
 }
+it.each([false, true])(
+  "lets either scrollbar lead without wheel input or follower feedback (swapped: %s)",
+  async (swapped) => {
+    await click("原文译文");
+    if (swapped) await click("交换原文和译文");
+    const { pane } = translationGeometry();
+    const source = host.querySelector<HTMLElement>(".translation-source")!;
+    await act(async () => {
+      pane.dispatchEvent(
+        new MouseEvent("pointerdown", { bubbles: true, button: 0 }),
+      );
+      pane.scrollTop = 400;
+      pane.dispatchEvent(new Event("scroll", { bubbles: true }));
+      await new Promise(requestAnimationFrame);
+    });
+    // Follow while holding the translation thumb, before pointerup.
+    expect(adapter.followBlock).toHaveBeenLastCalledWith({
+      blockId: "p1-b1",
+      fraction: 0.5,
+    });
+    vi.mocked(adapter.followBlock!).mockClear();
+    await act(async () => {
+      window.dispatchEvent(new MouseEvent("pointerup", { bubbles: true }));
+      source.dispatchEvent(
+        new MouseEvent("pointerdown", { bubbles: true, button: 0 }),
+      );
+      fixture.events!.readingAnchor?.({ blockId: "p1-b1", fraction: 0.25 });
+    });
+    expect(pane.scrollTop).toBeCloseTo(350);
+    await act(async () => {
+      pane.dispatchEvent(new Event("scroll", { bubbles: true }));
+      await new Promise(requestAnimationFrame);
+    });
+    expect(adapter.followBlock).not.toHaveBeenCalled();
+    await click("取消同步效果");
+    await act(async () => {
+      pane.dispatchEvent(
+        new MouseEvent("pointerdown", { bubbles: true, button: 0 }),
+      );
+      pane.scrollTop = 500;
+      pane.dispatchEvent(new Event("scroll", { bubbles: true }));
+      await new Promise(requestAnimationFrame);
+    });
+    expect(adapter.followBlock).not.toHaveBeenCalled();
+  },
+);
 it("smoothly centers clicked translation blocks and follows their original without scroll feedback", async () => {
   await click("原文译文");
   const { pane, block } = translationGeometry();

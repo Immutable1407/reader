@@ -1,4 +1,5 @@
 import { figureTarget } from "../readers/figure-references";
+import { readerLayout, updateReaderLayout } from "../reader-layout";
 import {
   useEffect,
   useLayoutEffect,
@@ -85,8 +86,8 @@ export function PDFReadingView({
   onReady: (adapter: ReaderAdapter, toc: TOCItem[]) => void;
   events: ReaderEvents;
 }) {
+  const { swapped, sourceWidth } = readerLayout(theme.readerLayout);
   const [mode, setMode] = useState<Mode>("source"),
-    [swapped, setSwapped] = useState(false),
     [syncEnabled, setSyncEnabled] = useState(true);
   const { translations, error } = useTranslations(doc.id);
   const [popup, setPopup] = useState<{ block: PDFBlock; rect: DOMRect }>();
@@ -838,7 +839,11 @@ export function PDFReadingView({
       <TranslationPanes
         mode={mode}
         swapped={swapped}
-        onSwap={() => setSwapped((value) => !value)}
+        onSwap={() => updateReaderLayout({ swapped: !swapped })}
+        sourceWidth={sourceWidth}
+        onSourceWidthChange={(sourceWidth) =>
+          updateReaderLayout({ sourceWidth })
+        }
         onResizeStart={() => engine?.cancelBlockFocus?.()}
         source={
           <div
@@ -937,7 +942,9 @@ export function PDFReadingView({
                     : undefined;
                 input("translation");
                 hover("translation");
-                selecting.current = true;
+                // The viewport itself receives scrollbar presses. Keep following
+                // those scrolls while the pointer is down; only text drags select.
+                selecting.current = !!section && event.button === 0;
                 selection.current = null;
                 events.selection(null);
                 void engine?.focusSentences?.("", []);

@@ -315,7 +315,19 @@ export interface ReaderAnnotationTarget {
   anchor: SelectionAnchor;
 }
 export type Appearance = "light" | "sepia" | "dark" | "system";
+/** Last user-chosen reading layout, shared by PDF and EPUB documents. */
+export interface ReaderLayout {
+  /** Expanded sidebar widths as percentages of the full reading workspace. */
+  navigationWidth: number;
+  assistantWidth: number;
+  navigationOpen: boolean;
+  assistantOpen: boolean;
+  /** Source width in parallel mode, independent of its left/right position. */
+  sourceWidth: number;
+  swapped: boolean;
+}
 export interface ReaderTheme {
+  readerLayout?: Partial<ReaderLayout>;
   /** Opt in to copying text selections and selected annotations. */
   autoCopySelection?: boolean;
   autoTranslatePDF?: boolean;
