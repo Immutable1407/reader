@@ -138,13 +138,29 @@ export function App() {
   }, [theme]);
   useEffect(() => {
     const dark = resolvedTheme.mode === "dark";
-    document.documentElement.classList.toggle("dark", dark);
-    document.documentElement.dataset.theme = resolvedTheme.mode;
-    document.documentElement.style.colorScheme = dark ? "dark" : "light";
+    const root = document.documentElement;
+    root.classList.toggle("dark", dark);
+    root.dataset.theme = resolvedTheme.mode;
+    // Graphite ("soft") and pure black ("high") are both dark mode.
+    if (dark)
+      root.dataset.darkContrast = resolvedTheme.pdfDarkContrast ?? "soft";
+    else delete root.dataset.darkContrast;
+    root.style.colorScheme = dark ? "dark" : "light";
     void window.readerDesktop
-      ?.setAppearance(theme.appearance ?? "system")
+      ?.setAppearance(theme.appearance ?? "system", {
+        pdfDarkContrast: theme.pdfDarkContrast,
+        systemLightMode: theme.systemLightMode,
+        systemDarkContrast: theme.systemDarkContrast,
+      })
       .catch((e) => toast.error(e.message));
-  }, [resolvedTheme.mode, theme.appearance]);
+  }, [
+    resolvedTheme.mode,
+    resolvedTheme.pdfDarkContrast,
+    theme.appearance,
+    theme.pdfDarkContrast,
+    theme.systemLightMode,
+    theme.systemDarkContrast,
+  ]);
   useEffect(() => {
     const key = (e: KeyboardEvent) => {
       if (e.defaultPrevented) return;

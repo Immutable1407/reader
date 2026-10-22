@@ -32,6 +32,11 @@ interface Window {
     writeClipboardImage: (data: Uint8Array, text: string) => Promise<void>;
     setAppearance: (
       appearance: "light" | "sepia" | "dark" | "system",
+      palettes: {
+        pdfDarkContrast?: "high" | "soft";
+        systemLightMode?: "light" | "sepia";
+        systemDarkContrast?: "high" | "soft";
+      },
     ) => Promise<void>;
     /** Resolves with long papers that need the reader's confirmation. */
     findEndNoteLibraries?: (id: string) => Promise<{
