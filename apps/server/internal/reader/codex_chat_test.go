@@ -57,7 +57,9 @@ func runChatSessionProcess() {
 			if os.Getenv("READER_CHAT_SKIP_USAGE") != "1" {
 				notify("thread/tokenUsage/updated", map[string]any{"tokenUsage": map[string]any{"total": TokenCounts{InputTokens: int64(turn * 20), OutputTokens: int64(turn * 10), TotalTokens: int64(turn * 30), CachedInputTokens: tokenCount(int64(turn * 8))}}})
 			}
+			notify("item/started", map[string]any{"item": map[string]string{"id": "answer", "type": "agentMessage", "phase": "final_answer"}})
 			notify("item/agentMessage/delta", map[string]any{"itemId": "answer", "delta": "已收到"})
+			notify("item/completed", map[string]any{"item": map[string]string{"id": "answer", "type": "agentMessage", "phase": "final_answer", "text": "已收到"}})
 			notify("turn/completed", map[string]any{"turn": map[string]string{"id": tid, "status": "completed"}})
 		}
 	}

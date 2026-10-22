@@ -99,6 +99,9 @@ func invokeCodex(ctx context.Context, work, model string, in AIInput, delta func
 		return "", err
 	}
 	defer session.close()
+	if in.Chat != nil {
+		session.finalMessagesOnly = true
+	}
 	return session.generate(ctx, in, delta, metrics...)
 }
 func (s *codexSession) generate(ctx context.Context, in AIInput, delta func(string), metrics ...func([]ModelTokens)) (answerText string, err error) {
@@ -246,7 +249,7 @@ func (s *codexSession) generate(ctx context.Context, in AIInput, delta func(stri
 			if p.Item.Type == "agentMessage" {
 				phases[p.Item.ID] = p.Item.Phase
 			}
-			if p.Item.Type == "mcpToolCall" {
+			if p.Item.Type == "mcpToolCall" || p.Item.Type == "webSearch" {
 				toolSerial++
 			}
 			if p.Item.Type == "contextCompaction" && in.Chat != nil && in.Chat.Agent != nil {

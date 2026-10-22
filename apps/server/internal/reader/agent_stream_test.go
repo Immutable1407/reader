@@ -224,6 +224,7 @@ func runAgentProcess() {
 				}
 				notify("item/reasoning/textDelta", map[string]any{"delta": "private"})
 				notify("item/commandExecution/outputDelta", map[string]any{"delta": "tool output"})
+				notify("item/started", map[string]any{"item": map[string]string{"id": "answer", "type": "agentMessage", "phase": "final_answer"}})
 				notify("item/agentMessage/delta", map[string]any{"itemId": "answer", "delta": "你好"})
 				if mode == "interleaved" {
 					respond(map[string]any{"turn": map[string]string{"id": currentTurn, "status": "inProgress"}})

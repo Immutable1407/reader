@@ -54,13 +54,26 @@ func runWebEventsProcess() {
 			emit := func(method string, item any) {
 				encoder.Encode(map[string]any{"method": method, "params": map[string]any{"threadId": "thread", "turnId": "turn", "item": item}})
 			}
+			if mode := os.Getenv("READER_WEB_PHASE_FIXTURE"); mode != "" {
+				phase := "commentary"
+				if mode == "legacy" {
+					phase = ""
+				}
+				emit("item/started", map[string]any{"id": "before-search", "type": "agentMessage", "phase": phase})
+				encoder.Encode(map[string]any{"method": "item/agentMessage/delta", "params": map[string]string{"threadId": "thread", "turnId": "turn", "itemId": "before-search", "delta": "PRE_SEARCH_COMMENTARY"}})
+				emit("item/completed", map[string]any{"id": "before-search", "type": "agentMessage", "phase": phase, "text": "PRE_SEARCH_COMMENTARY"})
+			}
 			if web == "live" {
 				emit("item/started", map[string]any{"id": "search", "type": "webSearch", "query": "official docs", "action": map[string]string{"type": "search", "query": "official docs"}})
 				emit("item/completed", map[string]any{"id": "search", "type": "webSearch", "query": "official docs", "results": []any{map[string]string{"url": "https://example.com/docs", "title": "Official docs", "snippet": "A public source"}}})
 				emit("item/started", map[string]any{"id": "read", "type": "webSearch", "query": "", "action": map[string]string{"type": "openPage", "url": "https://example.com/docs"}})
 				emit("item/completed", map[string]any{"id": "read", "type": "webSearch", "query": "", "action": map[string]string{"type": "openPage", "url": "https://example.com/docs"}})
 			}
-			encoder.Encode(map[string]any{"method": "item/agentMessage/delta", "params": map[string]string{"threadId": "thread", "turnId": "turn", "itemId": "answer", "delta": "See [Official docs](https://example.com/docs)."}})
+			if os.Getenv("READER_WEB_PHASE_FIXTURE") != "legacy" {
+				emit("item/started", map[string]any{"id": "answer", "type": "agentMessage", "phase": "final_answer"})
+				encoder.Encode(map[string]any{"method": "item/agentMessage/delta", "params": map[string]string{"threadId": "thread", "turnId": "turn", "itemId": "answer", "delta": "See [Official docs](https://example.com/docs)."}})
+				emit("item/completed", map[string]any{"id": "answer", "type": "agentMessage", "phase": "final_answer", "text": "See [Official docs](https://example.com/docs)."})
+			}
 			encoder.Encode(map[string]any{"method": "turn/completed", "params": map[string]any{"threadId": "thread", "turn": map[string]string{"id": "turn", "status": "completed"}}})
 		}
 	}
@@ -115,5 +128,32 @@ func TestCodexWebPreflightNative(t *testing.T) {
 		if err != nil {
 			t.Fatal(err)
 		}
+	}
+}
+
+func TestCodexWebChatDropsCommentary(t *testing.T) {
+	fakeAgent(t, "codex", "web-events")
+	t.Setenv("READER_WEB_PHASE_FIXTURE", "commentary")
+	s := testServer(t)
+	text, err := invokeCLI(t.Context(), s.Store.Root, "codex", "test", AIInput{Prompt: "question", Chat: &chatInput{WebSearch: true}}, nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if strings.Contains(text, "PRE_SEARCH_COMMENTARY") {
+		t.Fatalf("commentary was saved as answer: %q", text)
+	}
+}
+func TestCodexWebSearchInvalidatesOldCandidate(t *testing.T) {
+	fakeAgent(t, "codex", "web-events")
+	t.Setenv("READER_WEB_PHASE_FIXTURE", "legacy")
+	session, err := isolatedDocumentCodex(t.Context(), t.TempDir(), "test", "", "", true)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer session.close()
+	session.finalMessagesOnly = true
+	text, err := session.generate(t.Context(), AIInput{Prompt: "question", Chat: &chatInput{WebSearch: true}}, nil)
+	if err == nil {
+		t.Fatalf("search-before candidate accepted without a final answer: %q", text)
 	}
 }

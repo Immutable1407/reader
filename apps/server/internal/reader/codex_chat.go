@@ -78,6 +78,7 @@ func (c *codexChatCache) acquire(ctx context.Context, root, model string, in AII
 			_ = os.RemoveAll(work)
 			return nil, in, err
 		}
+		session.finalMessagesOnly = true
 		e = &codexChatEntry{session: session, work: work, key: key, document: chat.DocumentID, seen: map[string]bool{}}
 		c.entry = e
 	} else {
