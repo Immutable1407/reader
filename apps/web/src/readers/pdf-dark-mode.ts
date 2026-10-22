@@ -23,10 +23,17 @@ function tintChannels(contrast: PDFDarkContrast) {
   const tables = tint
     ? [0, 1, 2].map((channel) =>
         Uint8Array.from({ length: 256 }, (_, value) =>
-          Math.round(
-            tint.paper[channel] +
-              ((tint.ink[channel] - tint.paper[channel]) * (value - paper)) /
-                (ink - paper),
+          Math.max(
+            0,
+            Math.min(
+              255,
+              Math.round(
+                tint.paper[channel] +
+                  ((tint.ink[channel] - tint.paper[channel]) *
+                    (value - paper)) /
+                    (ink - paper),
+              ),
+            ),
           ),
         ),
       )

@@ -24,6 +24,20 @@ describe("PDF dark appearance colors", () => {
     expect(red).not.toEqual(blue);
   });
 
+  it.each([
+    [255, 0, 0, 255, 69, 71],
+    [255, 255, 0, 255, 250, 71],
+    [255, 0, 255, 255, 69, 244],
+  ])(
+    "keeps saturated RGB(%i, %i, %i) from wrapping in graphite",
+    (r, g, b, rr, gg, bb) => {
+      expect(adaptPDFColor(r, g, b, "soft")).toEqual([rr, gg, bb]);
+      const pixels = new Uint8ClampedArray([r, g, b, 255]);
+      processPDFPagePixels(pixels, 1, 1, [], [], "adaptive", "soft");
+      expect([...pixels]).toEqual([rr, gg, bb, 255]);
+    },
+  );
+
   it("maps grayscale content to black and white in high contrast mode", () => {
     expect(adaptPDFColor(255, 255, 255, "high")).toEqual([0, 0, 0]);
     expect(adaptPDFColor(0, 0, 0, "high")).toEqual([255, 255, 255]);
