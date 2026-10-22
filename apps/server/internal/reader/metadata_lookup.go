@@ -19,7 +19,18 @@ func (s *Server) scholarClient() *scholar.Client {
 	if s.scholar == nil {
 		s.scholar = scholar.New(maxImportBytes)
 	}
-	return s.scholar
+	// Snapshot preferences per operation; never mutate the shared client in flight.
+	client := *s.scholar
+	var value string
+	if s.Store.DB.QueryRow("SELECT value FROM settings WHERE key='preferences:library'").Scan(&value) == nil {
+		var prefs struct {
+			CrossrefEmail string `json:"crossrefEmail"`
+		}
+		if json.Unmarshal([]byte(value), &prefs) == nil {
+			client.CrossrefEmail = prefs.CrossrefEmail
+		}
+	}
+	return &client
 }
 
 func fromScholar(m scholar.Metadata) PaperMetadata {

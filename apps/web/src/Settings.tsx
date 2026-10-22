@@ -1,3 +1,4 @@
+import { PaperServiceSettings } from "./papers/PaperServiceSettings";
 import { AutoTranslationSettings } from "./papers/AutoTranslationSettings";
 import { TranslationPromptSettings } from "./TranslationPromptSettings";
 import { useEffect, useRef, useState } from "react";
@@ -901,8 +902,8 @@ export function Settings({
                 <span>
                   导入 PDF 后自动补全论文信息
                   <span className="block text-xs text-muted-foreground">
-                    只把文中的 DOI 或 arXiv 编号发送给 arXiv、Crossref 与
-                    Semantic Scholar
+                    通过文中的 DOI 或 arXiv 编号向 arXiv、Crossref 与 Semantic
+                    Scholar 查询
                   </span>
                 </span>
               </label>
@@ -923,6 +924,7 @@ export function Settings({
               </label>
               <AutoTranslationSettings theme={theme} setTheme={setTheme} />
             </section>
+            <PaperServiceSettings open={open} />
             <fieldset className="mt-7 border-t pt-5">
               <legend className="text-sm font-medium">表格显示列</legend>
               <p className="mb-3 text-xs text-muted-foreground">

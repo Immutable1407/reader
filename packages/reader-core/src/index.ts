@@ -216,6 +216,8 @@ export interface SmartCategory {
   tags: string[];
 }
 export interface LibraryPreferences {
+  /** Optional contact email sent only to Crossref for its polite pool. */
+  crossrefEmail?: string;
   /** Library opened at startup; defaults to papers. */
   primaryMode?: LibraryMode;
   mode?: LibraryMode;
