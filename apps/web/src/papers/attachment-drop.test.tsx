@@ -14,8 +14,8 @@ vi.mock("./attachments", () => ({
 let root: Root, host: HTMLDivElement;
 const imported = vi.fn();
 const file = new File(["supplement"], "supplement.pdf");
-function Row({ id }: { id: string }) {
-  const { armed, ...events } = useAttachmentDrop(paper({ id }));
+function Row({ id, immediate = false }: { id: string; immediate?: boolean }) {
+  const { armed, ...events } = useAttachmentDrop(paper({ id }), immediate);
   return (
     <div data-row={id} data-armed={armed} {...events}>
       <span>Paper {id}</span>
@@ -137,4 +137,58 @@ it("ignores Reader's internal paper drags", async () => {
     vi.advanceTimersByTime(attachmentDwellMs);
   });
   expect(row("a").dataset.armed).toBe("false");
+});
+
+it("accepts files immediately in an expanded attachment area", async () => {
+  await act(async () =>
+    root.render(
+      <div onDrop={imported}>
+        <Row id="a" immediate />
+      </div>,
+    ),
+  );
+  await act(async () => drag("a", "dragover"));
+  expect(row("a").dataset.armed).toBe("true");
+  await act(async () => drag("a", "drop"));
+  expect(uploadAttachments).toHaveBeenCalledExactlyOnceWith(
+    expect.objectContaining({ id: "a" }),
+    [file],
+  );
+  expect(imported).not.toHaveBeenCalled();
+});
+it("restores the dwell requirement immediately after collapsing", async () => {
+  await act(async () =>
+    root.render(
+      <div onDrop={imported}>
+        <Row id="a" immediate />
+      </div>,
+    ),
+  );
+  await act(async () => drag("a", "dragover"));
+  await act(async () =>
+    root.render(
+      <div onDrop={imported}>
+        <Row id="a" />
+      </div>,
+    ),
+  );
+  expect(row("a").dataset.armed).toBe("false");
+  await act(async () => {
+    drag("a", "dragover");
+    drag("a", "drop");
+  });
+  expect(uploadAttachments).not.toHaveBeenCalled();
+  expect(imported).toHaveBeenCalledOnce();
+});
+it("accepts a direct expanded drop even without a prior dragover event", async () => {
+  await act(async () =>
+    root.render(
+      <div onDrop={imported}>
+        <Row id="a" immediate />
+      </div>,
+    ),
+  );
+  await act(async () => drag("a", "drop"));
+  expect(uploadAttachments).toHaveBeenCalledOnce();
+  expect(imported).not.toHaveBeenCalled();
 });

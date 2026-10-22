@@ -9,6 +9,7 @@ import { PaperLibrary } from "./PaperLibrary";
 import { PaperSidebar } from "./PaperSidebar";
 import { usePaperUI } from "./state";
 import { useAttachments } from "./attachments";
+import * as attachments from "./attachments";
 import { paper } from "./fixtures";
 import { exportAnnotatedPDFWithToast } from "../annotated-pdf-export";
 vi.mock("../annotated-pdf-export", () => ({
@@ -100,6 +101,7 @@ beforeEach(async () => {
     },
   );
   vi.clearAllMocks();
+  vi.mocked(api.paperAttachments).mockResolvedValue([]);
   jobs = new Map();
   useAttachments.setState({
     items: {},
@@ -1672,4 +1674,70 @@ it("opens attachment rename and removal from the child context menu", async () =
   expect(document.querySelector('[role="alertdialog"]')?.textContent).toContain(
     "Supplementary material",
   );
+});
+
+it.each(["list", "table"] as const)(
+  "accepts direct file drops on expanded parent and child rows in %s layout",
+  async (layout) => {
+    const upload = vi
+      .spyOn(attachments, "uploadAttachments")
+      .mockResolvedValue();
+    const file = new File(["supplement"], "new-supplement.pdf");
+    vi.mocked(api.paperAttachments).mockResolvedValue([supplement]);
+    try {
+      await act(async () =>
+        useReaderStore.setState({
+          documents: [{ ...docs[0], attachmentCount: 1 }, docs[1]],
+          libraryPreferences: {
+            mode: "papers",
+            papers: { layout, sort: "title" },
+          },
+        }),
+      );
+      await act(async () =>
+        button("展开 Attention Is All You Need 的附件").click(),
+      );
+      const targets = [
+        row(docs[0].title),
+        host.querySelector<HTMLElement>('[data-attachment-row="primary"]')!,
+        host.querySelector<HTMLElement>('[data-attachment-row="supp"]')!,
+      ];
+      const bubbled = vi.fn();
+      document.body.addEventListener("drop", bubbled);
+      for (const target of targets) {
+        const event = new Event("drop", { bubbles: true, cancelable: true });
+        Object.defineProperty(event, "dataTransfer", {
+          value: { types: ["Files"], files: [file] },
+        });
+        await act(async () => target.dispatchEvent(event));
+      }
+      expect(upload).toHaveBeenCalledTimes(3);
+      expect(upload).toHaveBeenLastCalledWith(
+        expect.objectContaining({ id: "a" }),
+        [file],
+      );
+      expect(bubbled).not.toHaveBeenCalled();
+      document.body.removeEventListener("drop", bubbled);
+    } finally {
+      upload.mockRestore();
+    }
+  },
+);
+
+it("requires dwell after the final attachment and visible expansion disappear", async () => {
+  const upload = vi.spyOn(attachments, "uploadAttachments").mockResolvedValue();
+  try {
+    await act(async () =>
+      useAttachments.setState({ expanded: new Set(["a"]), items: { a: [] } }),
+    );
+    expect(host.querySelector("[data-attachment-row]")).toBeNull();
+    const event = new Event("drop", { bubbles: true, cancelable: true });
+    Object.defineProperty(event, "dataTransfer", {
+      value: { types: ["Files"], files: [new File(["a"], "file.pdf")] },
+    });
+    await act(async () => row(docs[0].title).dispatchEvent(event));
+    expect(upload).not.toHaveBeenCalled();
+  } finally {
+    upload.mockRestore();
+  }
 });

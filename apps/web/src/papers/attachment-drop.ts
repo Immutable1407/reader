@@ -10,8 +10,8 @@ const fileDrag = (event: React.DragEvent) => {
   return types.includes("Files") && !types.includes(PAPER_DRAG_TYPE);
 };
 
-/** A row becomes an attachment target only after the pointer rests over it. */
-export function useAttachmentDrop(doc: Document) {
+/** Collapsed papers require dwell; expanded attachment areas accept directly. */
+export function useAttachmentDrop(doc: Document, immediate = false) {
   const [armed, setArmed] = useState(false);
   const state = useRef<{
     timer?: ReturnType<typeof setTimeout>;
@@ -46,13 +46,13 @@ export function useAttachmentDrop(doc: Document) {
       window.removeEventListener("blur", reset);
     };
   };
-  useEffect(
-    () => () => {
+  useEffect(() => {
+    reset();
+    return () => {
       clearTimeout(state.current.timer);
       release.current?.();
-    },
-    [doc.id],
-  );
+    };
+  }, [doc.id, immediate]);
   return {
     armed,
     onDragEnter: (event: React.DragEvent<HTMLElement>) => {
@@ -72,6 +72,12 @@ export function useAttachmentDrop(doc: Document) {
       event.dataTransfer.dropEffect = "copy";
       watch(event.currentTarget);
       const current = state.current;
+      if (immediate) {
+        clearTimeout(current.timer);
+        current.armed = true;
+        setArmed(true);
+        return;
+      }
       if (current.armed) return;
       if (
         current.timer &&
@@ -95,7 +101,7 @@ export function useAttachmentDrop(doc: Document) {
         reset();
     },
     onDrop: (event: React.DragEvent<HTMLElement>) => {
-      const accept = fileDrag(event) && state.current.armed && !running;
+      const accept = fileDrag(event) && (immediate || state.current.armed);
       reset();
       if (!accept) return; // Bubble to App's normal import handler.
       event.preventDefault();

@@ -3094,7 +3094,12 @@ textarea.paper-title-input {
   margin: -3px 3px -3px -4px;
   vertical-align: middle;
 }
-:is(.paper-row, .paper-table-row)[data-attachment-drop="true"] {
+:is(
+  .paper-row,
+  .paper-table-row,
+  .paper-child-row,
+  .paper-child-status
+)[data-attachment-drop="true"] {
   background: var(--accent);
   box-shadow: inset 0 0 0 1px var(--ring);
 }

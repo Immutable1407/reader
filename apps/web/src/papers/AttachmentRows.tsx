@@ -21,6 +21,7 @@ import {
 } from "./attachments";
 import { PaperAttachments, AttachmentUploads } from "./PaperAttachments";
 import { toast } from "sonner";
+import { useAttachmentDrop } from "./attachment-drop";
 
 export function AttachmentRows({
   doc,
@@ -36,6 +37,7 @@ export function AttachmentRows({
   const error = useAttachments((s) => s.errors[doc.id]);
   const selected = useAttachments((s) => s.selected);
   const batch = useAttachments((s) => s.uploads[doc.id]);
+  const { armed, ...dropHandlers } = useAttachmentDrop(doc, true);
   if (items?.length === 0 && !batch && !error) return null;
   const select = (item: PaperAttachment | null) => {
     usePaperUI.getState().select(doc.id);
@@ -71,6 +73,8 @@ export function AttachmentRows({
           render={colSpan ? <tr /> : <div />}
           role={colSpan ? undefined : "listitem"}
           className="paper-child-row"
+          data-attachment-drop={armed || undefined}
+          {...dropHandlers}
           data-attachment-row={item?.id || "primary"}
           data-parent-id={doc.id}
           data-selected={(!!item && selected?.id === item.id) || undefined}
@@ -156,7 +160,11 @@ export function AttachmentRows({
     );
   };
   const status = (
-    <div className="paper-child-status">
+    <div
+      className="paper-child-status"
+      data-attachment-drop={armed || undefined}
+      {...(!colSpan ? dropHandlers : {})}
+    >
       {error ? (
         <>
           <span role="alert">{error}</span>
@@ -180,7 +188,7 @@ export function AttachmentRows({
       {items?.map(row)}
       {(!items || error || batch) &&
         (colSpan ? (
-          <tr>
+          <tr data-attachment-drop={armed || undefined} {...dropHandlers}>
             <TableCell colSpan={colSpan}>{status}</TableCell>
           </tr>
         ) : (

@@ -1390,11 +1390,11 @@ function PaperRow({
   expanded: boolean;
   onToggleAttachments: () => void;
 }) {
-  const drop = useAttachmentDrop(doc);
   const upload = useAttachments((s) => s.uploads[doc.id]);
   const cached = useAttachments((s) => s.items[doc.id]);
   const hasAttachments =
     (doc.attachmentCount || 0) > 0 || !!cached?.length || !!upload;
+  const drop = useAttachmentDrop(doc, expanded && !picking && hasAttachments);
   const disclosure = !picking && hasAttachments && (
     <Button
       size="icon-xs"
