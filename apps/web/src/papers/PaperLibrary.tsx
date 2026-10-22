@@ -4,6 +4,9 @@ import type { TableColumn } from "./columns";
 import { PaperTagFilterButton } from "./PaperTagFilter";
 import { Badge } from "@reader/ui/components/badge";
 import {
+  Fragment,
+  Suspense,
+  lazy,
   useEffect,
   useMemo,
   useRef,
@@ -14,6 +17,8 @@ import {
 } from "react";
 import {
   X,
+  ChevronRight,
+  Paperclip,
   ArrowDown,
   ArrowUp,
   Check,
@@ -145,6 +150,15 @@ import {
   resizeStep,
 } from "./resize";
 
+import { AttachmentRows, AttachmentDetail } from "./AttachmentRows";
+import { useAttachmentDrop } from "./attachment-drop";
+import {
+  toggleAttachments,
+  useAttachments,
+  uploadAttachments,
+} from "./attachments";
+const AttachmentPreview = lazy(() => import("./AttachmentPreview"));
+
 export interface PaperLibraryProps {
   documents: Document[];
   trash: Document[];
@@ -185,6 +199,15 @@ export function PaperLibrary({
     exporting,
   } = ui;
   const listRef = useRef<HTMLDivElement>(null);
+  const attachmentPicker = useRef<HTMLInputElement>(null);
+  const attachmentTarget = useRef<Document | null>(null);
+  const expandedAttachments = useAttachments((s) => s.expanded);
+  const selectedAttachment = useAttachments((s) => s.selected);
+  const preview = useAttachments((s) => s.preview);
+  useEffect(() => {
+    if (selectedAttachment && selectedAttachment.documentId !== selectedId)
+      useAttachments.setState({ selected: null });
+  }, [selectedId, selectedAttachment]);
   const visible = useMemo(
     () =>
       view === "trash"
@@ -349,7 +372,7 @@ export function PaperLibrary({
       if (
         e.button === 0 &&
         !(e.target as Element).closest(
-          '[data-paper-id], .paper-detail, button, a, input, textarea, select, label, [role="button"], [role="separator"], [role="tab"], [contenteditable="true"]',
+          '[data-paper-id], [data-attachment-row], .paper-detail, button, a, input, textarea, select, label, [role="button"], [role="separator"], [role="tab"], [contenteditable="true"]',
         )
       )
         ui.select(null);
@@ -450,6 +473,14 @@ export function PaperLibrary({
   };
   const actions: PaperMenuActions = {
     open: openDocument,
+    addAttachment: (doc, kind) => {
+      useAttachments.setState({ selected: null });
+      ui.select(doc.id);
+      if (kind === "file") {
+        attachmentTarget.current = doc;
+        attachmentPicker.current?.click();
+      } else useAttachments.setState({ adding: { doc, kind } });
+    },
     move: moveToBooks,
     trash: (docs) => {
       const state = usePaperUI.getState();
@@ -507,6 +538,37 @@ export function PaperLibrary({
     }
     if (e.key === "ArrowDown" || e.key === "ArrowUp") {
       e.preventDefault();
+      if (!picking) {
+        const rows = Array.from(
+          listRef.current?.querySelectorAll<HTMLElement>(
+            "[data-paper-id], [data-attachment-row]",
+          ) || [],
+        );
+        const current = (
+          document.activeElement as Element
+        )?.closest<HTMLElement>("[data-paper-id], [data-attachment-row]");
+        const index = current
+          ? rows.indexOf(current)
+          : rows.findIndex((row) => row.dataset.paperId === selectedId);
+        const next =
+          rows[
+            Math.max(
+              0,
+              Math.min(
+                rows.length - 1,
+                index + (e.key === "ArrowDown" ? 1 : -1),
+              ),
+            )
+          ];
+        if (next) {
+          next.focus();
+          if (next.dataset.paperId) {
+            useAttachments.setState({ selected: null });
+            ui.select(next.dataset.paperId);
+          } else next.click();
+        }
+        return;
+      }
       const index = visibleIds.indexOf(
         (document.activeElement as HTMLElement)?.dataset.paperId ||
           selectedId ||
@@ -547,45 +609,62 @@ export function PaperLibrary({
     </div>
   );
   const renderRow = (doc: Document, tableColumns?: TableColumn[]) => (
-    <PaperRow
-      columns={tableColumns}
-      key={doc.id}
-      doc={doc}
-      job={jobs.get(doc.id)}
-      selected={!picking && selectedId === doc.id}
-      picking={picking}
-      picked={picked.has(doc.id)}
-      colors={paperColors(doc, prefs.colorCategories)}
-      journalRankConfig={journalRankConfig}
-      journalRankRefresh={journalRankRefresh}
-      dragIds={() => (picked.has(doc.id) ? [...picked] : [doc.id])}
-      onActivate={(e) => {
-        if (picking || e.metaKey || e.ctrlKey || e.shiftKey)
-          ui.togglePick(doc.id, e.shiftKey, visibleIds);
-        else ui.select(selectedId === doc.id ? null : doc.id);
-      }}
-      onOpen={() => openDocument(doc)}
-      onFilterTag={(tag) =>
-        ui.setTagFilter({
-          match: "all",
-          tags: tagFilter.tags.some(
-            (item) => item.toLowerCase() === tag.toLowerCase(),
-          )
-            ? tagFilter.tags
-            : [...tagFilter.tags, tag],
-        })
-      }
-      menu={
-        <PaperMenuItems kind="context" docs={menuDocs(doc)} actions={actions} />
-      }
-      moreMenu={
-        <PaperMenuItems
-          kind="dropdown"
-          docs={menuDocs(doc)}
-          actions={actions}
+    <Fragment key={doc.id}>
+      <PaperRow
+        columns={tableColumns}
+        expanded={expandedAttachments.has(doc.id)}
+        onToggleAttachments={() => toggleAttachments(doc.id)}
+        doc={doc}
+        job={jobs.get(doc.id)}
+        selected={!picking && selectedId === doc.id}
+        picking={picking}
+        picked={picked.has(doc.id)}
+        colors={paperColors(doc, prefs.colorCategories)}
+        journalRankConfig={journalRankConfig}
+        journalRankRefresh={journalRankRefresh}
+        dragIds={() => (picked.has(doc.id) ? [...picked] : [doc.id])}
+        onActivate={(e) => {
+          if (picking || e.metaKey || e.ctrlKey || e.shiftKey)
+            ui.togglePick(doc.id, e.shiftKey, visibleIds);
+          else {
+            useAttachments.setState({ selected: null });
+            ui.select(selectedId === doc.id ? null : doc.id);
+          }
+        }}
+        onOpen={() => openDocument(doc)}
+        onFilterTag={(tag) =>
+          ui.setTagFilter({
+            match: "all",
+            tags: tagFilter.tags.some(
+              (item) => item.toLowerCase() === tag.toLowerCase(),
+            )
+              ? tagFilter.tags
+              : [...tagFilter.tags, tag],
+          })
+        }
+        menu={
+          <PaperMenuItems
+            kind="context"
+            docs={menuDocs(doc)}
+            actions={actions}
+          />
+        }
+        moreMenu={
+          <PaperMenuItems
+            kind="dropdown"
+            docs={menuDocs(doc)}
+            actions={actions}
+          />
+        }
+      />
+      {!picking && expandedAttachments.has(doc.id) && (
+        <AttachmentRows
+          doc={doc}
+          colSpan={tableColumns ? tableColumns.length + 1 : undefined}
+          openDocument={openDocument}
         />
-      }
-    />
+      )}
+    </Fragment>
   );
   return (
     <main className="library-main paper-library" ref={mainRef}>
@@ -1068,7 +1147,19 @@ export function PaperLibrary({
                 onPointerDown={resizeDetail}
                 onKeyDown={nudgeDetail}
               />
-              <PaperDetail key={selected.id} doc={selected} actions={actions} />
+              {selectedAttachment?.documentId === selected.id ? (
+                <AttachmentDetail
+                  key={selectedAttachment.id}
+                  doc={selected}
+                  item={selectedAttachment}
+                />
+              ) : (
+                <PaperDetail
+                  key={selected.id}
+                  doc={selected}
+                  actions={actions}
+                />
+              )}
             </>
           )}
         </div>
@@ -1135,6 +1226,30 @@ export function PaperLibrary({
             )
           }
         />
+      )}
+      <input
+        hidden
+        type="file"
+        multiple
+        ref={attachmentPicker}
+        aria-label="为论文选择附件"
+        onChange={(event) => {
+          const files = Array.from(event.currentTarget.files || []);
+          event.currentTarget.value = "";
+          if (attachmentTarget.current)
+            void uploadAttachments(attachmentTarget.current, files);
+        }}
+      />
+      {preview && (
+        <Suspense
+          fallback={
+            <span role="status" className="sr-only">
+              正在打开附件预览…
+            </span>
+          }
+        >
+          <AttachmentPreview />
+        </Suspense>
       )}
     </main>
   );
@@ -1253,6 +1368,8 @@ function PaperRow({
   onFilterTag,
   menu,
   moreMenu,
+  expanded,
+  onToggleAttachments,
 }: {
   doc: Document;
   job?: Processing;
@@ -1270,7 +1387,30 @@ function PaperRow({
   onFilterTag: (tag: string) => void;
   menu: React.ReactNode;
   moreMenu: React.ReactNode;
+  expanded: boolean;
+  onToggleAttachments: () => void;
 }) {
+  const drop = useAttachmentDrop(doc);
+  const upload = useAttachments((s) => s.uploads[doc.id]);
+  const cached = useAttachments((s) => s.items[doc.id]);
+  const hasAttachments =
+    (doc.attachmentCount || 0) > 0 || !!cached?.length || !!upload;
+  const disclosure = !picking && hasAttachments && (
+    <Button
+      size="icon-xs"
+      variant="ghost"
+      className="paper-attachment-toggle"
+      data-row-action
+      aria-label={`${expanded ? "收起" : "展开"} ${doc.title} 的附件`}
+      aria-expanded={expanded}
+      onClick={(event) => {
+        event.stopPropagation();
+        onToggleAttachments();
+      }}
+    >
+      <ChevronRight className={expanded ? "rotate-90" : undefined} />
+    </Button>
+  );
   const byline = paperByline(doc);
   const dragImage = useRef<(() => void) | undefined>(undefined);
   useEffect(() => () => dragImage.current?.(), []);
@@ -1286,6 +1426,7 @@ function PaperRow({
   );
   const title = (
     <p className="paper-row-title" title={doc.title}>
+      {disclosure}
       {colors.length > 0 && (
         <span
           className="paper-row-colors"
@@ -1307,6 +1448,12 @@ function PaperRow({
       )}
       {doc.title}
     </p>
+  );
+  const dropHint = drop.armed && (
+    <span className="paper-attachment-drop-hint" role="status">
+      <Paperclip />
+      松开以添加为论文附件
+    </span>
   );
   const status = (
     <span className="paper-row-status" data-status={doc.readingStatus}>
@@ -1421,6 +1568,11 @@ function PaperRow({
         role={columns ? undefined : "listitem"}
         className={columns ? "paper-table-row" : "paper-row"}
         data-paper-id={doc.id}
+        data-attachment-drop={drop.armed || undefined}
+        onDragEnter={drop.onDragEnter}
+        onDragOver={drop.onDragOver}
+        onDragLeave={drop.onDragLeave}
+        onDrop={drop.onDrop}
         data-selected={selected || undefined}
         data-picked={picked || undefined}
         tabIndex={0}
@@ -1451,6 +1603,15 @@ function PaperRow({
         }}
         onKeyDown={(e) => {
           if (e.target !== e.currentTarget) return;
+          if (
+            !picking &&
+            hasAttachments &&
+            (e.key === "ArrowRight" || e.key === "ArrowLeft")
+          ) {
+            e.preventDefault();
+            e.stopPropagation();
+            toggleAttachments(doc.id, e.key === "ArrowRight");
+          }
           if (e.key === "Enter") {
             e.preventDefault();
             if (picking) onActivate(e);
@@ -1501,14 +1662,21 @@ function PaperRow({
                             : undefined
                   }
                 >
+                  {column === columns[0] && !columns.includes("title") && (
+                    <>{disclosure}</>
+                  )}
                   {cell(column)}
                 </TableCell>
               ),
             )}
-            <TableCell className="w-8">{more}</TableCell>
+            <TableCell className="w-8">
+              {dropHint}
+              {more}
+            </TableCell>
           </>
         ) : (
           <>
+            {dropHint}
             {check}
             <div className="paper-row-main">
               {title}

@@ -6,6 +6,7 @@ import {
   FolderOpen,
   FolderPlus,
   Link2,
+  Paperclip,
   Pin,
   Star,
   Tag,
@@ -86,6 +87,7 @@ export interface PaperMenuActions {
   trash: (docs: Document[]) => void;
   newCategory: (docs: Document[]) => void;
   newTag: (docs: Document[]) => void;
+  addAttachment?: (doc: Document, kind: "file" | "link") => void;
 }
 
 /** Menu items for one paper, or for every picked paper when it is picked. */
@@ -218,6 +220,22 @@ export function PaperMenuItems({
           </K.RadioGroup>
         </K.SubContent>
       </K.Sub>
+      {one && one.type === "pdf" && actions.addAttachment && (
+        <K.Sub>
+          <K.SubTrigger>
+            <Paperclip />
+            添加附件
+          </K.SubTrigger>
+          <K.SubContent>
+            <K.Item onClick={() => actions.addAttachment?.(one, "file")}>
+              添加文件…
+            </K.Item>
+            <K.Item onClick={() => actions.addAttachment?.(one, "link")}>
+              添加链接…
+            </K.Item>
+          </K.SubContent>
+        </K.Sub>
+      )}
       <CitationMenuItems kind={kind} docs={docs} nested />
       {extra}
       {one && (
