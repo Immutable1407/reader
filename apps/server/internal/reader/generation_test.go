@@ -63,7 +63,7 @@ func TestGenerationAttemptBoundaries(t *testing.T) {
 	})
 }
 func TestGenerationFallbackPolicy(t *testing.T) {
-	for _, mode := range []string{"before", "after", "draft", "reasoning", "background", "cancel", "timeout", "emit-failure"} {
+	for _, mode := range []string{"before", "after", "draft", "reasoning", "background", "cancel", "timeout", "emit-failure", "busy"} {
 		t.Run(mode, func(t *testing.T) {
 			ctx, cancel := context.WithCancel(t.Context())
 			defer cancel()
@@ -75,6 +75,9 @@ func TestGenerationFallbackPolicy(t *testing.T) {
 			backups := 0
 			var visible string
 			primary := adapterFunc(func(ctx context.Context, req GenerateRequest, emit func(ProviderEvent) error) (GenerateResult, error) {
+				if mode == "busy" {
+					return GenerateResult{}, generationError(ErrorBusy, "会话仍由 Codex App 占用")
+				}
 				if mode == "draft" {
 					_ = emit(ProviderEvent{Draft: "partial"})
 				} else if mode == "reasoning" {
@@ -111,6 +114,9 @@ func TestGenerationFallbackPolicy(t *testing.T) {
 				}
 			} else if err == nil || backups != 0 {
 				t.Fatal(result, backups, err)
+			}
+			if mode == "busy" && errorKind(err) != ErrorBusy {
+				t.Fatal("thread ownership error was replaced", err)
 			}
 			if strings.Contains(visible, "partialbackup") {
 				t.Fatal("mixed attempts")

@@ -125,6 +125,9 @@ func (s *codexSession) resumeDocument(ctx context.Context, threadID string) erro
 	params["config"] = s.configOverrides
 	raw, err := s.control(ctx, "thread/resume", params)
 	if err != nil {
+		if errorKind(err) == ErrorBusy {
+			return err
+		}
 		return generationError(ErrorProtocol, "无法恢复 Codex 阅读会话，历史已保留，请重试")
 	}
 	var result struct {
