@@ -323,8 +323,10 @@ func streamPiChat(ctx context.Context, c APIConnection, req completionRequest, i
 			return nil, err
 		}
 		raw, err := a.call(ctx, name, args)
+		v.Target = ""
 		v.Status = "completed"
 		if err != nil {
+			v.Detail = err.Error()
 			v.Status = "failed"
 		}
 		if ctx.Err() != nil {

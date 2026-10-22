@@ -468,3 +468,31 @@ it("keeps keyed tool steps when answer deltas arrive and persists the web permis
   h.wait.resolve();
   await sending;
 });
+
+it("uses persisted completed tool states when history confirms a reply after a stream disconnect", async () => {
+  const h = setup();
+  await h.session.load();
+  const sending = h.session.send(input);
+  const tool = {
+    id: "read",
+    kind: "web" as const,
+    tool: "web_fetch",
+    title: "读取网页",
+    status: "running" as const,
+    startedAt: "2026-10-23T00:00:00Z",
+  };
+  h.emit({ event: "tool", data: tool });
+  const question = h.session.getSnapshot().pending!.input;
+  const saved = {
+    ...message("answer", "assistant", "Saved answer"),
+    tools: [{ ...tool, status: "completed" as const }],
+  };
+  h.messages.mockResolvedValue([
+    message(question.userMessageId!, "user", question.prompt),
+    saved,
+  ]);
+  h.wait.resolve();
+  await sending;
+  expect(h.session.getSnapshot().pending?.phase).toBe("saved");
+  expect(h.session.getSnapshot().pending?.tools).toEqual(saved.tools);
+});

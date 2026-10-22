@@ -110,6 +110,9 @@ func (c *chatInput) recordTool(v ToolActivity) error {
 			if v.URL == "" {
 				v.URL = old.URL
 			}
+			if v.Detail == "" {
+				v.Detail = old.Detail
+			}
 			v.StartedAt = old.StartedAt
 			break
 		}

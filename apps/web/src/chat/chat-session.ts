@@ -493,6 +493,7 @@ export class ChatSession {
         pending.savedId = assistant.id;
         pending.content = assistant.content;
         pending.reasoning = assistant.reasoning;
+        pending.tools = assistant.tools;
         pending.draft = "";
         pending.phase = "saved";
         pending.notice = "";

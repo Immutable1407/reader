@@ -117,6 +117,9 @@ func (c *chatInput) codexToolEvent(method string, params json.RawMessage) error 
 		if item.Arguments.URL != "" {
 			v.URL = item.Arguments.URL
 		}
+		if method == "item/completed" {
+			v.Target = ""
+		}
 	default:
 		return nil
 	}

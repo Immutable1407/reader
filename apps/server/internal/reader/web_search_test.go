@@ -208,3 +208,25 @@ func TestSourceRefreshStillEnforcesSnapshotLimit(t *testing.T) {
 		t.Fatal("late start reverted completion")
 	}
 }
+
+func TestToolCompletionRetainsActualTargetAndProgress(t *testing.T) {
+	c := &chatInput{}
+	c.recordTool(ToolActivity{ID: "m", Kind: "tool", Tool: "reader/read_passage", Title: "调用工具", Target: "read_passage", Status: "running"})
+	step := c.Tools[0]
+	step.Target = "正在读取第 7 页"
+	c.recordTool(step)
+	c.codexToolEvent("item/mcpToolCall/progress", json.RawMessage(`{"itemId":"m","message":"已读取第 7 页"}`))
+	c.codexToolEvent("item/completed", json.RawMessage(`{"item":{"id":"m","type":"mcpToolCall","server":"reader","tool":"read_passage","status":"completed","arguments":{"blockId":"p7-b1"}}}`))
+	if c.Tools[0].Target != "正在读取第 7 页" || c.Tools[0].Detail != "已读取第 7 页" || c.Tools[0].Status != "completed" {
+		t.Fatal(c.Tools)
+	}
+	s, a := originalDocumentFixture(t)
+	a.chat = c
+	if err := s.saveDocumentAgentAnswer(t.Context(), a, "Summary", "codex"); err != nil {
+		t.Fatal(err)
+	}
+	messages, err := s.Store.chatHistory("doc")
+	if err != nil || messages[0].Tools[0].Target != c.Tools[0].Target || messages[0].Tools[0].Detail != c.Tools[0].Detail {
+		t.Fatal(messages, err)
+	}
+}
