@@ -103,6 +103,7 @@ export function App() {
   const [largePapers, setLargePapers] = useState<LargePaper[]>([]);
   const [largePaperFolder, setLargePaperFolder] = useState("");
   const [loading, setLoading] = useState(true);
+  const [settingsHydrated, setSettingsHydrated] = useState(false);
   const [error, setError] = useState("");
   const [command, setCommand] = useState(false);
   const [importingPaper, setImportingPaper] = useState(false);
@@ -118,7 +119,10 @@ export function App() {
       loadBindings().catch(() =>
         toast.error("快捷键设置读取失败，暂时使用默认快捷键。"),
       ),
-      api.settings().then((value) => setTheme(value)),
+      api.settings().then((value) => {
+        setTheme(value);
+        setSettingsHydrated(true);
+      }),
     ])
       .catch((e) => setError(e.message))
       .finally(() => {
@@ -129,7 +133,7 @@ export function App() {
     if (loading) return;
     void refreshTrash().catch((e) => toast.error(e.message));
   }, [mode, loading]);
-  useSaveReaderSettings(theme, !loading && !error);
+  useSaveReaderSettings(theme, settingsHydrated);
   useEffect(() => {
     const dark = resolvedTheme.mode === "dark";
     const root = document.documentElement;
