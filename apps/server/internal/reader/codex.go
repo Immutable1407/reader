@@ -16,6 +16,7 @@ import (
 )
 
 type codexSession struct {
+	webSearch                          bool
 	cmd                                *exec.Cmd
 	stdin                              io.WriteCloser
 	stdout                             io.ReadCloser
@@ -93,11 +94,7 @@ func startCodexSession(work, model string, overrides []string, token string) (*c
 func invokeCodex(ctx context.Context, work, model string, in AIInput, delta func(string), metrics ...func([]ModelTokens)) (string, error) {
 	var session *codexSession
 	var err error
-	if in.SourceOnly {
-		session, err = isolatedDocumentCodex(ctx, work, model, "", "")
-	} else {
-		session, err = newCodexSession(work, model)
-	}
+	session, err = isolatedDocumentCodex(ctx, work, model, "", "", in.Chat != nil && in.Chat.WebSearch)
 	if err != nil {
 		return "", err
 	}
@@ -239,6 +236,11 @@ func (s *codexSession) generate(ctx context.Context, in AIInput, delta func(stri
 			return nil
 		}
 		lifecycle.setCancel(map[string]any{"id": 99, "method": "turn/interrupt", "params": map[string]string{"threadId": threadID, "turnId": id}})
+		if in.Chat != nil {
+			if err := in.Chat.codexToolEvent(msg.Method, msg.Params); err != nil {
+				return err
+			}
+		}
 		switch msg.Method {
 		case "item/started":
 			if p.Item.Type == "agentMessage" {

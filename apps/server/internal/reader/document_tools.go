@@ -46,6 +46,7 @@ type documentToolTrace struct {
 	Result    json.RawMessage `json:"result"`
 }
 type documentAgent struct {
+	chat                  *chatInput
 	sessionID             string
 	codexCache            *documentCodexCache
 	canViewPages          bool

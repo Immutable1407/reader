@@ -36,7 +36,11 @@ func serveDocumentMCP(agent *documentAgent) (string, string, func(), error) {
 	return serveBoundDocumentMCP(&documentToolBinding{agent: agent, attempt: agent.ID})
 }
 func serveBoundDocumentMCP(binding *documentToolBinding) (string, string, func(), error) {
-	server := mcp.NewServer(&mcp.Implementation{Name: "reader_document", Version: "1.0.0"}, &mcp.ServerOptions{Instructions: documentReadingInstructions})
+	instructions := documentReadingInstructions
+	if agent, _ := binding.current(); agent != nil && agent.chat != nil {
+		instructions = webInstructions(instructions, agent.chat.WebSearch)
+	}
+	server := mcp.NewServer(&mcp.Implementation{Name: "reader_document", Version: "1.0.0"}, &mcp.ServerOptions{Instructions: instructions})
 	for _, definition := range documentToolDefinitions {
 		d := definition
 		server.AddTool(&mcp.Tool{Name: d.Name, Description: d.Description, InputSchema: d.Schema, Annotations: &mcp.ToolAnnotations{ReadOnlyHint: true}}, func(ctx context.Context, req *mcp.CallToolRequest) (*mcp.CallToolResult, error) {

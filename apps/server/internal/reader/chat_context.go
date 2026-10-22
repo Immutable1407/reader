@@ -5,7 +5,9 @@ import (
 	"encoding/hex"
 	"encoding/json"
 	"fmt"
+	"net/http"
 	"strings"
+	"sync"
 	"unicode/utf8"
 )
 
@@ -32,6 +34,14 @@ type chatEntry struct {
 
 // Private request metadata: never accepted from HTTP clients or documents.
 type chatInput struct {
+	nativeWebRefs   map[string]string
+	webCalls        int
+	webTransport    http.RoundTripper
+	WebSearch       bool
+	Tools           []ToolActivity
+	WebSources      []WebSource
+	toolMu          sync.Mutex
+	toolEvent       func(ToolActivity) error
 	piConversation  *documentConversation
 	piProvider      string
 	SessionID       string

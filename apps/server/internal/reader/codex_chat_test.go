@@ -33,6 +33,8 @@ func runChatSessionProcess() {
 		_ = f.Close()
 		reply := func(v any) { _ = enc.Encode(map[string]any{"id": req.ID, "result": v}) }
 		switch req.Method {
+		case "config/read":
+			reply(map[string]any{"config": map[string]any{"mcp_servers": map[string]any{}, "features": map[string]bool{}, "web_search": "disabled"}})
 		case "initialize":
 			reply(map[string]any{})
 		case "model/list":
@@ -210,7 +212,7 @@ func TestCodexChatCancellation(t *testing.T) {
 	fakeAgent(t, "codex", "protocol-cancel")
 	s := testServer(t)
 	chat := &chatInput{DocumentID: "doc"}
-	session, in, err := s.codexChat.acquire(s.Store.Root, "test", AIInput{Prompt: "问", Chat: chat})
+	session, in, err := s.codexChat.acquire(t.Context(), s.Store.Root, "test", AIInput{Prompt: "问", Chat: chat})
 	if err != nil {
 		t.Fatal(err)
 	}

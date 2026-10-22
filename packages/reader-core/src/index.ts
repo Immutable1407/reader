@@ -544,7 +544,32 @@ export interface ImageAttachment {
   label: string;
   caption?: string;
 }
+export interface ToolActivity {
+  id: string;
+  kind: "search" | "web" | "tool";
+  tool: string;
+  title: string;
+  target?: string;
+  url?: string;
+  status: "running" | "completed" | "failed" | "cancelled";
+  detail?: string;
+  startedAt: string;
+  finishedAt?: string;
+}
+export interface WebSource {
+  id: string;
+  url: string;
+  title: string;
+  text?: string;
+  kind: "search" | "page";
+  retrievedAt: string;
+  publishedAt?: string;
+  truncated?: boolean;
+}
 export interface Message {
+  webSearch?: boolean;
+  tools?: ToolActivity[];
+  webSources?: WebSource[];
   sessionId?: string;
   /** Provider-returned thinking, displayed separately and never added to answer context. */
   reasoning?: string;

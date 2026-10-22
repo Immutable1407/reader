@@ -2037,6 +2037,12 @@
                                           "required": ["text", "location"],
                                         },
                                     },
+                                  "webSearch":
+                                    {
+                                      "type": "boolean",
+                                      "default": false,
+                                      "description": "Explicit permission for this turn. Codex native search or DeepSeek official Search/Fetch only.",
+                                    },
                                 },
                               "required": ["provider", "prompt", "context"],
                             },
@@ -4709,6 +4715,12 @@
                                           "required": ["text", "location"],
                                         },
                                     },
+                                  "webSearch":
+                                    {
+                                      "type": "boolean",
+                                      "default": false,
+                                      "description": "Explicit permission for this turn. Codex native search or DeepSeek official Search/Fetch only.",
+                                    },
                                 },
                               "required": ["provider", "prompt", "context"],
                             },
@@ -5618,6 +5630,19 @@
                       "type": "string",
                       "description": "Stable side chat session identity; omitted only by legacy clients.",
                     },
+                  "webSearch": { "type": "boolean", "default": false },
+                  "tools":
+                    {
+                      "type": "array",
+                      "maxItems": 256,
+                      "items": { "$ref": "#/components/schemas/ToolActivity" },
+                    },
+                  "webSources":
+                    {
+                      "type": "array",
+                      "maxItems": 24,
+                      "items": { "$ref": "#/components/schemas/WebSource" },
+                    },
                 },
               "required": ["id", "documentId", "role", "content", "createdAt"],
             },
@@ -5787,6 +5812,15 @@
                               { "ok": { "type": "boolean", "enum": [true] } },
                           },
                       },
+                  },
+                  {
+                    "type": "object",
+                    "properties":
+                      {
+                        "event": { "const": "tool", "type": "string" },
+                        "data": { "$ref": "#/components/schemas/ToolActivity" },
+                      },
+                    "required": ["event", "data"],
                   },
                 ],
             },
@@ -6658,6 +6692,42 @@
                   "createdAt": { "type": "string" },
                   "updatedAt": { "type": "string" },
                   "latestRun": { "$ref": "#/components/schemas/ChatRun" },
+                },
+            },
+          "ToolActivity":
+            {
+              "type": "object",
+              "required":
+                ["id", "kind", "tool", "title", "status", "startedAt"],
+              "properties":
+                {
+                  "id": { "type": "string" },
+                  "kind": { "enum": ["search", "web", "tool"] },
+                  "tool": { "type": "string" },
+                  "title": { "type": "string" },
+                  "target": { "type": "string" },
+                  "url": { "type": "string", "format": "uri" },
+                  "status":
+                    { "enum": ["running", "completed", "failed", "cancelled"] },
+                  "detail": { "type": "string" },
+                  "startedAt": { "type": "string" },
+                  "finishedAt": { "type": "string" },
+                },
+            },
+          "WebSource":
+            {
+              "type": "object",
+              "required": ["id", "url", "title", "kind", "retrievedAt"],
+              "properties":
+                {
+                  "id": { "type": "string" },
+                  "url": { "type": "string", "format": "uri" },
+                  "title": { "type": "string" },
+                  "text": { "type": "string" },
+                  "kind": { "enum": ["search", "page"] },
+                  "retrievedAt": { "type": "string" },
+                  "publishedAt": { "type": "string" },
+                  "truncated": { "type": "boolean" },
                 },
             },
         },

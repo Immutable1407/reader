@@ -444,3 +444,27 @@ it("releases the busy flag when checking an existing run fails before regenerati
   expect(stream).not.toHaveBeenCalled();
   session.dispose();
 });
+
+it("keeps keyed tool steps when answer deltas arrive and persists the web permission for retry", async () => {
+  const h = setup();
+  await h.session.load();
+  const sending = h.session.send({ ...input, webSearch: true });
+  const tool = {
+    id: "search",
+    kind: "search" as const,
+    tool: "web_search",
+    title: "搜索网页",
+    target: "official docs",
+    status: "running" as const,
+    startedAt: "2026-10-23T00:00:00Z",
+  };
+  h.emit({ event: "tool", data: tool });
+  h.emit({ event: "tool", data: { ...tool, status: "completed" } });
+  h.emit({ event: "delta", data: { text: "Answer" } });
+  expect(h.session.getSnapshot().pending?.tools).toEqual([
+    { ...tool, status: "completed" },
+  ]);
+  expect(h.session.getSnapshot().pending?.input.webSearch).toBe(true);
+  h.wait.resolve();
+  await sending;
+});

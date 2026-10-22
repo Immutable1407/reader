@@ -145,6 +145,25 @@ func runPiWorker(ctx context.Context, root string, request piRequest, event func
 
 func streamPiChat(ctx context.Context, c APIConnection, req completionRequest, in AIInput, emit func(ProviderEvent) error) (GenerateResult, error) {
 	a := in.Chat.Agent
+	if a != nil {
+		a.chat = in.Chat
+	}
+	if in.Chat.WebSearch {
+		if !deepSeekSearchConnection(c) {
+			return GenerateResult{}, generationError(ErrorConfiguration, "联网搜索需要 DeepSeek 官方 API 连接")
+		}
+		if !req.Tools {
+			cap, e := in.Chat.server.ensureDocumentTools(ctx, c, req.Model, nil)
+			if e != nil {
+				return GenerateResult{}, e
+			}
+			req.Tools = cap.Tools == "passed"
+		}
+		if !req.Tools {
+			return GenerateResult{}, generationError(ErrorCapability, "当前模型未通过工具调用检测，无法联网搜索")
+		}
+	}
+
 	endpoint := resolveAPIEndpoint(c)
 	api, path := "openai-completions", "/chat/completions"
 	if endpoint.Protocol == "anthropic" {
@@ -243,6 +262,13 @@ func streamPiChat(ctx context.Context, c APIConnection, req completionRequest, i
 		in.Chat.piConversation = &state
 		in.Chat.piProvider = provider
 	}
+
+	if in.Chat.WebSearch {
+		for _, d := range webToolDefinitions {
+			request.Tools = append(request.Tools, map[string]any{"name": d.Name, "description": d.Description, "schema": d.Schema})
+		}
+	}
+	request.System = webInstructions(request.System, in.Chat.WebSearch)
 	root := in.Chat.server.Store.Root
 	complete, err := runPiWorker(ctx, root, request, func(e piEvent) error {
 		switch e.Type {
@@ -278,10 +304,36 @@ func streamPiChat(ctx context.Context, c APIConnection, req completionRequest, i
 				allowed = true
 			}
 		}
-		if !allowed || a == nil {
+		if !allowed {
 			return nil, generationError(ErrorProtocol, "pi 请求了未授权工具")
 		}
+
+		if isWebTool(name) {
+			raw, err := in.Chat.callWebTool(ctx, c, name, args)
+			if err != nil {
+				return nil, err
+			}
+			return []any{map[string]string{"type": "text", "text": string(raw)}}, nil
+		}
+		if a == nil {
+			return nil, generationError(ErrorProtocol, "当前会话没有文档工具权限")
+		}
+		v := ToolActivity{ID: id(), Kind: "tool", Tool: name, Title: "读取文档", Target: name, Status: "running"}
+		if err := in.Chat.recordTool(v); err != nil {
+			return nil, err
+		}
 		raw, err := a.call(ctx, name, args)
+		v.Status = "completed"
+		if err != nil {
+			v.Status = "failed"
+		}
+		if ctx.Err() != nil {
+			v.Status = "cancelled"
+		}
+		if e := in.Chat.recordTool(v); e != nil {
+			return nil, e
+		}
+
 		if errors.Is(err, errDocumentReadingBudget) {
 			raw = json.RawMessage(`{"shouldFinish":true,"message":"Stop reading and answer from available evidence; state gaps."}`)
 		} else if err != nil {

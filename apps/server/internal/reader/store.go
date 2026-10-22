@@ -54,6 +54,9 @@ type Annotation struct {
 	Tags []string `json:"tags,omitempty"`
 }
 type Message struct {
+	WebSearch       bool              `json:"webSearch,omitempty"`
+	Tools           []ToolActivity    `json:"tools,omitempty"`
+	WebSources      []WebSource       `json:"webSources,omitempty"`
 	SessionID       string            `json:"sessionId,omitempty"`
 	Reasoning       string            `json:"reasoning,omitempty"`
 	ReadingLocation json.RawMessage   `json:"readingLocation,omitempty"`

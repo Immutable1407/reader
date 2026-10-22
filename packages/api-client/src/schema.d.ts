@@ -1673,6 +1673,11 @@ export interface paths {
                             /** @enum {string} */
                             precision?: "page" | "block" | "paragraph";
                         }[];
+                        /**
+                         * @description Explicit permission for this turn. Codex native search or DeepSeek official Search/Fetch only.
+                         * @default false
+                         */
+                        webSearch?: boolean;
                     };
                 };
             };
@@ -3995,6 +4000,11 @@ export interface paths {
                             /** @enum {string} */
                             precision?: "page" | "block" | "paragraph";
                         }[];
+                        /**
+                         * @description Explicit permission for this turn. Codex native search or DeepSeek official Search/Fetch only.
+                         * @default false
+                         */
+                        webSearch?: boolean;
                     };
                 };
             };
@@ -4416,6 +4426,10 @@ export interface components {
             }[];
             /** @description Stable side chat session identity; omitted only by legacy clients. */
             sessionId?: string;
+            /** @default false */
+            webSearch: boolean;
+            tools?: components["schemas"]["ToolActivity"][];
+            webSources?: components["schemas"]["WebSource"][];
         };
         Provider: {
             /** @enum {string} */
@@ -4482,6 +4496,10 @@ export interface components {
                 /** @enum {boolean} */
                 ok: true;
             };
+        } | {
+            /** @constant */
+            event: "tool";
+            data: components["schemas"]["ToolActivity"];
         };
         Error: {
             error: string;
@@ -4843,6 +4861,33 @@ export interface components {
             createdAt: string;
             updatedAt: string;
             latestRun?: components["schemas"]["ChatRun"];
+        };
+        ToolActivity: {
+            id: string;
+            /** @enum {unknown} */
+            kind: "search" | "web" | "tool";
+            tool: string;
+            title: string;
+            target?: string;
+            /** Format: uri */
+            url?: string;
+            /** @enum {unknown} */
+            status: "running" | "completed" | "failed" | "cancelled";
+            detail?: string;
+            startedAt: string;
+            finishedAt?: string;
+        };
+        WebSource: {
+            id: string;
+            /** Format: uri */
+            url: string;
+            title: string;
+            text?: string;
+            /** @enum {unknown} */
+            kind: "search" | "page";
+            retrievedAt: string;
+            publishedAt?: string;
+            truncated?: boolean;
         };
     };
     responses: never;
