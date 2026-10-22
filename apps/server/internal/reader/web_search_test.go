@@ -3,6 +3,7 @@ package reader
 import (
 	"context"
 	"encoding/json"
+	"fmt"
 	"io"
 	"net/http"
 	"os"
@@ -228,5 +229,29 @@ func TestToolCompletionRetainsActualTargetAndProgress(t *testing.T) {
 	messages, err := s.Store.chatHistory("doc")
 	if err != nil || messages[0].Tools[0].Target != c.Tools[0].Target || messages[0].Tools[0].Detail != c.Tools[0].Detail {
 		t.Fatal(messages, err)
+	}
+}
+func TestWebSourceBudgetIsNotReportedAsNoResults(t *testing.T) {
+	c := &chatInput{WebSearch: true}
+	for i := 0; i < 23; i++ {
+		c.addWebSource(WebSource{URL: fmt.Sprintf("https://example.com/%d", i), Title: "Existing", Kind: "search"})
+	}
+	count := 0
+	c.webTransport = webRoundTrip(func(*http.Request) (*http.Response, error) {
+		count++
+		return webJSON(200, `{"results":[{"title":"A","url":"https://example.com/a"},{"title":"B","url":"https://example.com/b"}]}`), nil
+	})
+	conn := APIConnection{URL: "https://api.deepseek.com", Key: "dummy"}
+	raw, err := c.callWebTool(t.Context(), conn, "web_search", json.RawMessage(`{"query":"new docs"}`))
+	if err != nil || !strings.Contains(string(raw), `"budgetExhausted":true`) || !strings.Contains(c.Tools[0].Detail, "预算已满") {
+		t.Fatal(string(raw), c.Tools, err)
+	}
+	raw, err = c.callWebTool(t.Context(), conn, "web_search", json.RawMessage(`{"query":"other docs"}`))
+	if err != nil || !strings.Contains(string(raw), "预算已满") || count != 1 || c.Tools[1].Status != "failed" {
+		t.Fatal(string(raw), c.Tools, err, count)
+	}
+	err = c.codexToolEvent("item/completed", json.RawMessage(`{"item":{"id":"native","type":"webSearch","query":"other docs","results":[{"title":"New","url":"https://example.com/new"}]}}`))
+	if err != nil || !strings.Contains(c.Tools[2].Detail, "预算已满") {
+		t.Fatal(err, c.Tools)
 	}
 }

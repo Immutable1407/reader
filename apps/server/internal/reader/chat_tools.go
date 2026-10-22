@@ -239,3 +239,18 @@ func webInstructions(base string, enabled bool) string {
 func inChatHasWebTools(c *chatInput) bool {
 	return c != nil && c.WebSearch && len(c.toolSnapshot()) > 0
 }
+
+func (c *chatInput) webSourceBudgetFull(rawURL string) bool {
+	c.toolMu.Lock()
+	defer c.toolMu.Unlock()
+	if len(c.WebSources) < 24 {
+		return false
+	}
+	url := displayWebURL(rawURL)
+	for _, s := range c.WebSources {
+		if s.URL == url {
+			return false
+		}
+	}
+	return true
+}
