@@ -212,3 +212,15 @@ it("rejects lookalikes, credentials and protocol downgrades", async () => {
   ).rejects.toMatchObject({ code: "cnki-insecure-download" });
   expect(fetchMock).not.toHaveBeenCalled();
 });
+
+it.each(["验证码识别研究", "单点登录研究", "安全验证机制分析"])(
+  "does not mistake a paper titled %s for an access challenge",
+  (title) => {
+    expect(
+      cnkiPageError(
+        `<title>${title} - 中国知网</title><div class="wx-tit"><h1>${title}</h1></div>`,
+        sourceUrl,
+      ),
+    ).toBeUndefined();
+  },
+);

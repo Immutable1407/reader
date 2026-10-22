@@ -144,3 +144,14 @@ it("remains executable after Chrome serializes the injected function", () => {
     ).items[0].pdfUrl,
   ).toBe("https://kns.cnki.net/download?id=1");
 });
+
+it("does not substitute a related article PDF for a CAJ-only CNKI article", () => {
+  const result = detectPage(
+    '<div class="wx-tit"><h1>论文</h1></div><li class="btn-dlcaj"><a href="/download?format=caj">CAJ</a></li><aside><a href="https://example.org/other.pdf">相关文献</a></aside>',
+    "https://kns.cnki.net/kcms2/article/abstract?v=example",
+  );
+  expect(result.items[0].pdfUrl).toBe("");
+  expect(result.items[0].cajUrl).toBe(
+    "https://kns.cnki.net/download?format=caj",
+  );
+});

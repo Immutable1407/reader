@@ -33,9 +33,12 @@ export function cnkiPageError(
   const title = (
     html.match(/<title\b[^>]*>([\s\S]*?)<\/title>/i)?.[1] || ""
   ).replace(/\s+/g, " ");
+  // Avoid interpreting article titles/abstracts or hidden login dialogs as errors.
+  const article =
+    /(?:class=["'][^"']*\bwx-tit\b|name=["']citation_title["'])/i.test(html);
   const path = new URL(url).pathname;
   if (
-    /安全验证|人机验证|验证码|访问验证/.test(title) ||
+    (!article && /安全验证|人机验证|验证码|访问验证/.test(title)) ||
     /^\/verify(?:\/|$)/i.test(path) ||
     /<script\b[^>]*src=["'][^"']*\/verify\/js\//i.test(html)
   ) {
@@ -45,7 +48,7 @@ export function cnkiPageError(
     );
   }
   if (
-    /登录|登陆|\bsign[ -]?in\b/i.test(title) ||
+    (!article && /登录|登陆|\bsign[ -]?in\b/i.test(title)) ||
     /^\/(?:login|signin)(?:[/.]|$)/i.test(path)
   ) {
     return new ConnectorError(
@@ -53,9 +56,6 @@ export function cnkiPageError(
       "知网要求登录，请在原网页登录后重新打开插件重试",
     );
   }
-  // Avoid interpreting article titles/abstracts or hidden login dialogs as errors.
-  const article =
-    /(?:class=["'][^"']*\bwx-tit\b|name=["']citation_title["'])/i.test(html);
   if (
     !article &&
     /无(?:全文)?下载权限|没有(?:该文献的?)?下载权限|未购买(?:该|此)(?:文献|文章)|不在(?:您|你)的订购范围/.test(

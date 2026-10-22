@@ -135,7 +135,7 @@ export function detectPage(html?: string, url?: string): Detection {
           .find((node) => /PDF/i.test(node.textContent || ""))
           ?.getAttribute("href") || "",
       ) ||
-      pdf;
+      absolute(meta("citation_pdf_url"));
     cajUrl =
       link('.btn-dlcaj > a, a[name="cajDown"], .btn-qwxz > a') ||
       absolute(
