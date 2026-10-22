@@ -1,4 +1,5 @@
 import { useShortcut, loadBindings } from "./shortcuts/shortcuts";
+import { useSaveReaderSettings } from "./reader-settings";
 import { useEffect, useMemo, useRef, useState } from "react";
 import {
   BookOpen,
@@ -102,6 +103,7 @@ export function App() {
   const [largePapers, setLargePapers] = useState<LargePaper[]>([]);
   const [largePaperFolder, setLargePaperFolder] = useState("");
   const [loading, setLoading] = useState(true);
+  const [settingsHydrated, setSettingsHydrated] = useState(false);
   const [error, setError] = useState("");
   const [command, setCommand] = useState(false);
   const [importingPaper, setImportingPaper] = useState(false);
@@ -110,7 +112,6 @@ export function App() {
   useShortcut("search", () => setCommand(true), !active);
   const fileRef = useRef<HTMLInputElement>(null);
   const fileFolderRef = useRef("");
-  const hydrated = useRef(false);
   useEffect(() => {
     Promise.all([
       refreshLibrary(),
@@ -118,25 +119,21 @@ export function App() {
       loadBindings().catch(() =>
         toast.error("快捷键设置读取失败，暂时使用默认快捷键。"),
       ),
-      api.settings().then((value) => setTheme(value)),
+      api.settings().then((value) => {
+        setTheme(value);
+        setSettingsHydrated(true);
+      }),
     ])
       .catch((e) => setError(e.message))
       .finally(() => {
         setLoading(false);
-        hydrated.current = true;
       });
   }, [setTheme]);
   useEffect(() => {
     if (loading) return;
     void refreshTrash().catch((e) => toast.error(e.message));
   }, [mode, loading]);
-  useEffect(() => {
-    if (!hydrated.current) return;
-    const timer = setTimeout(() => {
-      void api.saveSettings(theme).catch((e) => toast.error(e.message));
-    }, 350);
-    return () => clearTimeout(timer);
-  }, [theme]);
+  useSaveReaderSettings(theme, settingsHydrated);
   useEffect(() => {
     const dark = resolvedTheme.mode === "dark";
     const root = document.documentElement;
