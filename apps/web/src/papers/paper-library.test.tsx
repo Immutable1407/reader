@@ -1111,6 +1111,36 @@ const dragColumn = async (element: Element, type: string, x = 0, y = 0) => {
   await act(async () => element.dispatchEvent(event));
   return transfer;
 };
+it.each(["list", "table"] as const)(
+  "uses a compact independent drag image in %s view without changing selected paper IDs",
+  async (view) => {
+    vi.stubGlobal(
+      "requestAnimationFrame",
+      vi.fn(() => 1),
+    );
+    vi.stubGlobal("cancelAnimationFrame", vi.fn());
+    await act(async () => {
+      useReaderStore.getState().setLibraryPreferences({
+        mode: "papers",
+        papers: { layout: view },
+      });
+      usePaperUI.setState({ picking: true, picked: new Set(["a", "b"]) });
+    });
+    const transfer = await dragColumn(row(docs[0].title), "dragstart");
+    expect(transfer.setData).toHaveBeenCalledWith(
+      "application/x-reader-papers",
+      JSON.stringify(["a", "b"]),
+    );
+    const [preview, x, y] = transfer.setDragImage.mock.calls[0];
+    expect(preview.parentElement).toBe(document.body);
+    expect(preview.className).toBe("paper-drag-preview");
+    expect(preview.textContent).toBe(`${docs[0].title}2 篇论文`);
+    expect(preview.querySelector("button, table, article, [id]")).toBeNull();
+    expect([x, y]).toEqual([20, 20]);
+    await dragColumn(row(docs[0].title), "dragend");
+    expect(preview.isConnected).toBe(false);
+  },
+);
 const headerColumns = () =>
   [...host.querySelectorAll("th[data-column]")].map((el) =>
     el.getAttribute("data-column"),
