@@ -128,6 +128,7 @@ import { useReaderStore } from "./store";
 import { scheduleProgress, flushProgress } from "./progress";
 import { Slider } from "@reader/ui/components/slider";
 import { TranslationFontControls } from "./TranslationFontControls";
+import { AppearancePicker } from "./AppearancePicker";
 function IconButton({
   label,
   children,
@@ -1074,41 +1075,10 @@ export function Workspace({
             >
               <Type />
             </PopoverTrigger>
-            <PopoverContent className="w-72">
+            <PopoverContent className="w-80">
               <h3 className="text-sm font-medium">阅读外观</h3>
               <div className="space-y-4">
-                <Tabs
-                  value={
-                    theme.mode === "dark"
-                      ? theme.pdfDarkContrast === "high"
-                        ? "dark"
-                        : "gray"
-                      : theme.mode
-                  }
-                  onValueChange={(value) => {
-                    if (!value) return;
-                    const mode =
-                      value === "gray"
-                        ? "dark"
-                        : (value as "light" | "sepia" | "dark");
-                    setTheme({
-                      mode,
-                      appearance: mode,
-                      ...(mode === "dark"
-                        ? {
-                            pdfDarkContrast: value === "gray" ? "soft" : "high",
-                          }
-                        : {}),
-                    });
-                  }}
-                >
-                  <TabsList className="w-full" aria-label="阅读配色">
-                    <TabsTrigger value="light">浅色</TabsTrigger>
-                    <TabsTrigger value="dark">深色</TabsTrigger>
-                    <TabsTrigger value="sepia">纸张</TabsTrigger>
-                    <TabsTrigger value="gray">灰色</TabsTrigger>
-                  </TabsList>
-                </Tabs>
+                <AppearancePicker theme={theme} setTheme={setTheme} />
                 <div className="flex items-center gap-3">
                   <span className="shrink-0 text-sm">Agent 字号</span>
                   <Slider

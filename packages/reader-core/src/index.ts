@@ -216,6 +216,8 @@ export interface SmartCategory {
   tags: string[];
 }
 export interface LibraryPreferences {
+  /** Optional contact email sent only to Crossref for its polite pool. */
+  crossrefEmail?: string;
   /** Library opened at startup; defaults to papers. */
   primaryMode?: LibraryMode;
   mode?: LibraryMode;
@@ -327,6 +329,10 @@ export interface ReaderTheme {
   /** Estimated total document-agent context; output and history reserve is included. */
   documentContextTokens?: number;
   appearance?: Appearance;
+  /** Following the system: the palette used while the system is light. */
+  systemLightMode?: "light" | "sepia";
+  /** Following the system: graphite ("soft") or pure black ("high") PDFs while dark. */
+  systemDarkContrast?: "high" | "soft";
   mode: "light" | "sepia" | "dark";
   fontSize: number;
   fontFamily: string;
