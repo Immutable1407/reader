@@ -153,7 +153,7 @@ function agentView(s: TourState): TourView {
       };
     return {
       title: `检测到 ${names} 可用`,
-      body: "点开「Agent SDK」，选择要使用的 Agent。",
+      body: "点开上方的下拉框，选择要使用的 Agent。",
       focus: ready.map(card),
       click: [tour("agent-select")],
       pointer: { gesture: "click", target: tour("agent-select") },

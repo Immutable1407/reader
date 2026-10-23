@@ -1100,9 +1100,6 @@ export function Settings({
               </div>
               {config && (
                 <div className="mb-4 flex flex-col gap-2">
-                  <label className="text-sm" id="primary-agent-label">
-                    Agent SDK
-                  </label>
                   <Select
                     value={config.primary || null}
                     disabled={saving || aiModelSaving || testing.size > 0}
@@ -1125,7 +1122,7 @@ export function Settings({
                   >
                     <SelectTrigger
                       data-tour="agent-select"
-                      aria-labelledby="primary-agent-label"
+                      aria-label="Agent SDK"
                       className="w-full"
                     >
                       <SelectValue placeholder="请选择 Agent SDK">
@@ -1152,11 +1149,11 @@ export function Settings({
                   <div data-tour="task-models">
                     <TaskModels disabled={saving || testing.size > 0} />
                   </div>
-                  <p className="text-xs leading-5 text-muted-foreground">
-                    {config.primary === "api"
-                      ? "只列出通过检测的模型：问答与翻译需通过文本推理，图片需通过图片理解。公式转换与主动图片提问使用图片模型。"
-                      : "问答与翻译分别使用上方模型；未指定时，问答使用主力模型，翻译使用快速模型。公式转换与主动图片提问会向此 Agent 发送图片。"}
-                  </p>
+                  {config.primary === "api" && (
+                    <p className="text-xs leading-5 text-muted-foreground">
+                      只列出通过检测的模型：问答与翻译需通过文本推理，图片需通过图片理解。公式转换与主动图片提问使用图片模型。
+                    </p>
+                  )}
                 </div>
               )}
               <div
