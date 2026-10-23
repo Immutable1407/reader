@@ -169,7 +169,7 @@ it("selects a range with Shift and deletes it in one persisted operation", async
       new MouseEvent("click", { bubbles: true, shiftKey: true }),
     ),
   );
-  expect(host.textContent).toContain("已选 2 项");
+  expect(host.textContent).toContain("取消全选");
   expect(go).not.toHaveBeenCalled();
   await act(async () =>
     host
@@ -196,13 +196,15 @@ it("enters selection from the floating button and toggles with Command", async (
       new MouseEvent("click", { bubbles: true, metaKey: true }),
     ),
   );
-  expect(host.textContent).toContain("已选 2 项");
+  expect(host.textContent).toContain("取消全选");
   await act(async () =>
     links[0].dispatchEvent(
       new MouseEvent("click", { bubbles: true, metaKey: true }),
     ),
   );
-  expect(host.textContent).toContain("已选 1 项");
+  expect(
+    host.querySelectorAll('.navigation-link[aria-pressed="true"]'),
+  ).toHaveLength(1);
   expect(go).not.toHaveBeenCalled();
 });
 it("keeps selection and entries when deletion fails", async () => {
@@ -219,7 +221,9 @@ it("keeps selection and entries when deletion fails", async () => {
       .click(),
   );
   expect(host.querySelectorAll(".navigation-row")).toHaveLength(2);
-  expect(host.textContent).toContain("已选 1 项");
+  expect(
+    host.querySelectorAll('.navigation-link[aria-pressed="true"]'),
+  ).toHaveLength(1);
 });
 it("toggles using the checkbox and clears selection with Escape", async () => {
   await render();
@@ -229,7 +233,9 @@ it("toggles using the checkbox and clears selection with Escape", async () => {
   await act(async () =>
     host.querySelector<HTMLElement>('[aria-label="选择 Parent"]')!.click(),
   );
-  expect(host.textContent).toContain("已选 1 项");
+  expect(
+    host.querySelectorAll('.navigation-link[aria-pressed="true"]'),
+  ).toHaveLength(1);
   expect(
     host
       .querySelector('[aria-label="选择 Parent"]')
@@ -258,9 +264,9 @@ it("selects collapsed descendants with select all and can deselect all", async (
       (b) => b.textContent === text,
     )!;
   await act(async () => button("全选").click());
-  expect(host.textContent).toContain("已选 2 项");
+  expect(host.textContent).toContain("取消全选");
   await act(async () => button("取消全选").click());
-  expect(host.textContent).toContain("已选 0 项");
+  expect(host.textContent).not.toContain("取消全选");
   expect(
     host.querySelector<HTMLButtonElement>('[aria-label="删除所选目录"]')!
       .disabled,

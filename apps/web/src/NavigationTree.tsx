@@ -492,9 +492,6 @@ export function NavigationTree({
             >
               {allSelected ? "取消全选" : "全选"}
             </Button>
-            <span className="text-xs" aria-live="polite">
-              已选 {chosen.length} 项
-            </span>
             <Button
               variant="ghost"
               size="icon-sm"
