@@ -188,12 +188,12 @@ describe("guide host", () => {
       "欢迎使用 Reader",
     );
     expect(api.saveGuidePreferences).not.toHaveBeenCalled();
-    await act(async () => button("跳过引导（不建议）").click());
+    await act(async () => button("跳过引导").click());
     expect(document.body.textContent).toContain("不建议跳过新手引导哦！");
     await act(async () => button("好的，认真学习！").click());
     expect(document.querySelector(".tour")).not.toBeNull();
     expect(api.saveGuidePreferences).not.toHaveBeenCalled();
-    await act(async () => button("跳过引导（不建议）").click());
+    await act(async () => button("跳过引导").click());
     await act(async () => button("我是老用户～").click());
     expect(document.querySelector(".tour")).toBeNull();
     expect(api.saveGuidePreferences).toHaveBeenCalledWith({

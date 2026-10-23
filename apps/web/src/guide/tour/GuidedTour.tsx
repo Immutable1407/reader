@@ -192,11 +192,7 @@ function measure(
 const round = (layout: Layout) =>
   JSON.stringify(layout, (_, v) => (typeof v === "number" ? Math.round(v) : v));
 
-const skipLabel = (
-  <>
-    跳过引导<span className="tour-skip-warn">（不建议）</span>
-  </>
-);
+const skipLabel = "跳过引导";
 
 /** Renders inline `code` spans written with backticks. */
 const rich = (text: string) =>

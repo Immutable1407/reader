@@ -175,8 +175,7 @@
   color: var(--tour-accent);
 }
 
-/* On the first card it reads as a plain button with a red warning; in the
-   corner it is grey. Hovered, it turns red either way. */
+/* A plain button on the first card, grey in the corner; red when hovered. */
 .tour-skip {
   position: fixed;
   top: 0;
@@ -187,10 +186,6 @@
     background-color 160ms ease-out,
     color 160ms ease-out;
 }
-.tour-skip-warn {
-  color: var(--destructive);
-  transition: color 160ms ease-out;
-}
 .tour-skip[data-place="corner"] {
   background: var(--popover);
   color: var(--muted-foreground);
@@ -198,16 +193,10 @@
     0 0 0 1px color-mix(in oklab, var(--foreground) 10%, transparent),
     0 4px 12px rgb(0 0 0 / 0.12);
 }
-.tour-skip[data-place="corner"] .tour-skip-warn {
-  color: inherit;
-}
 .tour-skip:hover,
 .tour-skip[data-place="corner"]:hover {
   background: var(--destructive);
   color: #fff;
-}
-.tour-skip:hover .tour-skip-warn {
-  color: inherit;
 }
 .tour-confirm {
   z-index: 2147483100;
