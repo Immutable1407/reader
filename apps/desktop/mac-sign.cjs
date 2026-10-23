@@ -21,7 +21,7 @@ function security(args) {
 
 // Import into a throwaway keychain; the login keychain and trust settings stay untouched.
 async function withCertificate(p12, password, sign) {
-  const directory = mkdtempSync(join(tmpdir(), "reader-sign-"));
+  const directory = mkdtempSync(join(tmpdir(), "neoread-sign-"));
   const keychain = join(directory, "sign.keychain-db");
   const secret = randomBytes(24).toString("hex");
   const searchList = security(["list-keychains", "-d", "user"])

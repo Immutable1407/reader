@@ -20,14 +20,14 @@ Squirrel.Mac 只安装与当前应用出自同一证书的更新。所有正式�
 首次启用时在本机执行一次，输出目录必须不存在：
 
 ```sh
-scripts/create-mac-sign-cert.sh ~/reader-mac-sign
-gh secret set MAC_SIGN_P12 < ~/reader-mac-sign/reader-sign.p12.base64
-gh secret set MAC_SIGN_P12_PASSWORD < ~/reader-mac-sign/password.txt
+scripts/create-mac-sign-cert.sh ~/neoread-mac-sign
+gh secret set NEOREAD_MAC_SIGN_P12 < ~/neoread-mac-sign/neoread-sign.p12.base64
+gh secret set NEOREAD_MAC_SIGN_P12_PASSWORD < ~/neoread-mac-sign/password.txt
 ```
 
-把 `reader-sign.p12` 和 `password.txt` 离线备份后，可删除本机副本。证书有效期 20 年，CN 为 `Reader Self-Signed`。
+把 `neoread-sign.p12` 和 `password.txt` 离线备份后，可删除本机副本。证书有效期 20 年，CN 为 `NeoRead Self-Signed`。
 
-`apps/desktop/mac-sign.cjs` 是 electron-builder 的 `mac.sign` 钩子：electron-builder 照常生成签名参数，钩子把证书导入临时钥匙串，替换签名身份后逐个签名嵌套二进制，结束后删除临时钥匙串，不修改登录钥匙串或信任设置。证书无人验证时间戳，签名不请求 Apple 时间戳服务。没有证书时退回 ad-hoc 签名，适用于本地构建和手动试跑；带 Release tag 的构建缺少证书会直接失败，包内检查也会确认签名者为 `Reader Self-Signed`。证书只传给 macOS 构建任务。
+`apps/desktop/mac-sign.cjs` 是 electron-builder 的 `mac.sign` 钩子：electron-builder 照常生成签名参数，钩子把证书导入临时钥匙串，替换签名身份后逐个签名嵌套二进制，结束后删除临时钥匙串，不修改登录钥匙串或信任设置。证书无人验证时间戳，签名不请求 Apple 时间戳服务。没有证书时退回 ad-hoc 签名，适用于本地构建和手动试跑；带 Release tag 的构建缺少证书会直接失败，包内检查也会确认签名者为 `NeoRead Self-Signed`。证书只传给 macOS 构建任务。
 
 ## 发版步骤
 
@@ -93,7 +93,7 @@ macOS 和 Windows 桌面版在“设置 → 诊断”提供三种模式，默认
 
 安装后的 NeoRead 会在启动 15 秒后检查是否已到每日检查时间。应用运行期间也会检查到期时间；应用关闭时不运行后台任务，下次启动会补查。检查时间保存在用户数据目录的 `update-state.json`，重启不会重置每日间隔。失败或 Release 安装包尚未上传完成时，至少间隔一小时再试。开发模式不访问 GitHub。
 
-更新来源为 `cynicalight/reader` 的最新正式 GitHub Release。通过公开的 `/releases/latest` JSON 响应获取版本号，发现新版本后读取该版本的静态附件 `SHA256SUMS.txt` 来选择安装包，不调用 GitHub REST API，因此不占用匿名 REST API 每个来源 IP 每小时 60 次的查询额度。此入口仍可能遇到网络错误或 GitHub 的访问限制，手动检查失败时可打开发布页下载。仅提示比当前版本更新的正式版，不提示草稿、预发布版或旧版本。Release 必须同时提供当前平台（Apple Silicon Mac、Intel Mac 或 Windows x64）对应的安装包和 `SHA256SUMS.txt`。发布脚本先上传全部安装包，成功后再上传校验清单；清单尚未上传或缺少当前平台的安装包时稍后重试。在“关于 NeoRead”中可手动检查，手动检查不受每日间隔限制。
+更新来源为 `cynicalight/NeoRead` 的最新正式 GitHub Release。通过公开的 `/releases/latest` JSON 响应获取版本号，发现新版本后读取该版本的静态附件 `SHA256SUMS.txt` 来选择安装包，不调用 GitHub REST API，因此不占用匿名 REST API 每个来源 IP 每小时 60 次的查询额度。此入口仍可能遇到网络错误或 GitHub 的访问限制，手动检查失败时可打开发布页下载。仅提示比当前版本更新的正式版，不提示草稿、预发布版或旧版本。Release 必须同时提供当前平台（Apple Silicon Mac、Intel Mac 或 Windows x64）对应的安装包和 `SHA256SUMS.txt`。发布脚本先上传全部安装包，成功后再上传校验清单；清单尚未上传或缺少当前平台的安装包时稍后重试。在“关于 NeoRead”中可手动检查，手动检查不受每日间隔限制。
 
 macOS 正式版优先原地更新：若当前应用由固定证书签名、Release 提供对应架构的 `mac-arm64.zip` 或 `mac-intel-x64.zip`，后台检查发现新版本时直接下载 zip，不弹窗、不显示进度（手动检查时显示进度；后台下载过程中手动检查也会显示剩余进度）。zip 同样核对 SHA-256，校验后在本机 loopback 上以随机路径临时提供给 Electron `autoUpdater`（Squirrel.Mac）。Squirrel 会再检查新应用的签名是否满足当前应用的指定要求（同一 bundle ID 与同一证书），通过后暂存，暂存完成后删除下载的 zip。随后提示“立即重启 / 稍后”：立即重启会照常保存阅读数据后退出并安装新版本；选择稍后时在下次退出 NeoRead 时安装。重启前再次检查同一版本不会重复下载。原地更新需要 NeoRead 所在目录可写；当前应用为 ad-hoc 签名（本地构建、旧版本）、Release 没有 zip，或下载、校验、Squirrel 任一步失败时，回退到下面的 DMG 流程。从 ad-hoc 签名的旧版本升级到首个固定证书版本，需要手动安装一次 DMG。
 

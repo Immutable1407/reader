@@ -16,7 +16,7 @@ const source = windows
       root,
       `release/mac${process.arch === "arm64" ? "-arm64" : ""}/NeoRead.app`,
     );
-const temporary = await mkdtemp(join(tmpdir(), "reader-package-smoke-"));
+const temporary = await mkdtemp(join(tmpdir(), "neoread-package-smoke-"));
 const isolated = join(temporary, windows ? "NeoRead" : "NeoRead.app");
 const app = windows ? isolated : join(isolated, "Contents");
 const resources = join(app, windows ? "resources" : "Resources");
@@ -46,7 +46,7 @@ try {
       assert.equal(details.status, 0, details.stderr);
       assert.match(
         details.stderr,
-        /^Authority=Reader Self-Signed$/m,
+        /^Authority=NeoRead Self-Signed$/m,
         "Release must be signed with the fixed NeoRead certificate",
       );
     }

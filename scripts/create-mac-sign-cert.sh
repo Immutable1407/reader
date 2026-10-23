@@ -18,7 +18,7 @@ distinguished_name = dn
 x509_extensions = ext
 prompt = no
 [dn]
-CN = Reader Self-Signed
+CN = NeoRead Self-Signed
 [ext]
 basicConstraints = critical, CA:false
 keyUsage = critical, digitalSignature
@@ -29,18 +29,18 @@ EOF
   -config "$out/cert.cnf" -keyout "$out/key.pem" -out "$out/cert.pem"
 password=$("$openssl" rand -hex 24)
 # 3DES/SHA-1 PKCS#12 keeps `security import` compatible with LibreSSL and OpenSSL 3.
-"$openssl" pkcs12 -export -name "Reader Self-Signed" \
-  -inkey "$out/key.pem" -in "$out/cert.pem" -out "$out/reader-sign.p12" \
+"$openssl" pkcs12 -export -name "NeoRead Self-Signed" \
+  -inkey "$out/key.pem" -in "$out/cert.pem" -out "$out/neoread-sign.p12" \
   -keypbe PBE-SHA1-3DES -certpbe PBE-SHA1-3DES -macalg sha1 \
   -passout "pass:$password"
 rm "$out/key.pem" "$out/cert.cnf"
-base64 <"$out/reader-sign.p12" | tr -d '\n' >"$out/reader-sign.p12.base64"
+base64 <"$out/neoread-sign.p12" | tr -d '\n' >"$out/neoread-sign.p12.base64"
 printf '%s' "$password" >"$out/password.txt"
 "$openssl" x509 -in "$out/cert.pem" -noout -fingerprint -sha1
 cat <<EOF
 
-Created $out. Back up reader-sign.p12 and password.txt offline, then store them as
+Created $out. Back up neoread-sign.p12 and password.txt offline, then store them as
 GitHub Actions secrets:
-  gh secret set MAC_SIGN_P12 < "$out/reader-sign.p12.base64"
-  gh secret set MAC_SIGN_P12_PASSWORD < "$out/password.txt"
+  gh secret set NEOREAD_MAC_SIGN_P12 < "$out/neoread-sign.p12.base64"
+  gh secret set NEOREAD_MAC_SIGN_P12_PASSWORD < "$out/password.txt"
 EOF

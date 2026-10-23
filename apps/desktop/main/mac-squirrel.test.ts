@@ -39,7 +39,7 @@ it("updates in place only from a certificate signature", async () => {
   expect(
     await canUpdateInPlace(
       "/Applications/NeoRead.app",
-      run("Signature size=9000\nAuthority=Reader Self-Signed\n"),
+      run("Signature size=9000\nAuthority=NeoRead Self-Signed\n"),
     ),
   ).toBe(true);
   expect(
@@ -58,7 +58,7 @@ it("updates in place only from a certificate signature", async () => {
 it("requests verbose signing details before deciding whether a signed app can update", async () => {
   const run = async (_file: string, args: string[]) => ({
     stderr: args.includes("--verbose=4")
-      ? "Signature size=2055\nAuthority=Reader Self-Signed\n"
+      ? "Signature size=2055\nAuthority=NeoRead Self-Signed\n"
       : "Signature size=2055\n",
   });
   expect(await canUpdateInPlace("/Applications/NeoRead.app", run)).toBe(true);
