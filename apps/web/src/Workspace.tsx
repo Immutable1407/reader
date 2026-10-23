@@ -1771,20 +1771,25 @@ export function Workspace({
                       variant={
                         webSearch && webSearchAvailable ? "secondary" : "ghost"
                       }
-                      size="icon-sm"
+                      size="sm"
+                      className="chat-web-toggle"
                       aria-label="联网搜索"
                       aria-pressed={webSearch && webSearchAvailable}
                       title={
-                        provider === "codex"
-                          ? "Codex 原生联网搜索"
-                          : provider === "api"
-                            ? "DeepSeek 官方搜索与网页读取，复用当前 API Key"
-                            : "联网搜索支持 Codex 和 DeepSeek 官方 API"
+                        !webSearchAvailable
+                          ? "联网搜索支持 Codex 和 DeepSeek 官方 API"
+                          : webSearch
+                            ? "联网搜索已开启，点击关闭"
+                            : "联网搜索已关闭，点击开启"
                       }
                       disabled={sending || !webSearchAvailable}
                       onClick={() => setWebSearch((v) => !v)}
                     >
                       <Globe className="size-3.5" />
+                      <span>
+                        联网搜索：
+                        {webSearch && webSearchAvailable ? "开" : "关"}
+                      </span>
                     </Button>
                     <ModelSelector
                       key={provider}

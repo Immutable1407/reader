@@ -2,6 +2,7 @@ import { useState } from "react";
 import { Button } from "@reader/ui/components/button";
 import type { ToolActivity, WebSource } from "@reader/core";
 import { ToolActivities } from "./ToolActivities";
+import { Thinking } from "./Thinking";
 import { MessageMarkdown } from "./MessageMarkdown";
 export default function WebSearchPreview() {
   const [dark, setDark] = useState(false),
@@ -75,6 +76,11 @@ export default function WebSearchPreview() {
         }}
       >
         <ToolActivities tools={tools} sources={sources} />
+        <Thinking
+          text="先确认文档中的作者署名，再检索作者的官方主页并核对来源。"
+          active={state === "running"}
+          incomplete={state === "cancelled" || state === "failed"}
+        />
         {state === "completed" && (
           <MessageMarkdown content="根据当前文档原文和[公开网页资料](https://example.com/docs)，可以分别核对两类依据。" />
         )}
