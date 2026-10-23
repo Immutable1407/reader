@@ -269,7 +269,25 @@ export interface Document {
   progress?: DocumentLocation;
   percentage: number;
 }
+export type NavigationKind = "heading" | "bookmark";
+export interface NavigationEdit {
+  label?: string;
+  kind?: NavigationKind;
+  /** Missing means automatic placement; null explicitly moves to the root. */
+  parentId?: string | null;
+  collapsed?: boolean;
+  deleted?: boolean;
+}
+export interface DocumentNavigation {
+  revision: number;
+  entries: Record<string, NavigationEdit>;
+}
 export interface TOCItem {
+  kind?: NavigationKind;
+  originalLabel?: string;
+  /** Canonical source reading order, independent of the edited hierarchy. */
+  order?: number[];
+
   id: string;
   label: string;
   location: DocumentLocation;

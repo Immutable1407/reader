@@ -1,3 +1,5 @@
+import { readPDFOutline } from "./readers/pdf-outline";
+import { buildNavigation } from "./navigation-model";
 import type { Annotation, Document } from "@reader/core";
 import { api, publicationURL } from "@reader/api";
 import workerURL from "pdfjs-dist/build/pdf.worker.min.mjs?url";
@@ -10,9 +12,11 @@ export async function exportAnnotatedPDF(
   doc: Document,
   kinds?: Annotation["kind"][],
 ) {
-  const [annotations, messages] = await Promise.all([
+  const [annotations, messages, navigation, blocks] = await Promise.all([
     api.annotations(doc.id),
     api.messages(doc.id),
+    api.navigation(doc.id),
+    api.blocks(doc.id),
   ]);
   const marks = annotations.filter(
     (a) =>
@@ -20,7 +24,7 @@ export async function exportAnnotatedPDF(
       a.location.type === "pdf" &&
       (!kinds || kinds.includes(a.kind)),
   );
-  if (!marks.length) throw new Error("这份 PDF 还没有可导出的批注");
+
   // Loaded on demand so the library does not carry the PDF engine.
   const pdfjs = await import("pdfjs-dist");
   pdfjs.GlobalWorkerOptions.workerSrc ||= workerURL;
@@ -36,17 +40,20 @@ export async function exportAnnotatedPDF(
     marks,
     {
       answers: Object.fromEntries(messages.map((m) => [m.id, m.content])),
+      navigation: async (pdf) =>
+        buildNavigation(
+          await readPDFOutline(pdf),
+          blocks,
+          annotations,
+          navigation,
+        ).filter((item) => !item.id.startsWith("page-")),
     },
   );
-  if (!result.exported)
-    throw new Error(
-      "没有可写入原文的批注：译文批注不写入原文，其他批注可能无法定位",
-    );
   downloadBlob(
     new Blob([result.bytes as Uint8Array<ArrayBuffer>], {
       type: "application/pdf",
     }),
-    `${fileTitle(doc.title)}-批注.pdf`,
+    `${fileTitle(doc.title)}-${result.exported ? "批注" : result.navigationExported ? "目录" : "原文"}.pdf`,
   );
   return result;
 }
@@ -56,15 +63,18 @@ export function exportAnnotatedPDFWithToast(
   doc: Document,
   kinds?: Annotation["kind"][],
 ) {
-  const id = toast.loading("正在导出带批注的 PDF…");
+  const id = toast.loading("正在导出 PDF…");
   return exportAnnotatedPDF(doc, kinds).then(
-    ({ exported, skipped }) =>
-      toast.success(`已导出 ${exported} 条批注`, {
-        id,
-        description: skipped
-          ? `${skipped} 条为译文批注或无法定位，未写入`
-          : undefined,
-      }),
+    ({ exported, skipped, navigationExported }) =>
+      toast.success(
+        `已导出 ${exported} 条批注${navigationExported ? `、${navigationExported} 个导航条目` : ""}`,
+        {
+          id,
+          description: skipped
+            ? `${skipped} 条为译文批注或无法定位，未写入`
+            : undefined,
+        },
+      ),
     (error: Error) => toast.error(error.message, { id }),
   );
 }

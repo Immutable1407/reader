@@ -1,3 +1,4 @@
+import { NavigationTree } from "./NavigationTree";
 import { useShortcut } from "./shortcuts/shortcuts";
 import { useDocumentTheme } from "./useDocumentTheme";
 import {
@@ -165,59 +166,6 @@ function IconButton({
       </TooltipTrigger>
       <TooltipContent>{label}</TooltipContent>
     </Tooltip>
-  );
-}
-function TOCTree({
-  items,
-  go,
-  location,
-  depth = 0,
-}: {
-  items: TOCItem[];
-  go: (location: DocumentLocation) => void;
-  location?: DocumentLocation;
-  depth?: number;
-}) {
-  return (
-    <div className="toc-tree">
-      {items.map((item) => {
-        const selected =
-          item.location.type === location?.type &&
-          (item.location.type === "pdf"
-            ? item.location.page === (location as { page: number }).page
-            : item.location.href.split("#")[0] ===
-              (location as { href: string }).href?.split("#")[0]);
-        return (
-          <div key={item.id}>
-            <Button
-              variant="ghost"
-              className={`toc-item ${selected ? "selected" : ""}`}
-              style={{ paddingLeft: Math.min(12 + depth * 14, 96) }}
-              title={item.label}
-              onClick={() => go(item.location)}
-            >
-              {item.children.length > 0 ? (
-                <ChevronDown className="size-3 shrink-0" />
-              ) : (
-                <span className="toc-dot" />
-              )}
-              <span>{item.label}</span>
-              {item.location.type === "pdf" && (
-                <small>{item.location.page}</small>
-              )}
-            </Button>
-            {item.children.length > 0 && (
-              <TOCTree
-                items={item.children}
-                go={go}
-                location={location}
-                depth={depth + 1}
-              />
-            )}
-          </div>
-        );
-      })}
-    </div>
   );
 }
 export function Workspace({
@@ -624,7 +572,10 @@ export function Workspace({
   ) => {
     const written = kind === "note" || kind === "question";
     const source = written ? noteSelection : selection;
-    const target = kind === "bookmark" ? location : source?.location;
+    const target =
+      kind === "bookmark"
+        ? (adapter?.getLocation() ?? location)
+        : source?.location;
     if (!target || annotationSaving.current) return;
     annotationSaving.current = true;
     setNoteSaving(written);
@@ -1342,14 +1293,16 @@ export function Workspace({
                 </TabsTrigger>
               </TabsList>
               <TabsContent value="toc" className="min-h-0 flex-1">
-                <ScrollArea className="h-full">
-                  <TOCTree items={toc} go={move} location={location} />
-                  {!toc.length && (
-                    <p className="p-4 text-xs text-muted-foreground">
-                      正在读取目录…
-                    </p>
-                  )}
-                </ScrollArea>
+                <NavigationTree
+                  key={doc.id}
+                  documentId={doc.id}
+                  type={doc.type}
+                  outline={toc}
+                  blocks={blocks}
+                  annotations={annotations}
+                  location={location}
+                  go={move}
+                />
               </TabsContent>
               <TabsContent value="search" className="min-h-0 flex-1 p-3">
                 <form

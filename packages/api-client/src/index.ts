@@ -209,6 +209,21 @@ export const api = {
     }
     return response.blob();
   },
+  navigation: (id: string) =>
+    request<import("@reader/core").DocumentNavigation>(
+      `/api/documents/${encodeURIComponent(id)}/navigation`,
+    ),
+  saveNavigation: (
+    id: string,
+    navigation: import("@reader/core").DocumentNavigation,
+  ) =>
+    request<import("@reader/core").DocumentNavigation>(
+      `/api/documents/${encodeURIComponent(id)}/navigation`,
+      {
+        method: "PUT",
+        body: JSON.stringify(navigation),
+      },
+    ),
   journalRankConfig: () =>
     request<JournalRankConfig>("/api/journal-ranks/config"),
   saveJournalRankConfig: (config: {

@@ -1,5 +1,16 @@
 /// <reference types="chrome" />
 import type { Candidate } from "./detect";
+import {
+  clearCNKIRequestRule,
+  ConnectorError,
+  downloadPDF,
+  readCNKIPage,
+} from "./download";
+// Remove a rule left by an interrupted service worker before handling requests.
+const ready = clearCNKIRequestRule().then(
+  () => null,
+  () => "无法初始化知网下载规则，请重新加载插件",
+);
 const bridge = "http://127.0.0.1:17841";
 type Result = {
   ok: boolean;
@@ -18,26 +29,7 @@ async function save(
 ): Promise<Result> {
   const { secret } = await chrome.storage.local.get("secret");
   if (!secret) return { ok: false, error: "请先打开 Reader 后重新打开插件" };
-  if (!candidate.pdfUrl) return { ok: false, error: "页面没有可下载的 PDF" };
-  let pdf: Response;
-  try {
-    pdf = await fetch(candidate.pdfUrl, {
-      credentials: "include",
-      redirect: "follow",
-    });
-  } catch {
-    return { ok: false, error: "无法下载 PDF；请检查站点权限或登录状态" };
-  }
-  if (!pdf.ok) return { ok: false, error: `PDF 下载失败 (${pdf.status})` };
-  const declared = Number(pdf.headers.get("content-length") || 0);
-  if (declared > 512 * 1024 * 1024)
-    return { ok: false, error: "PDF 超过 Reader 的 512 MB 上传限制" };
-  const blob = await pdf.blob();
-  if (blob.size > 512 * 1024 * 1024)
-    return { ok: false, error: "PDF 超过 Reader 的 512 MB 上传限制" };
-  const magic = new Uint8Array(await blob.slice(0, 5).arrayBuffer());
-  if (String.fromCharCode(...magic) !== "%PDF-")
-    return { ok: false, error: "下载结果不是 PDF；可能需要在网站登录" };
+  const blob = await downloadPDF(candidate);
   const form = new FormData();
   form.append("library", library);
   form.append("pdf", blob, "paper.pdf");
@@ -73,23 +65,43 @@ chrome.runtime.onMessage.addListener(
   (message: unknown, _sender, sendResponse) => {
     const m = message as {
       type?: string;
+      url?: string;
+      sourceUrl?: string;
       candidate?: Candidate;
       folders?: string[];
       tags?: string[];
       allowLarge?: boolean;
       library?: "papers" | "books";
     };
-    if (m?.type !== "save" || !m.candidate) return;
-    void save(
-      m.candidate,
-      m.folders || [],
-      m.tags || [],
-      !!m.allowLarge,
-      m.library,
-    )
+    if (m?.type !== "save" && m?.type !== "cnki-page") return;
+    void (async () => {
+      const initializationError = await ready;
+      if (initializationError)
+        throw new ConnectorError("connector-init", initializationError);
+      if (m.type === "cnki-page" && m.url && m.sourceUrl) {
+        return { ok: true, ...(await readCNKIPage(m.url, m.sourceUrl)) };
+      }
+      if (!m.candidate)
+        throw new ConnectorError("invalid-request", "收录请求缺少论文信息");
+      return save(
+        m.candidate,
+        m.folders || [],
+        m.tags || [],
+        !!m.allowLarge,
+        m.library,
+      );
+    })()
       .then(sendResponse)
-      .catch((error: Error) =>
-        sendResponse({ ok: false, error: error.message }),
+      .catch((error: unknown) =>
+        sendResponse({
+          ok: false,
+          code:
+            error instanceof ConnectorError ? error.code : "connector-error",
+          error:
+            error instanceof ConnectorError
+              ? error.message
+              : "收录失败，请重新打开插件后重试",
+        }),
       );
     return true;
   },
