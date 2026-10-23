@@ -169,7 +169,7 @@ describe("tour steps", () => {
       agents: [{ id: "codex", status: "failed" }],
     }).view;
     expect(failed?.body).toContain("`codex login`");
-    expect(failed?.body).toContain("在终端中运行");
+    expect(failed?.body).toContain("[[请在终端中运行");
     expect(at(1, { ...local, detecting: true }).view?.body).toContain(
       "不是 Codex App",
     );

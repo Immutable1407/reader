@@ -205,7 +205,7 @@ function agentView(s: TourState): TourView {
   return failed.length
     ? {
         title: "Agent 还不能使用",
-        body: `${join(failed.map((a) => agentNames[a.id]))} 未通过检测，通常是 CLI 还没有登录。在 Codex App 里登录不算，请在${s.shell}中运行 ${join(failed.map((a) => loginHints[a.id]))}，然后点右上角重新检测，或者改用 API Key。`,
+        body: `${join(failed.map((a) => agentNames[a.id]))} 未通过检测，通常是 CLI 还没有登录。在 Codex App 里登录不算，[[请在${s.shell}中运行 ${join(failed.map((a) => loginHints[a.id]))}]]，然后点右上角重新检测，或者改用 API Key。`,
         focus: failed.map((a) => card(a.id)),
         click: [tour("agent-refresh")],
         pointer: { gesture: "click", target: tour("agent-refresh") },

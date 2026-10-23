@@ -153,6 +153,13 @@
   color: var(--foreground);
   font-size: 11.5px;
 }
+.tour-warn {
+  font-weight: inherit;
+  color: var(--destructive);
+}
+.tour-warn code {
+  color: inherit;
+}
 .tour-actions {
   display: flex;
   align-items: center;

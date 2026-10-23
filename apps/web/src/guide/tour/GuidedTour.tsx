@@ -213,13 +213,26 @@ async function openLink(url: string) {
   }
 }
 
-/** Renders inline `code` spans written with backticks. */
+/** Renders `code` spans written with backticks and [[warnings]] in red. */
 const rich = (text: string) =>
-  text
-    .split("`")
-    .map((part, i) =>
-      i % 2 ? <code key={i}>{part}</code> : <Fragment key={i}>{part}</Fragment>,
+  text.split(/\[\[|\]\]/).map((part, i) => {
+    const inline = part
+      .split("`")
+      .map((piece, j) =>
+        j % 2 ? (
+          <code key={j}>{piece}</code>
+        ) : (
+          <Fragment key={j}>{piece}</Fragment>
+        ),
+      );
+    return i % 2 ? (
+      <strong key={i} className="tour-warn">
+        {inline}
+      </strong>
+    ) : (
+      <Fragment key={i}>{inline}</Fragment>
     );
+  });
 
 /**
  * The first-run tour: a window-wide layer that dims the app, lights the areas
