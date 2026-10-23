@@ -1,5 +1,14 @@
 import { Fragment, useEffect, useId, useRef, useState } from "react";
 import { createPortal } from "react-dom";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@reader/ui/components/alert-dialog";
 import { Button } from "@reader/ui/components/button";
 import { useReaderStore } from "../../store";
 import {
@@ -54,6 +63,7 @@ const capable = (
 function readState(
   startCount: number,
   acknowledged: ReadonlySet<string>,
+  method?: string,
 ): TourState {
   const q = (selector: string) => document.querySelector(selector);
   const { aiConfig, documents, active } = useReaderStore.getState();
@@ -86,6 +96,7 @@ function readState(
     reading: !!active,
     readingModes: !!rectOf(q(readingModes)),
     assistant: assistant?.dataset.open === "true",
+    method,
     acknowledged,
   };
 }
@@ -101,6 +112,8 @@ interface Layout {
   frames: { rect: Rect; clickable: boolean }[];
   pointer: { x: number; y: number; gesture: string; key: string } | null;
   card: { x: number; y: number };
+  /** In its slot on the first card, then in the window's top-right corner. */
+  skip: { x: number; y: number; inCard: boolean };
 }
 
 const first = (selectors: string[] = []) =>
@@ -114,6 +127,7 @@ function measure(
   steps: TourStep[],
   state: TourState,
   card: { width: number; height: number },
+  skip: { slot: Rect | null; width: number },
 ): Layout {
   const view = steps[step].view(state);
   const viewport = { width: innerWidth, height: innerHeight };
@@ -162,6 +176,9 @@ function measure(
       ...click.map((rect) => ({ rect: inflate(rect, 5), clickable: true })),
     ],
     pointer,
+    skip: skip.slot
+      ? { x: skip.slot.x, y: skip.slot.y, inCard: true }
+      : { x: viewport.width - skip.width - 16, y: 14, inCard: false },
     card: placeCard(
       anchor && inflate(anchor, 6),
       card,
@@ -174,6 +191,12 @@ function measure(
 
 const round = (layout: Layout) =>
   JSON.stringify(layout, (_, v) => (typeof v === "number" ? Math.round(v) : v));
+
+const skipLabel = (
+  <>
+    跳过引导<span className="tour-skip-warn">（不建议）</span>
+  </>
+);
 
 /** Renders inline `code` spans written with backticks. */
 const rich = (text: string) =>
@@ -204,6 +227,12 @@ export function GuidedTour({
   );
   const acknowledgedRef = useRef(acknowledged);
   acknowledgedRef.current = acknowledged;
+  const [method, setMethod] = useState<string>();
+  const methodRef = useRef(method);
+  methodRef.current = method;
+  const [confirmSkip, setConfirmSkip] = useState(false);
+  const skipRef = useRef<HTMLButtonElement>(null);
+  const slotRef = useRef<HTMLButtonElement>(null);
   const cardRef = useRef<HTMLDivElement>(null);
   const finish = useRef(onFinish);
   finish.current = onFinish;
@@ -246,7 +275,11 @@ export function GuidedTour({
     let shownView = "";
     let frame = 0;
     const tick = () => {
-      const state = readState(startCount, acknowledgedRef.current);
+      const state = readState(
+        startCount,
+        acknowledgedRef.current,
+        methodRef.current,
+      );
       index = resolveStep(steps, index, state);
       if (index >= steps.length) {
         finish.current();
@@ -256,7 +289,10 @@ export function GuidedTour({
         width: 320,
         height: 160,
       };
-      const next = measure(index, steps, state, size);
+      const next = measure(index, steps, state, size, {
+        slot: index === 0 ? rectOf(slotRef.current) : null,
+        width: skipRef.current?.offsetWidth ?? 140,
+      });
       const viewKey = `${index}:${next.view.title}`;
       if (viewKey !== shownView) {
         shownView = viewKey;
@@ -281,6 +317,8 @@ export function GuidedTour({
     if (!running) {
       setLayout(null);
       setAcknowledged(new Set());
+      setMethod(undefined);
+      setConfirmSkip(false);
     }
   }, [running]);
 
@@ -387,20 +425,82 @@ export function GuidedTour({
           </h2>
           <p className="tour-body">{rich(view.body)}</p>
         </div>
+        {view.options && (
+          <div className="tour-options" role="group" aria-label="连接方式">
+            {view.options.map((option) => (
+              <Button
+                key={option.value}
+                variant="outline"
+                size="sm"
+                className="tour-option"
+                data-chosen={view.chosen === option.value || undefined}
+                aria-pressed={view.chosen === option.value}
+                disabled={option.disabled}
+                onClick={() => setMethod(option.value)}
+              >
+                {option.label}
+              </Button>
+            ))}
+          </div>
+        )}
         <div className="tour-actions">
-          <Button
-            variant="ghost"
-            size="sm"
-            className="text-destructive hover:text-destructive"
-            onClick={() => finish.current()}
-          >
-            跳过引导（不建议）
-          </Button>
-          <Button size="sm" onClick={next}>
+          {layout.step === 0 && (
+            // Holds the skip button's place; the button itself moves out later.
+            <Button
+              ref={slotRef}
+              variant="ghost"
+              size="sm"
+              className="invisible"
+              tabIndex={-1}
+              aria-hidden="true"
+            >
+              {skipLabel}
+            </Button>
+          )}
+          <Button size="sm" className="ml-auto" onClick={next}>
             {view.next ?? "下一步"}
           </Button>
         </div>
       </div>
+      <Button
+        ref={skipRef}
+        variant="ghost"
+        size="sm"
+        className="tour-skip"
+        data-place={layout.skip.inCard ? "card" : "corner"}
+        style={{
+          transform: `translate(${layout.skip.x}px, ${layout.skip.y}px)`,
+        }}
+        onClick={() => setConfirmSkip(true)}
+      >
+        {skipLabel}
+      </Button>
+      <AlertDialog open={confirmSkip} onOpenChange={setConfirmSkip}>
+        {/* Above the tour layer, which sits above every other dialog. */}
+        <AlertDialogContent className="tour-confirm">
+          <AlertDialogHeader>
+            <AlertDialogTitle>不建议跳过新手引导哦！</AlertDialogTitle>
+            <AlertDialogDescription>
+              跟着引导连接
+              Agent、打开论文，大约一分钟。之后也可以在「指南」里重新开始。
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogAction
+              variant="outline"
+              onClick={() => {
+                setConfirmSkip(false);
+                finish.current();
+              }}
+            >
+              我是老用户～
+            </AlertDialogAction>
+            <AlertDialogAction autoFocus onClick={() => setConfirmSkip(false)}>
+              好的，认真学习！
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </>,
     root,
   );

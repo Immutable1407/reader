@@ -27,6 +27,8 @@ export interface TourState {
   reading: boolean;
   readingModes: boolean;
   assistant: boolean;
+  /** How the user chose to connect an agent. */
+  method?: string;
   /** Steps confirmed with their button. */
   acknowledged: ReadonlySet<string>;
 }
@@ -55,6 +57,9 @@ export interface TourView {
   /** What the card sits beside, if not the first lit area. */
   anchor?: string;
   side?: Side;
+  /** Choices shown on the card; picking one sets `TourState.method`. */
+  options?: { value: string; label: string; disabled?: boolean }[];
+  chosen?: string;
 }
 
 export interface TourStep {
@@ -82,6 +87,13 @@ export const readingModes =
 const assistantToggle = '[aria-label="Agent 与批注"]';
 const closeImport = `${tour("import-dialog")} > [data-slot="dialog-close"]`;
 const card = (id: string) => `${tour("agent-card")}[data-agent="${id}"]`;
+const localAgents = ["codex", "claude", "kimi"];
+const connections = [
+  { value: "local", label: "本地 Agent 订阅" },
+  { value: "api", label: "API Key" },
+  // Not available yet.
+  { value: "neoread", label: "NeoRead 官方订阅", disabled: true },
+];
 const loginHints: Record<string, string> = {
   codex: "`codex login`",
   claude: "`claude auth login`",
@@ -110,30 +122,34 @@ function agentView(s: TourState): TourView {
         ? { gesture: "click", target: tour("api-back") }
         : { gesture: "hover", target: tour("api-form"), align: "start" },
     };
-  if (s.detecting)
+  const choice = { options: connections, chosen: s.method };
+  if (!s.method)
     return {
-      title: "正在检测本机 Agent",
-      body: "Reader 会调用已安装的 Codex、Claude Code 和 Kimi CLI，测试文本推理和图片理解，不读取账号凭据。没有安装 CLI 也可以用 API Key。",
+      title: "选择连接方式",
+      body: "问答和翻译由 AI 完成。可以使用本机已登录的 Codex、Claude Code 或 Kimi CLI 的订阅，也可以填写 OpenAI 兼容接口的 API Key。",
       focus: [tour("agent-cards")],
-      pointer: {
-        gesture: "wander",
-        targets: ["codex", "claude", "kimi", "api"].map(card),
-      },
+      pointer: { gesture: "hover", target: ".tour-options" },
+      ...choice,
     };
-  const ready = s.agents.filter((a) => a.status === "ready").map((a) => a.id);
+  const api = s.method === "api";
+  const mine = s.agents.filter((a) => (a.id === "api") === api);
+  const ready = mine.filter((a) => a.status === "ready").map((a) => a.id);
   if (ready.length) {
     const first = ready.includes(s.primary ?? "") ? s.primary! : ready[0];
     const names = join(ready.map((id) => agentNames[id]));
     if (s.selectOpen)
       return {
         title: `选择 ${agentNames[first]}`,
-        body: `${names} 已通过检测。问答和翻译会使用它当前的登录账户与计费方式。`,
+        body: api
+          ? "API 已有模型通过检测，问答和翻译会使用这个 Key。"
+          : `${names} 已通过检测。问答和翻译会使用它当前的登录账户与计费方式。`,
         focus: ready.map(card),
         click: [tour("agent-select")],
         pointer: {
           gesture: "click",
           target: `[data-slot="select-item"][data-agent="${first}"]`,
         },
+        ...choice,
       };
     return {
       title: `检测到 ${names} 可用`,
@@ -141,24 +157,50 @@ function agentView(s: TourState): TourView {
       focus: ready.map(card),
       click: [tour("agent-select")],
       pointer: { gesture: "click", target: tour("agent-select") },
+      ...choice,
     };
   }
-  const failed = s.agents.filter(
-    (a) => a.id !== "api" && a.status === "failed",
-  );
+  if (api)
+    return mine.some((a) => a.status === "pending")
+      ? {
+          title: "正在检测 API 模型",
+          body: "Reader 正在拉取模型并逐个测试文本推理和图片理解。",
+          focus: [card("api")],
+          pointer: { gesture: "hover", target: card("api") },
+          ...choice,
+        }
+      : {
+          title: "填写 API Key",
+          body: "点击 API 卡片，填入 OpenAI 兼容接口的地址和 Key。Key 只保存在本机。",
+          click: [card("api")],
+          pointer: { gesture: "click", target: card("api") },
+          ...choice,
+        };
+  if (s.detecting || mine.some((a) => a.status === "pending"))
+    return {
+      title: "正在检测本机 Agent",
+      body: "Reader 会调用已安装的 Codex、Claude Code 和 Kimi CLI，测试文本推理和图片理解，不读取账号凭据。",
+      focus: localAgents.map(card),
+      pointer: { gesture: "wander", targets: localAgents.map(card) },
+      ...choice,
+    };
+  const failed = mine.filter((a) => a.status === "failed");
   return failed.length
     ? {
         title: "Agent 还不能使用",
-        body: `${join(failed.map((a) => agentNames[a.id]))} 未通过检测，通常是还没有登录。在终端运行 ${join(failed.map((a) => loginHints[a.id]))} 后点右上角重新检测；或者点击 API 卡片填写 Key。`,
+        body: `${join(failed.map((a) => agentNames[a.id]))} 未通过检测，通常是还没有登录。在终端运行 ${join(failed.map((a) => loginHints[a.id]))} 后点右上角重新检测，或者改用 API Key。`,
         focus: failed.map((a) => card(a.id)),
-        click: [card("api"), tour("agent-refresh")],
-        pointer: { gesture: "click", target: card("api") },
+        click: [tour("agent-refresh")],
+        pointer: { gesture: "click", target: tour("agent-refresh") },
+        ...choice,
       }
     : {
         title: "没有找到本机 Agent",
-        body: "未检测到 Codex、Claude Code 或 Kimi CLI。点击 API 卡片，填入 OpenAI 兼容接口的地址和 Key。安装 CLI 后也可以回来重新检测。",
-        click: [card("api"), tour("agent-refresh")],
-        pointer: { gesture: "click", target: card("api") },
+        body: "未检测到 Codex、Claude Code 或 Kimi CLI。安装并登录后点右上角重新检测，或者改用 API Key。",
+        focus: localAgents.map(card),
+        click: [tour("agent-refresh")],
+        pointer: { gesture: "click", target: tour("agent-refresh") },
+        ...choice,
       };
 }
 
@@ -196,6 +238,7 @@ export const tourSteps: TourStep[] = [
     // Closing the settings once an agent works moves the tour on as well.
     done: (s) =>
       s.primaryReady &&
+      (!s.method || (s.method === "api") === (s.primary === "api")) &&
       (!s.settings || (s.agentPanel && !s.detecting && !s.apiDetails)),
     skip: (s) => !s.settings && s.acknowledged.has("settings"),
     back: (s) => (s.settings || s.primaryReady ? undefined : "settings"),

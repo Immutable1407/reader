@@ -97,6 +97,7 @@ const inSettings = {
   settings: true,
   agentPanel: true,
 };
+const local = { ...inSettings, method: "local" };
 
 describe("tour steps", () => {
   it("waits for the welcome to be confirmed", () => {
@@ -112,8 +113,28 @@ describe("tour steps", () => {
     });
     expect(view?.click).toEqual(['[aria-label="切换侧栏"]']);
   });
-  it("tours the agent cards while detecting", () => {
-    const { id, view } = at(1, { ...inSettings, detecting: true });
+  it("asks how to connect, with the official plan not yet available", () => {
+    const { view } = at(1, inSettings);
+    expect(view?.title).toBe("选择连接方式");
+    expect(view?.options?.map((o) => [o.label, !!o.disabled])).toEqual([
+      ["本地 Agent 订阅", false],
+      ["API Key", false],
+      ["NeoRead 官方订阅", true],
+    ]);
+  });
+  it("points at the API card once API Key is chosen", () => {
+    const { view } = at(1, {
+      ...inSettings,
+      method: "api",
+      agents: [{ id: "codex", status: "ready" }],
+    });
+    expect(view?.pointer).toEqual({
+      gesture: "click",
+      target: '[data-tour="agent-card"][data-agent="api"]',
+    });
+  });
+  it("tours the local agent cards while detecting", () => {
+    const { id, view } = at(1, { ...local, detecting: true });
     expect(id).toBe("agent");
     expect(view?.pointer?.gesture).toBe("wander");
   });
@@ -122,26 +143,24 @@ describe("tour steps", () => {
       { id: "codex", status: "missing" as const },
       { id: "claude", status: "ready" as const },
     ];
-    const closed = at(1, { ...inSettings, agents }).view;
+    const closed = at(1, { ...local, agents }).view;
     expect(closed?.title).toBe("检测到 Claude Code 可用");
     expect(closed?.pointer).toEqual({
       gesture: "click",
       target: '[data-tour="agent-select"]',
     });
-    const open = at(1, { ...inSettings, agents, selectOpen: true }).view;
+    const open = at(1, { ...local, agents, selectOpen: true }).view;
     expect(open?.pointer).toMatchObject({
       target: '[data-slot="select-item"][data-agent="claude"]',
     });
   });
   it("suggests logging in or an API key when nothing works", () => {
     const failed = at(1, {
-      ...inSettings,
+      ...local,
       agents: [{ id: "codex", status: "failed" }],
     }).view;
     expect(failed?.body).toContain("`codex login`");
-    expect(failed?.click).toContain(
-      '[data-tour="agent-card"][data-agent="api"]',
-    );
+    expect(failed?.click).toEqual(['[data-tour="agent-refresh"]']);
     const none = at(1, { ...inSettings, apiDetails: true }).view;
     expect(none?.title).toBe("填写 API");
   });
