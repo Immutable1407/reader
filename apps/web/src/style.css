@@ -666,36 +666,136 @@ kbd {
   padding: 20px 20px 12px;
   height: 44px;
 }
-.toc-tree {
-  padding: 3px 8px;
+/* The disclosure and the link are siblings: expanding never navigates. */
+.navigation-tree {
+  position: relative;
+  height: 100%;
+  min-height: 0;
 }
-.toc-tree .toc-tree {
-  padding: 0;
+.navigation-rows {
+  padding: 3px 8px 56px;
+  user-select: none;
 }
-.toc-item {
+.navigation-selection-toolbar {
+  position: absolute;
+  bottom: 12px;
+  left: 12px;
+  display: flex;
+  align-items: center;
+  gap: 0;
+  padding: 3px;
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  background: var(--background);
+  color: var(--foreground);
+  box-shadow: 0 2px 8px rgb(0 0 0 / 0.08);
+}
+@supports (backdrop-filter: blur(12px)) {
+  .navigation-selection-toolbar {
+    background: color-mix(in srgb, var(--background) 80%, transparent);
+    backdrop-filter: blur(12px);
+  }
+}
+.navigation-selection-toolbar > button:first-child {
+  border-radius: 50%;
+}
+.navigation-selection-toolbar.is-selecting {
+  border-radius: 18px;
+}
+/* Keep actions mounted so closing can finish before they become invisible. */
+.navigation-selection-actions {
+  width: 0;
+  overflow: hidden;
+  opacity: 0;
+  visibility: hidden;
+}
+.navigation-selection-actions-inner {
+  width: 164px;
+  padding-left: 4px;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+.navigation-selection-actions-inner > button:first-child {
+  flex: 1;
+}
+.navigation-selection-toolbar.is-selecting .navigation-selection-actions {
+  width: 164px;
+  opacity: 1;
+  visibility: visible;
+}
+@media (prefers-reduced-motion: no-preference) {
+  .navigation-selection-toolbar {
+    transition: border-radius 180ms ease;
+  }
+  .navigation-selection-actions {
+    transition:
+      width 180ms ease,
+      opacity 140ms ease,
+      visibility 0s 180ms;
+  }
+  .navigation-selection-toolbar.is-selecting .navigation-selection-actions {
+    transition-delay: 0s;
+  }
+}
+.navigation-row {
+  display: flex;
+  align-items: center;
+  min-width: 0;
+  border-radius: 8px;
+  margin: 1px 0;
+  color: var(--muted-foreground);
+}
+.navigation-row:hover,
+.navigation-row.selected {
+  background: var(--muted);
+  color: var(--foreground);
+}
+.navigation-row.multi-selected {
+  background: color-mix(in srgb, #22c55e 16%, var(--background));
+}
+.navigation-row.multi-selected .navigation-link:hover {
+  background: transparent;
+}
+.navigation-row.drop-valid {
+  outline: 1px solid var(--primary);
+  background: var(--muted);
+}
+.navigation-row.drop-invalid {
+  cursor: not-allowed;
+  outline: 1px dashed var(--muted-foreground);
+}
+.navigation-toggle,
+.navigation-toggle-space {
+  width: 20px;
+  height: 24px;
+  flex: 0 0 20px;
+}
+.navigation-chevron {
+  width: 12px;
+  height: 12px;
+  transition: transform 160ms ease;
+}
+.navigation-toggle[aria-expanded="true"] .navigation-chevron {
+  transform: rotate(90deg);
+}
+.navigation-link {
+  display: flex;
+  align-items: center;
+  justify-content: flex-start;
+  flex: 1;
   min-width: 0;
   height: auto;
-  min-height: 37px;
-  display: flex;
-  width: 100%;
-  justify-content: flex-start;
-  align-items: flex-start;
-  gap: 8px;
-  white-space: normal;
-  text-align: left;
+  min-height: 28px;
+  padding: 4px 10px 4px 4px;
+  gap: 6px;
   font-size: 11px;
   line-height: 1.6;
   font-weight: 400;
-  margin: 3px 0;
-  padding-top: 8px;
-  padding-bottom: 8px;
-  color: var(--muted-foreground);
+  white-space: normal;
+  text-align: left;
 }
-.toc-item.selected {
-  color: var(--foreground);
-  background: var(--muted);
-}
-.toc-item span:not(.toc-dot) {
+.navigation-label {
   flex: 1;
   min-width: 0;
   overflow-wrap: anywhere;
@@ -704,20 +804,34 @@ kbd {
   -webkit-line-clamp: 2;
   overflow: hidden;
 }
-.toc-item small {
+.navigation-link small {
   flex-shrink: 0;
   font-size: 10px;
   opacity: 0.6;
   margin-left: auto;
 }
-.toc-dot {
-  width: 3px;
-  height: 3px;
-  background: currentColor;
-  opacity: 0.4;
-  border-radius: 50%;
-  margin-top: 6px;
-  flex-shrink: 0;
+.navigation-rename {
+  min-width: 0;
+  flex: 1;
+  font-size: 12px;
+}
+.navigation-children {
+  height: var(--collapsible-panel-height);
+  overflow: hidden;
+  transition:
+    height 180ms ease,
+    opacity 180ms ease;
+}
+.navigation-children[data-starting-style],
+.navigation-children[data-ending-style] {
+  height: 0;
+  opacity: 0;
+}
+@media (prefers-reduced-motion: reduce) {
+  .navigation-chevron,
+  .navigation-children {
+    transition: none;
+  }
 }
 .search-result {
   display: flex;

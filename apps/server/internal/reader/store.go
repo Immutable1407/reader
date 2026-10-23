@@ -88,6 +88,7 @@ func OpenStore(root string) (*Store, error) {
  CREATE TABLE IF NOT EXISTS endnote_imports(source_id TEXT NOT NULL,document_id TEXT NOT NULL REFERENCES documents(id) ON DELETE CASCADE,source_hash TEXT NOT NULL,body TEXT NOT NULL,created_at TEXT NOT NULL,PRIMARY KEY(source_id,document_id));
  CREATE TABLE IF NOT EXISTS zotero_imports(source_id TEXT NOT NULL,document_id TEXT NOT NULL REFERENCES documents(id) ON DELETE CASCADE,body TEXT NOT NULL,created_at TEXT NOT NULL,PRIMARY KEY(source_id,document_id));
  CREATE TABLE IF NOT EXISTS zotero_note_imports(source_id TEXT NOT NULL,document_id TEXT NOT NULL REFERENCES documents(id) ON DELETE CASCADE,PRIMARY KEY(source_id,document_id));
+ CREATE TABLE IF NOT EXISTS document_navigation(document_id TEXT PRIMARY KEY REFERENCES documents(id) ON DELETE CASCADE,revision INTEGER NOT NULL,body TEXT NOT NULL);
  CREATE TABLE IF NOT EXISTS annotations(id TEXT PRIMARY KEY,document_id TEXT NOT NULL REFERENCES documents(id) ON DELETE CASCADE,body TEXT NOT NULL);
  CREATE TABLE IF NOT EXISTS messages(id TEXT PRIMARY KEY,document_id TEXT NOT NULL REFERENCES documents(id) ON DELETE CASCADE,body TEXT NOT NULL,created_at TEXT NOT NULL);
  CREATE TABLE IF NOT EXISTS document_processing(document_id TEXT PRIMARY KEY REFERENCES documents(id) ON DELETE CASCADE,phase TEXT NOT NULL,status TEXT NOT NULL,body TEXT NOT NULL);

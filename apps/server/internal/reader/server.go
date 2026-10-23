@@ -128,6 +128,8 @@ func (s *Server) Handler() http.Handler {
 	mux.HandleFunc("POST /api/import/zotero", s.importZotero)
 	mux.HandleFunc("POST /api/documents", s.importDocument)
 	mux.HandleFunc("POST /api/documents/resolve", s.resolveDocument)
+	mux.HandleFunc("GET /api/documents/{id}/navigation", s.documentNavigation)
+	mux.HandleFunc("PUT /api/documents/{id}/navigation", s.saveDocumentNavigation)
 	mux.HandleFunc("GET /api/documents/{id}/note", s.documentNote)
 	mux.HandleFunc("PUT /api/documents/{id}/note", s.saveDocumentNote)
 	mux.HandleFunc("POST /api/documents/{id}/metadata/lookup", s.lookupMetadata)

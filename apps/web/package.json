@@ -19,6 +19,7 @@
     "katex": "0.18.1",
     "lucide-react": "^0.577.0",
     "marked": "18.0.6",
+    "pdf-lib": "1.17.1",
     "pdfjs-dist": "6.3.289",
     "react": "^19.2.0",
     "react-dom": "^19.2.0",
