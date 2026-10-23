@@ -1,6 +1,6 @@
 # 后端流式迁移进度
 
-工作树：`/Users/bu44er/Developer/Projects/Reader-streaming-backend`。分支：`backend/unified-streaming`。共同基线：`85f21938f13914c48131a455cb586d4e964b90c9`。仅修改本工作树拥有的 Go、契约、OpenAPI 和生成类型。未合并、推送或部署。
+工作树：`/Users/bu44er/Developer/Projects/NeoRead-streaming-backend`。分支：`backend/unified-streaming`。共同基线：`85f21938f13914c48131a455cb586d4e964b90c9`。仅修改本工作树拥有的 Go、契约、OpenAPI 和生成类型。未合并、推送或部署。
 
 代码提交：`f7d4f28`（统一 Adapter/GenerationService/聊天生命周期）、`2f7f820`（真流/备用/生命周期验证、OpenAPI 和 fixtures）。2026-10-05 交付前再次核对 main，仍为 `2afe113e8f02593da79b3ad5fbc5c8f1c721a639`。未复制主工作区的未提交产品修改。集成前协调会话需再次检查 main。
 
@@ -55,8 +55,8 @@ Codex 尝试 turn/interrupt；Kimi 发送无 ID 的 session/cancel 并继续读�
 
 ```sh
 cd apps/server
-READER_TEST_STREAM_PROVIDER=codex go test ./internal/reader -run '^TestLiveGenerationAdapter$' -count=1 -v
-READER_TEST_STREAM_PROVIDER=kimi go test ./internal/reader -run '^TestLiveGenerationAdapter$' -count=1 -v
+NEOREAD_TEST_STREAM_PROVIDER=codex go test ./internal/reader -run '^TestLiveGenerationAdapter$' -count=1 -v
+NEOREAD_TEST_STREAM_PROVIDER=kimi go test ./internal/reader -run '^TestLiveGenerationAdapter$' -count=1 -v
 # Claude 登录后，用相同命令并把 provider 换为 claude。
 go test ./internal/reader -run 'TestAPIFallbackStreamsOverHTTP|TestAgentCancellationHandshake|TestHTTPDisconnect|TestDoneLoss|TestFrozenStreamFixtures' -count=1
 ```
@@ -71,7 +71,7 @@ go test ./internal/reader -run 'TestAPIFallbackStreamsOverHTTP|TestAgentCancella
 
 ```sh
 pnpm build
-apps/desktop/bin/reader-server --data "$(mktemp -d /tmp/reader-streaming-preview.XXXXXX)" --port 0 --web "$PWD/apps/web/dist"
+apps/desktop/bin/neoread-server --data "$(mktemp -d /tmp/reader-streaming-preview.XXXXXX)" --port 0 --web "$PWD/apps/web/dist"
 ```
 
 协调会话集成前端后，可将此命令的 `--web` 指向其构建目录，使用 Go 同源服务，避免另改 CORS 或依赖其他会话的开发端口。也可在最终集成树 `pnpm dev`。需要的人工检查：导入项目合成样本；测试长文字、代码、公式及合成图片；确认首段提前出现、最终正文不重复；生成中取消再查询 messages；用 fixtures 检查备用、部分失败、无 done，以及保存成功但消息同步查询失败。Markdown/滚动/动画和 Electron 实机效果仍由前端及协调会话人工记录，不使用浏览器自动化宣称验收。
@@ -90,7 +90,7 @@ apps/desktop/bin/reader-server --data "$(mktemp -d /tmp/reader-streaming-preview
 
 ```sh
 set -e
-cd /Users/bu44er/Developer/Projects/Reader-streaming-backend
+cd /Users/bu44er/Developer/Projects/NeoRead-streaming-backend
 umask 077
 python3 - <<'PY'
 import socket
@@ -101,34 +101,34 @@ for port in (17840, 15174):
 PY
 reader_integration_dir=$(mktemp -d /tmp/reader-streaming-backend-integration.XXXXXX)
 printf '%s\n' "$reader_integration_dir" > /tmp/reader-streaming-backend-integration.current
-(cd apps/server && go build -o "$reader_integration_dir/reader-server" ./cmd/reader-server)
-pnpm --filter @reader/processor build
+(cd apps/server && go build -o "$reader_integration_dir/neoread-server" ./cmd/neoread-server)
+pnpm --filter @neoread/processor build
 printf 'Integration state directory: %s\n' "$reader_integration_dir"
-env -u READER_TOKEN \
-  READER_NODE="$(command -v node)" \
-  READER_PROCESSOR="$PWD/apps/processor/dist/main.mjs" \
-  "$reader_integration_dir/reader-server" \
+env -u NEOREAD_TOKEN \
+  NEOREAD_NODE="$(command -v node)" \
+  NEOREAD_PROCESSOR="$PWD/apps/processor/dist/main.mjs" \
+  "$reader_integration_dir/neoread-server" \
   --data "$reader_integration_dir/data" --port 17840 \
   > "$reader_integration_dir/ready.json" \
   2> "$reader_integration_dir/server.log"
 ```
 
-Go 仅绑定 `127.0.0.1`。`env -u READER_TOKEN` 使每次启动生成独立会话 token；启动 JSON 重定向到 `ready.json`，不打印到共享终端或回报。`umask 077` 使运行目录及会话文件只对当前用户开放。没有复制旧书库、连接配置或 API key。处理器使用本后端工作树的构建产物，图片/PDF 解析不会误用另一会话的目录。
+Go 仅绑定 `127.0.0.1`。`env -u NEOREAD_TOKEN` 使每次启动生成独立会话 token；启动 JSON 重定向到 `ready.json`，不打印到共享终端或回报。`umask 077` 使运行目录及会话文件只对当前用户开放。没有复制旧书库、连接配置或 API key。处理器使用本后端工作树的构建产物，图片/PDF 解析不会误用另一会话的目录。
 
 若端口检查失败，先确认是否正是本节已启动的进程；不要杀其他进程，也不要让 Vite 自动递增端口。`17840` 是当前前端 proxy 的固定目标，因此不能只改 Go 端口。确需换后端端口时交由前端同步修改其 proxy 配置；本后端会话不编辑前端文件。前端端口可以选另一个空闲 loopback 端口，但要同步下方初始化脚本中的 `frontend`。
 
 ### 终端 B：使用前端现有 Vite proxy
 
 ```sh
-pnpm --dir /Users/bu44er/Developer/Projects/Reader-streaming-frontend \
-  --filter @reader/web dev --host 127.0.0.1 --port 15174 --strictPort
+pnpm --dir /Users/bu44er/Developer/Projects/NeoRead-streaming-frontend \
+  --filter @neoread/web dev --host 127.0.0.1 --port 15174 --strictPort
 ```
 
 已只读核对前端 `apps/web/vite.config.ts`：`/api` 与 `/pub` 均代理到 `http://127.0.0.1:17840`，无需修改。浏览器只访问 `15174`，SDK 的相对 `/api`、出版物和图片的 `/pub` 请求均经 Vite 转发。保留默认 `changeOrigin:false`，让 Go 收到的 Host 和浏览器 Origin 都是 `127.0.0.1:15174`，满足现有同源检查；不要额外重写 Origin 或为此扩大 CORS。只代理 `/api` 会遗漏 EPUB 资源及图片。
 
 ### 终端 C：初始化前端会话，不输出 token
 
-先等待终端 B 显示就绪，再运行以下人工启动命令。它从本机权限受限文件读取 Reader 会话 token，并打开带 fragment 的地址；不打印该地址，不使用 CLI/API Key，不需要把 token 复制到聊天中。
+先等待终端 B 显示就绪，再运行以下人工启动命令。它从本机权限受限文件读取 NeoRead 会话 token，并打开带 fragment 的地址；不打印该地址，不使用 CLI/API Key，不需要把 token 复制到聊天中。
 
 ```sh
 python3 - <<'PY'

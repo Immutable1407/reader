@@ -4,7 +4,7 @@
 
 ## 方法
 
-在 Apple M3 Pro、macOS 27.0.1 上，下载 [v0.8.7 发布 ZIP](https://github.com/cynicalight/reader/releases/tag/v0.8.7)，核对 SHA256SUMS.txt，再使用 ditto 解压为同一份已签名 Reader.app。
+在 Apple M3 Pro、macOS 27.0.1 上，下载 [v0.8.7 发布 ZIP](https://github.com/cynicalight/reader/releases/tag/v0.8.7)，核对 SHA256SUMS.txt，再使用 ditto 解压为同一份已签名 NeoRead.app。
 
 原始 ZIP SHA-256：`6ef91cd9f1c6cea1d6950097f8937f4eed9e773a8974872ce89ff9786e04328d`。
 

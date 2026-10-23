@@ -1,11 +1,11 @@
-# Reader
+# NeoRead
 
 Local-first EPUB/PDF reader. Use Chinese for user-facing communication. Keep changes and limitations specific. User specifications take precedence over this file. If `AGENTS.local.md` exists, read it and follow it; it overrides this file.
 
 ## Architecture
-- `apps/web`: React + Vite renderer. Reader engines behind `ReaderAdapter`.
+- `apps/web`: React + Vite renderer. NeoRead engines behind `ReaderAdapter`.
 - `apps/server`: Go loopback HTTP server; SQLite + original files; Readium EPUB parsing; CLI providers.
-- `apps/server/cmd/reader`: the `reader` command line; a client of the running app found through `server.json` in the library directory (`docs/cli.md`).
+- `apps/server/cmd/neoread`: the `neoread` command line; a client of the running app found through `server.json` in the library directory (`docs/cli.md`).
 - `apps/desktop`: Electron main/preload; starts Go, waits for readiness, stops it on exit.
 - `packages/ui`: actual shadcn Base Nova registry components, Base UI + Lucide. Do not replace primitives with handmade modals/buttons/tabs.
 - `packages/reader-core`: Document/Location/Annotation interfaces.
