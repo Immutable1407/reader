@@ -84,6 +84,7 @@ const base: TourState = {
   reading: false,
   readingModes: false,
   assistant: false,
+  shell: "终端",
   acknowledged: new Set(),
 };
 const at = (index: number, patch: Partial<TourState>) => {
@@ -168,6 +169,10 @@ describe("tour steps", () => {
       agents: [{ id: "codex", status: "failed" }],
     }).view;
     expect(failed?.body).toContain("`codex login`");
+    expect(failed?.body).toContain("在终端中运行");
+    expect(at(1, { ...local, detecting: true }).view?.body).toContain(
+      "不是 Codex App",
+    );
     expect(failed?.click).toEqual(['[data-tour="agent-refresh"]']);
   });
   it("moves on once the chosen agent works", () => {

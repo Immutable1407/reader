@@ -98,6 +98,7 @@ function readState(
     reading: !!active,
     readingModes: !!rectOf(q(readingModes)),
     assistant: assistant?.dataset.open === "true",
+    shell: navigator.userAgent.includes("Windows") ? " PowerShell " : "终端",
     method,
     acknowledged,
   };

@@ -27,6 +27,8 @@ export interface TourState {
   reading: boolean;
   readingModes: boolean;
   assistant: boolean;
+  /** Where the user runs CLI commands: 终端, or PowerShell on Windows. */
+  shell: string;
   /** How the user chose to connect an agent. */
   method?: string;
   /** Steps confirmed with their button. */
@@ -165,7 +167,9 @@ function agentView(s: TourState): TourView {
       };
     return {
       title: `检测到 ${names} 可用`,
-      body: "点开上方的下拉框，选择要使用的 Agent。",
+      body: api
+        ? "点开上方的下拉框，选择 API。"
+        : `${names} 的 CLI 已在${s.shell}中登录，Reader 用的是 CLI，不是 Codex App。点开上方的下拉框，选择要使用的 Agent。`,
       focus: ready.map(card),
       click: [tour("agent-select")],
       pointer: { gesture: "click", target: tour("agent-select") },
@@ -192,7 +196,7 @@ function agentView(s: TourState): TourView {
   if (s.detecting || mine.some((a) => a.status === "pending"))
     return {
       title: "正在检测本机 Agent",
-      body: "Reader 会调用已安装的 Codex、Claude Code 和 Kimi CLI，测试文本推理和图片理解，不读取账号凭据。",
+      body: `Reader 调用的是命令行里的 Codex、Claude Code 和 Kimi CLI，不是 Codex App 或 Claude 桌面版。请在${s.shell}中确认 CLI 已登录，例如运行 \`codex login\` 或 \`claude auth login\`。`,
       focus: localAgents.map(card),
       pointer: { gesture: "wander", targets: localAgents.map(card) },
       ...choice,
@@ -201,7 +205,7 @@ function agentView(s: TourState): TourView {
   return failed.length
     ? {
         title: "Agent 还不能使用",
-        body: `${join(failed.map((a) => agentNames[a.id]))} 未通过检测，通常是还没有登录。在终端运行 ${join(failed.map((a) => loginHints[a.id]))} 后点右上角重新检测，或者改用 API Key。`,
+        body: `${join(failed.map((a) => agentNames[a.id]))} 未通过检测，通常是 CLI 还没有登录。在 Codex App 里登录不算，请在${s.shell}中运行 ${join(failed.map((a) => loginHints[a.id]))}，然后点右上角重新检测，或者改用 API Key。`,
         focus: failed.map((a) => card(a.id)),
         click: [tour("agent-refresh")],
         pointer: { gesture: "click", target: tour("agent-refresh") },
@@ -209,7 +213,7 @@ function agentView(s: TourState): TourView {
       }
     : {
         title: "没有找到本机 Agent",
-        body: "未检测到 Codex、Claude Code 或 Kimi CLI。安装并登录后点右上角重新检测，或者改用 API Key。",
+        body: `未检测到 Codex、Claude Code 或 Kimi CLI。只装了 Codex App 或 Claude 桌面版不行，需要在${s.shell}中安装 CLI 并登录，然后点右上角重新检测，或者改用 API Key。`,
         focus: localAgents.map(card),
         click: [tour("agent-refresh")],
         pointer: { gesture: "click", target: tour("agent-refresh") },
