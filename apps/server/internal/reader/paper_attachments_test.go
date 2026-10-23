@@ -8,7 +8,9 @@ import (
 	"net/http/httptest"
 	"os"
 	"path/filepath"
+	"runtime"
 	"strings"
+	"sync"
 	"testing"
 	"time"
 )
@@ -337,5 +339,131 @@ func TestPaperAttachmentFailedDeletionKeepsOwnedBytes(t *testing.T) {
 	}
 	if w := request(t, s, "GET", "/api/documents/"+d.ID+"/attachments/"+a.ID+"/file", nil); w.Code != 200 || !bytes.Equal(w.Body.Bytes(), testPDF(2)) {
 		t.Fatal("failed deletion lost bytes")
+	}
+}
+
+// A stalled response keeps the real download handle open while another request
+// removes ownership. Permission denial below models Windows' sharing violation.
+type blockedAttachmentResponse struct {
+	*httptest.ResponseRecorder
+	started, release chan struct{}
+	once             sync.Once
+	writeErr         error
+}
+
+func (w *blockedAttachmentResponse) Write(p []byte) (int, error) {
+	w.once.Do(func() { close(w.started) })
+	<-w.release
+	if w.writeErr != nil {
+		return 0, w.writeErr
+	}
+	return w.ResponseRecorder.Write(p)
+}
+func startBlockedAttachmentDownload(t *testing.T, s *Server, docID, attachmentID string, writeErr error) (*blockedAttachmentResponse, <-chan struct{}, func()) {
+	t.Helper()
+	w := &blockedAttachmentResponse{ResponseRecorder: httptest.NewRecorder(), started: make(chan struct{}), release: make(chan struct{}), writeErr: writeErr}
+	var releaseOnce sync.Once
+	release := func() { releaseOnce.Do(func() { close(w.release) }) }
+	done := make(chan struct{})
+	r := httptest.NewRequest("GET", "http://127.0.0.1:17840/api/documents/"+docID+"/attachments/"+attachmentID+"/file", nil)
+	r.Header.Set("Authorization", "Bearer test-secret")
+	go func() { s.Handler().ServeHTTP(w, r); close(done) }()
+	t.Cleanup(func() {
+		release()
+		select {
+		case <-done:
+		case <-time.After(5 * time.Second):
+			t.Error("download did not stop")
+		}
+	})
+	select {
+	case <-w.started:
+	case <-time.After(5 * time.Second):
+		t.Fatal("download did not start")
+	}
+	return w, done, release
+}
+func TestPaperAttachmentDownloadRetriesFailedCleanup(t *testing.T) {
+	if runtime.GOOS != "windows" && os.Geteuid() == 0 {
+		t.Skip("requires directory permissions or Windows sharing violations")
+	}
+	for _, test := range []struct {
+		name     string
+		purge    bool
+		writeErr error
+	}{{name: "complete"}, {name: "interrupted", writeErr: io.ErrClosedPipe}, {name: "purge", purge: true}} {
+		t.Run(test.name, func(t *testing.T) {
+			s := testServer(t)
+			d := attachmentPaper(t, s, 1)
+			data := testPDF(2)
+			a := addedAttachment(t, s, d.ID, "supplement.pdf", data)
+			owned, err := s.Store.paperAttachments(d.ID)
+			if err != nil {
+				t.Fatal(err)
+			}
+			directory := filepath.Join(s.Store.Root, "attachments")
+			path := filepath.Join(directory, owned[0].Hash)
+			w, done, release := startBlockedAttachmentDownload(t, s, d.ID, a.ID, test.writeErr)
+			if runtime.GOOS != "windows" {
+				if err := os.Chmod(directory, 0500); err != nil {
+					t.Fatal(err)
+				}
+				t.Cleanup(func() { _ = os.Chmod(directory, 0700) })
+			}
+			endpoint := "/api/documents/" + d.ID + "/attachments/" + a.ID
+			if test.purge {
+				endpoint = "/api/documents/" + d.ID
+			}
+			deleted := make(chan *httptest.ResponseRecorder, 1)
+			go func() { deleted <- request(t, s, "DELETE", endpoint, nil) }()
+			select {
+			case response := <-deleted:
+				if response.Code != 204 {
+					t.Fatalf("delete: %d %s", response.Code, response.Body.String())
+				}
+			case <-time.After(3 * time.Second):
+				t.Fatal("download blocked unrelated library mutations")
+			}
+			if _, err := os.Stat(path); err != nil {
+				t.Fatalf("expected an in-flight file awaiting cleanup: %v", err)
+			}
+			if runtime.GOOS != "windows" {
+				if err := os.Chmod(directory, 0700); err != nil {
+					t.Fatal(err)
+				}
+			}
+			release()
+			select {
+			case <-done:
+			case <-time.After(5 * time.Second):
+				t.Fatal("download did not complete")
+			}
+			if _, err := os.Stat(path); !os.IsNotExist(err) {
+				t.Fatalf("deleted attachment bytes survived download completion: %v", err)
+			}
+			if test.writeErr == nil && !bytes.Equal(w.Body.Bytes(), data) {
+				t.Fatal("in-flight download was truncated")
+			}
+		})
+	}
+}
+func TestPaperAttachmentDownloadCompletionKeepsReattachedFile(t *testing.T) {
+	s := testServer(t)
+	d := attachmentPaper(t, s, 1)
+	data := testPDF(2)
+	a := addedAttachment(t, s, d.ID, "supplement.pdf", data)
+	_, done, release := startBlockedAttachmentDownload(t, s, d.ID, a.ID, nil)
+	if w := request(t, s, "DELETE", "/api/documents/"+d.ID+"/attachments/"+a.ID, nil); w.Code != 204 {
+		t.Fatal(w.Body.String())
+	}
+	replacement := addedAttachment(t, s, d.ID, "reimported.pdf", data)
+	release()
+	select {
+	case <-done:
+	case <-time.After(5 * time.Second):
+		t.Fatal("download did not complete")
+	}
+	if w := request(t, s, "GET", "/api/documents/"+d.ID+"/attachments/"+replacement.ID+"/file", nil); w.Code != 200 || !bytes.Equal(w.Body.Bytes(), data) {
+		t.Fatal("download completion deleted reattached content")
 	}
 }

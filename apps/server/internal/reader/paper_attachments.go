@@ -290,7 +290,7 @@ func (s *Store) cleanupAttachmentFile(hash string) {
 		return
 	}
 	var count int
-	if err := s.DB.QueryRow("SELECT count(*) FROM paper_attachments WHERE sha256=?", hash).Scan(&count); err != nil || count != 0 {
+	if err := s.DB.QueryRow("SELECT count(*) FROM paper_attachments WHERE kind='file' AND sha256=?", hash).Scan(&count); err != nil || count != 0 {
 		return
 	}
 	if err := os.Remove(filepath.Join(s.Root, "attachments", hash)); err != nil && !errors.Is(err, os.ErrNotExist) {
@@ -316,7 +316,15 @@ func (s *Server) downloadPaperAttachment(w http.ResponseWriter, r *http.Request)
 		fail(w, 404, "附件文件缺失，请重新添加")
 		return
 	}
-	defer f.Close()
+	defer func() {
+		_ = f.Close()
+		// Windows may have refused deletion while this (or another download's)
+		// handle was open. Retry after closing, serialized with new ownership.
+		// The final download to finish can remove the now-unreferenced bytes.
+		s.importMu.Lock()
+		defer s.importMu.Unlock()
+		s.Store.cleanupAttachmentFile(a.Hash)
+	}()
 	info, err := f.Stat()
 	if err != nil || !info.Mode().IsRegular() {
 		fail(w, 500, "无法读取附件文件")
