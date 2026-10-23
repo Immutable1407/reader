@@ -1157,13 +1157,6 @@ export function Settings({
                       ? "只列出通过检测的模型：问答与翻译需通过文本推理，图片需通过图片理解。公式转换与主动图片提问使用图片模型。"
                       : "问答与翻译分别使用上方模型；未指定时，问答使用主力模型，翻译使用快速模型。公式转换与主动图片提问会向此 Agent 发送图片。"}
                   </p>
-                  <TranslationPromptSettings
-                    value={config.translationPrompt ?? ""}
-                    disabled={saving || aiModelSaving || testing.size > 0}
-                    onSave={(translationPrompt) =>
-                      saveConfig((latest) => ({ ...latest, translationPrompt }))
-                    }
-                  />
                 </div>
               )}
               <div
@@ -1236,6 +1229,17 @@ export function Settings({
               </p>
             </section>
             <CommandLineSettings open={open} />
+            {config && (
+              <section className="mt-7 border-t pt-1">
+                <TranslationPromptSettings
+                  value={config.translationPrompt ?? ""}
+                  disabled={saving || aiModelSaving || testing.size > 0}
+                  onSave={(translationPrompt) =>
+                    saveConfig((latest) => ({ ...latest, translationPrompt }))
+                  }
+                />
+              </section>
+            )}
           </TabsContent>
         </Tabs>
       </DialogContent>
