@@ -264,5 +264,5 @@ it("exports only selected annotation kinds into the original PDF", async () => {
   await act(async () => button("导出 PDF").click());
   expect(exportAnnotatedPDFWithToast).toHaveBeenCalledWith(doc, ["note"]);
   await act(async () => checkbox("批注").click());
-  expect(button("导出 PDF").disabled).toBe(true);
+  expect(button("导出 PDF").disabled).toBe(false);
 });

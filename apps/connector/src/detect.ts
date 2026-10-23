@@ -5,21 +5,29 @@ export type Candidate = {
   metadata: Record<string, unknown>;
   snapshot: string;
   snapshotWarnings?: string[];
+  cajUrl?: string;
+  tabId?: number;
+  referrerUrl?: string;
 };
 export type Detection = { items: Candidate[]; kind: "single" | "list" };
 
 // Self-contained so Chrome can serialize this function for activeTab injection.
-export function detectPage(): Detection {
+export function detectPage(html?: string, url?: string): Detection {
+  const page =
+    html === undefined
+      ? document
+      : new DOMParser().parseFromString(html, "text/html");
+  const pageURL = new URL(url || location.href);
   const meta = (name: string) =>
     (
-      document.querySelector(
+      page.querySelector(
         `meta[name="${name}"],meta[property="${name}"]`,
       ) as HTMLMetaElement | null
     )?.content?.trim() || "";
   const absolute = (value: string) => {
     if (!value.trim()) return "";
     try {
-      const u = new URL(value, location.href);
+      const u = new URL(value, pageURL.href);
       return ["https:", "http:"].includes(u.protocol) ? u.href : "";
     } catch {
       return "";
@@ -27,19 +35,19 @@ export function detectPage(): Detection {
   };
   const text = (value: string) => value.replace(/\s+/g, " ").trim();
   const authors = Array.from(
-    document.querySelectorAll<HTMLMetaElement>('meta[name="citation_author"]'),
+    page.querySelectorAll<HTMLMetaElement>('meta[name="citation_author"]'),
   )
     .map((x) => ({ name: text(x.content) }))
     .filter((x) => x.name);
   const doi =
     meta("citation_doi") ||
     meta("dc.identifier") ||
-    (location.href.match(/10\.\d{4,9}\/[^\s?#]+/) || [])[0] ||
+    (pageURL.href.match(/10\.\d{4,9}\/[^\s?#]+/) || [])[0] ||
     "";
   const arxiv =
     meta("citation_arxiv_id") ||
-    (location.hostname.endsWith("arxiv.org")
-      ? (location.pathname.match(/\/(?:abs|pdf|html)\/([^/?#]+)/) || [])[1]
+    (pageURL.hostname.endsWith("arxiv.org")
+      ? (pageURL.pathname.match(/\/(?:abs|pdf|html)\/([^/?#]+)/) || [])[1]
       : "") ||
     "";
   let pdf = absolute(meta("citation_pdf_url"));
@@ -47,20 +55,20 @@ export function detectPage(): Detection {
   if (!pdf)
     pdf = absolute(
       (
-        document.querySelector(
+        page.querySelector(
           'link[type="application/pdf"],a[type="application/pdf"],a[href$=".pdf"],a[href*="/pdf/"]',
         ) as HTMLLinkElement | HTMLAnchorElement | null
-      )?.href || "",
+      )?.getAttribute("href") || "",
     );
   const isPDF =
-    location.pathname.toLowerCase().endsWith(".pdf") ||
-    document.contentType === "application/pdf";
-  if (isPDF) pdf = location.href;
+    pageURL.pathname.toLowerCase().endsWith(".pdf") ||
+    page.contentType === "application/pdf";
+  if (isPDF) pdf = pageURL.href;
   let title =
     meta("citation_title") ||
     meta("dc.title") ||
     meta("og:title") ||
-    document.title;
+    page.title;
   let abstract =
     meta("citation_abstract") || meta("dc.description") || meta("description");
   let date =
@@ -69,7 +77,7 @@ export function detectPage(): Detection {
     meta("datePublished");
   let venue =
     meta("citation_journal_title") || meta("citation_conference_title");
-  for (const script of document.querySelectorAll<HTMLScriptElement>(
+  for (const script of page.querySelectorAll<HTMLScriptElement>(
     'script[type="application/ld+json"]',
   )) {
     try {
@@ -104,45 +112,144 @@ export function detectPage(): Detection {
     venue: text(String(venue)).slice(0, 200),
     doi: doi.replace(/^doi:/i, ""),
     arxiv,
-    url: location.href,
+    url: pageURL.href,
     abstract: text(String(abstract)).slice(0, 20000),
   };
+  const cnki =
+    pageURL.hostname === "cnki.net" || pageURL.hostname.endsWith(".cnki.net");
+  let cajUrl = "";
+  if (cnki && !isPDF) {
+    // Site-specific download controls may point to endpoints without a file extension.
+    const link = (selector: string) => {
+      for (const node of page.querySelectorAll(selector)) {
+        const href = absolute(node.getAttribute("href") || "");
+        if (href) return href;
+      }
+      return "";
+    };
+    const parts = Array.from(page.querySelectorAll("#DownLoadParts a"));
+    pdf =
+      link('.btn-dlpdf > a, a[name="pdfDown"]') ||
+      absolute(
+        parts
+          .find((node) => /PDF/i.test(node.textContent || ""))
+          ?.getAttribute("href") || "",
+      ) ||
+      absolute(meta("citation_pdf_url"));
+    cajUrl =
+      link('.btn-dlcaj > a, a[name="cajDown"], .btn-qwxz > a') ||
+      absolute(
+        parts
+          .find((node) => /CAJ/i.test(node.textContent || ""))
+          ?.getAttribute("href") || "",
+      );
+    const cleanNode = (node: Element | null) => {
+      const clone = node?.cloneNode(true) as Element | undefined;
+      clone
+        ?.querySelectorAll("sup, script, style")
+        .forEach((el) => el.remove());
+      return text(clone?.textContent || "");
+    };
+    const cnkiTitle = cleanNode(page.querySelector(".wx-tit > h1"));
+    if (cnkiTitle) metadata.title = cnkiTitle.slice(0, 300);
+    const cnkiAuthors = Array.from(
+      page.querySelectorAll("#authorpart > span > a"),
+    )
+      .map((node) => ({ name: cleanNode(node) }))
+      .filter((author) => author.name);
+    if (!cnkiAuthors.length) {
+      cnkiAuthors.push(
+        ...cleanNode(page.querySelector("#authorpart"))
+          .split(/[,，;；]/)
+          .map((name) => ({ name: name.trim() }))
+          .filter((author) => author.name),
+      );
+    }
+    if (cnkiAuthors.length) metadata.creators = cnkiAuthors;
+    const abstractText = cleanNode(
+      page.querySelector(".abstract-text, #ChDivSummary"),
+    );
+    if (abstractText) metadata.abstract = abstractText.slice(0, 20000);
+    const dbcode = (
+      page.querySelector<HTMLInputElement>("#paramdbcode")?.value ||
+      pageURL.searchParams.get("dbcode") ||
+      page.querySelector<HTMLInputElement>("#paramdbname")?.value ||
+      ""
+    ).toUpperCase();
+    metadata.itemType = /^(CMFD|CDFD|CDMH|CLKM)/.test(dbcode)
+      ? "thesis"
+      : /^(CPFD|IPFD)/.test(dbcode)
+        ? "conference"
+        : "journal";
+    const publication = cleanNode(page.querySelector(".top-tip"));
+    const publicationMatch = publication.match(
+      /^(.+?)\.\s*(\d{4})(?:\s*,\s*(\d+))?(?:\s*\((\d+)\))?(?:\s*:\s*([\d,\s-]+))?/,
+    );
+    if (publicationMatch) {
+      metadata.venue = publicationMatch[1].trim();
+      metadata.date = publicationMatch[2];
+      if (publicationMatch[3]) metadata.volume = publicationMatch[3];
+      if (publicationMatch[4]) metadata.issue = publicationMatch[4];
+      if (publicationMatch[5]) metadata.pages = publicationMatch[5].trim();
+    }
+    const thesisDate = cleanNode(page.querySelector("#ndate")).match(
+      /\d{4}(?:[-/]\d{1,2}(?:[-/]\d{1,2})?)?/,
+    );
+    if (metadata.itemType === "thesis" && thesisDate)
+      metadata.date = thesisDate[0];
+    if (!metadata.doi) {
+      for (const label of page.querySelectorAll('[class^="rowtit"]')) {
+        if (text(label.textContent || "").replace(/[：:]/g, "") !== "DOI")
+          continue;
+        metadata.doi =
+          (label.parentElement?.textContent?.match(/10\.\d{4,9}\/[^\s]+/) ||
+            [])[0] || "";
+        break;
+      }
+    }
+  }
   const single: Candidate = {
     title: String(metadata.title),
-    sourceUrl: location.href,
+    sourceUrl: pageURL.href,
     pdfUrl: pdf,
+    ...(cajUrl ? { cajUrl } : {}),
     metadata,
     snapshot:
-      document.querySelector("main,article")?.outerHTML ||
-      document.body?.outerHTML ||
+      (cnki ? page.documentElement.outerHTML : "") ||
+      page.querySelector("main,article")?.outerHTML ||
+      page.body?.outerHTML ||
       "",
   };
-  const host = location.hostname;
-  const cards: Element[] = host.includes("scholar.google.")
-    ? Array.from(document.querySelectorAll(".gs_r.gs_or"))
-    : host.includes("pubmed.ncbi.nlm.nih.gov")
-      ? Array.from(document.querySelectorAll(".docsum-content"))
-      : host.includes("semanticscholar.org")
-        ? Array.from(
-            document.querySelectorAll(
-              '[data-test-id="paper-row"],.cl-paper-row',
-            ),
-          )
-        : host.includes("arxiv.org")
+  const host = pageURL.hostname;
+  const cards: Element[] = cnki
+    ? Array.from(
+        page.querySelectorAll(
+          ".result-table-list > tbody > tr, .GridTableContent > tbody > tr",
+        ),
+      )
+    : host.includes("scholar.google.")
+      ? Array.from(page.querySelectorAll(".gs_r.gs_or"))
+      : host.includes("pubmed.ncbi.nlm.nih.gov")
+        ? Array.from(page.querySelectorAll(".docsum-content"))
+        : host.includes("semanticscholar.org")
           ? Array.from(
-              document.querySelectorAll("li.arxiv-result,.arxiv-result"),
+              page.querySelectorAll('[data-test-id="paper-row"],.cl-paper-row'),
             )
-          : [];
+          : host.includes("arxiv.org")
+            ? Array.from(page.querySelectorAll("li.arxiv-result,.arxiv-result"))
+            : [];
   const items: Candidate[] = [];
   for (const card of cards.slice(0, 100)) {
     const titleLink = card.querySelector<HTMLAnchorElement>(
-      'h3 a,.docsum-title,a[data-test-id="title-link"],p.title a',
+      '.name a,a.fz14,h3 a,.docsum-title,a[data-test-id="title-link"],p.title a',
     );
     const arxivTitle = card.querySelector("p.title");
     const arxivLink = card.querySelector<HTMLAnchorElement>(
       'p.list-title a[href*="/abs/"]',
     );
-    const sourceUrl = absolute(titleLink?.href || arxivLink?.href || "");
+    const sourceUrl = absolute(
+      titleLink?.getAttribute("href") || arxivLink?.getAttribute("href") || "",
+    );
     const itemTitle = text(
       titleLink?.textContent || arxivTitle?.textContent || "",
     );
@@ -153,9 +260,10 @@ export function detectPage(): Detection {
     items.push({
       title: itemTitle,
       sourceUrl,
-      pdfUrl: absolute(pdfLink?.href || ""),
+      pdfUrl: absolute(pdfLink?.getAttribute("href") || ""),
       metadata: { title: itemTitle, url: sourceUrl, itemType: "journal" },
       snapshot: "",
+      ...(cnki ? { referrerUrl: pageURL.href } : {}),
     });
   }
   return items.length

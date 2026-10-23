@@ -1,6 +1,6 @@
-# Reader Connector 商店资料（0.1.0）
+# Reader Connector 商店资料（0.1.1）
 
-依据 `reader-connector-0.1.0-upload.zip`、`apps/connector/src` 和当前商店草稿截图整理。商店中的标题与摘要来自上传包。以下内容可逐项粘贴；涉及事实声明的选项应在最终上传包与桌面版联调通过后提交。
+依据 `apps/connector/src` 的 0.1.1 实现整理；商店发布状态需在上传后另行确认。以下内容可逐项粘贴；涉及事实声明的选项应在最终上传包与桌面版联调通过后提交。
 
 ## Store listing
 
@@ -24,7 +24,7 @@
 >
 > 使用前请安装并启动 Reader 桌面应用。首次收录时，Chrome 会请求网站访问权限，用于读取所选论文页面、PDF 和快照图片。导入内容发送到同一台设备上的 Reader；含 DOI 的论文可能向 Crossref 查询缺失的书目信息。具体数据处理方式见隐私政策：https://cynicalight.github.io/reader/privacy/
 >
-> 目前支持通用论文元数据，以及 arXiv、Google Scholar、PubMed 和 Semantic Scholar 的部分结果页面。网站限制、登录状态或跨站下载限制可能导致单篇收录失败。
+> 目前支持通用论文元数据、知网部分新旧详情页和搜索结果，以及 arXiv、Google Scholar、PubMed 和 Semantic Scholar 的部分结果页面。知网需要用户自行完成登录或安全验证，并具备全文下载权限；仅有 CAJ 的文献暂不支持。网站限制、登录状态或跨站下载限制可能导致单篇收录失败。
 
 ## Privacy
 
@@ -33,6 +33,7 @@
 | Single purpose description | 将用户选择的网页 PDF 论文及其书目信息收录到本机 Reader 论文库。 |
 | activeTab justification | 用户打开扩展时，读取当前标签页的网址、标题和论文页面，以显示可选择的论文；不会持续读取其他标签页。 |
 | scripting justification | 用户打开扩展时，在当前标签页运行随扩展打包的识别代码，提取论文元数据和候选 PDF 地址。 |
+| declarativeNetRequestWithHostAccess justification | 用户主动收录知网论文时，临时为扩展自身发起的知网请求设置文章页 Referer，以读取详情或下载 PDF。规则限定到请求目标的 origin，不修改普通标签页请求；请求结束后移除规则，不读取或保存 Cookie。 |
 | storage justification | 在 Chrome 本地存储由本机 Reader 生成的连接凭据，以便扩展重新打开时继续连接同一台设备上的 Reader。 |
 | Host permission justification | 访问 `http://127.0.0.1/*`，与同一台设备上的 Reader 桌面应用通信，获取分类和标签，并将用户选择的 PDF、书目信息与快照导入本机资料库。上传包中的主机权限使用 Chrome 认可的回环地址匹配规则；实际请求固定发往 `127.0.0.1:17841`。首次收录时另行请求 HTTP/HTTPS 网站访问权限，用于读取所选论文页面、PDF 和快照图片；论文的页面、PDF 与图片可能分布在不同网站。 |
 | Are you using remote code? | **No, I am not using remote code.** Crossref 返回书目信息 JSON，论文网站返回页面、图片及 PDF；扩展执行的 JavaScript 已包含在上传包中。 |
@@ -54,3 +55,20 @@
 上传 ZIP 不含固定扩展 `key`，商店分配的 ID 为 `dfhdcomjdkaiajiibbkonbonjlnkdjlg`；`apps/server/internal/reader/connector.go` 同时接受该 ID 与本地测试版 ID `afojfnpkeokahhniipldpdpecaljdnbe`。包含该来源的桌面版发布后，用商店安装包做一次连接、收录和重启验收。
 
 商店后台草稿中的 **Yes, I am using remote code** 与当前上传包不符，应改成 **No**。本资料不代替后台保存，Pages 地址也要等 `website/**` 推送并部署后才能使用。
+
+## 0.1.1 知网人工验收
+
+在独立 worktree 中运行 `READER_CONNECTOR_DEV_KEY=1 pnpm --filter @reader/connector build`，然后在 Chrome 扩展管理页加载 `apps/connector/dist`。该命令固定本地测试 ID；上传商店前必须重新运行不带环境变量的正式构建。
+
+1. 在同一浏览器完成知网登录和安全验证，先确认目标文章能手动下载 PDF，再使用插件收录。检查 PDF 可以打开，标题、作者、分类和标签正确。
+2. 分别检查新版 PDF 按钮、旧版 PDF 按钮和仅 CAJ 的文章。仅 CAJ 应明确提示不支持，不创建书库条目。
+3. 在知网搜索结果页选择文章，检查逐篇收录。若详情请求触发验证，应提示在网站完成验证，再打开文章详情页重试。
+4. 验证页或登录页应给出对应提示。没有明确原因的 HTTP 403 或非 PDF 响应，不应被误报为未购买全文权限。
+5. 两个浏览器窗口同时收录不同文章，检查附件对应正确；关闭/重新加载扩展后重试，临时请求规则不应残留。
+6. 用普通 PDF 和 arXiv 各收录一次，确认通用流程仍然正常。
+
+自动化检查覆盖静态页面识别、请求/导入边界和规则清理；不能代替带真实知网账号及机构权限的浏览器下载验收。插件不会自动完成验证码，不支持 CAJ，也未引入完整的站点抓取运行时。
+
+## 0.1.1 标签多选验收
+
+标签使用与 App 相同的多选组件，显示为胶囊，选中后变绿。点击至少两个标签，确认它们同时保持选中；再取消其中一个，确认另一个仍选中。收录后检查 Reader 中保存的标签。新增标签后也显示为胶囊，可以取消后重新选中。分别检查浅色、深色、长标签换行布局和键盘操作。

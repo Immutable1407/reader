@@ -1,16 +1,17 @@
 import { sentenceTextRanges } from "./pdf-sentence-matching";
-import type { Annotation, PDFLocation } from "@reader/core";
+import type { Annotation, PDFLocation, TOCItem } from "@reader/core";
 import type {
   DocumentInitParameters,
   PDFDocumentLoadingTask,
   PDFPageProxy,
+  PDFDocumentProxy,
 } from "pdfjs-dist/types/src/display/api";
 
 // Writes Reader's PDF annotations into a copy of the original as standard PDF
-// annotations, through PDF.js's own incremental save: the original bytes stay
-// intact and the new objects are appended. Highlights, notes and questions
+// annotations through PDF.js's incremental save, followed by an optional
+// full rewrite for navigation. The source file is untouched. Highlights, notes and questions
 // become Highlight annotations; notes, question text and AI answers become
-// their comments. Underlines become a thin strip under the text. Bookmarks have no PDF annotation and are left out.
+// their comments. Underlines become a thin strip under the text. Bookmarks are exported separately as navigation entries when requested.
 
 type Rect = { x: number; y: number; width: number; height: number };
 /** A quadrilateral in PDF user space: top-left, top-right, bottom-left, bottom-right. */
@@ -19,6 +20,7 @@ type Quad = [number, number, number, number, number, number, number, number];
 export interface AnnotatedPDF {
   bytes: Uint8Array;
   exported: number;
+  navigationExported?: number;
   /** Annotations that could not be placed, including translation-only marks. */
   skipped: number;
 }
@@ -231,13 +233,14 @@ async function sentenceQuads(
 export interface ExportContext {
   /** Chat message text by ID, for answered questions. */
   answers?: Record<string, string>;
+  navigation?: (pdf: PDFDocumentProxy) => Promise<TOCItem[]>;
 }
 
 export async function annotatedPDF(
   getDocument: (params: DocumentInitParameters) => PDFDocumentLoadingTask,
   source: DocumentInitParameters,
   annotations: Annotation[],
-  { answers = {} }: ExportContext = {},
+  { answers = {}, navigation }: ExportContext = {},
 ): Promise<AnnotatedPDF> {
   const task = getDocument(source);
   try {
@@ -292,7 +295,15 @@ export async function annotatedPDF(
       }
       exported++;
     }
-    const bytes = exported ? await pdf.saveDocument() : await pdf.getData();
+    let bytes = exported ? await pdf.saveDocument() : await pdf.getData();
+    if (navigation) {
+      const items = await navigation(pdf);
+      const { writePDFOutline } = await import("./pdf-outline-export");
+      bytes = await writePDFOutline(bytes, items, pdf);
+      const count = (nodes: TOCItem[]): number =>
+        nodes.reduce((n, item) => n + 1 + count(item.children), 0);
+      return { bytes, exported, skipped, navigationExported: count(items) };
+    }
     return { bytes, exported, skipped };
   } finally {
     await task.destroy();
