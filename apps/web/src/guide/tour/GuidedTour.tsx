@@ -1,6 +1,5 @@
 import { Fragment, useEffect, useId, useRef, useState } from "react";
 import { createPortal } from "react-dom";
-import { ExternalLink } from "lucide-react";
 import { toast } from "sonner";
 import {
   AlertDialog,
@@ -441,19 +440,23 @@ export function GuidedTour({
           <h2 id={`${mask}-title`} className="tour-title">
             {view.title}
           </h2>
-          <p className="tour-body">{rich(view.body)}</p>
+          <p className="tour-body">
+            {view.body.split("{link}").map((part, i) => (
+              <Fragment key={i}>
+                {i > 0 && view.link && (
+                  <Button
+                    variant="link"
+                    className="h-auto p-0 text-[length:inherit]"
+                    onClick={() => void openLink(view.link!.url)}
+                  >
+                    {view.link.label}
+                  </Button>
+                )}
+                {rich(part)}
+              </Fragment>
+            ))}
+          </p>
         </div>
-        {view.link && (
-          <Button
-            variant="link"
-            size="sm"
-            className="mt-1 h-auto px-0"
-            onClick={() => void openLink(view.link!.url)}
-          >
-            {view.link.label}
-            <ExternalLink />
-          </Button>
-        )}
         {view.options && (
           <div className="tour-options" role="group" aria-label="连接方式">
             {view.options.map((option) => (
