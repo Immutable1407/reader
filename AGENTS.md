@@ -21,6 +21,10 @@ Keep the interface restrained, following Claude/Apple app simplicity and shadcn 
 ## Validation
 `pnpm typecheck`, `pnpm test`, `pnpm build`. Do not use browser automation for visual acceptance. Give the user an accessible preview and manual verification steps. Prefer tests for data loss, lifecycle, parser boundaries, and provider protocols.
 
+## Diagnostics
+
+For changes involving background tasks, external calls, parsing or protocols, persistence, retries, or recovery, follow the [logging development guidelines](docs/diagnostics.md#日志开发规范) and assess existing diagnostic coverage. Add structured events only where the affected flow has diagnostic gaps; reuse existing events and validation, and leave unrelated historical flows out of scope.
+
 ## Git workflow and commits
 - Start large tasks in a new Git worktree on a dedicated task branch before editing. This includes substantial features, cross-module changes, and refactors. Keep the main checkout available for small changes.
 - Make very small, localized UI changes directly on `main` and commit them there. Examples include spacing, colors, and minor layout adjustments that do not change application behavior. If the scope grows into a larger task, move the task changes to a dedicated worktree before continuing.
