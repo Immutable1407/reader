@@ -123,8 +123,8 @@
   animation: tour-fade 240ms ease-out;
 }
 .tour-progress {
+  flex: 1;
   height: 3px;
-  margin-bottom: 10px;
   overflow: hidden;
   border-radius: 999px;
   background: var(--muted);
@@ -155,8 +155,9 @@
 }
 .tour-actions {
   display: flex;
-  margin-top: 10px;
-  margin-left: -8px;
+  align-items: center;
+  gap: 12px;
+  margin-top: 12px;
 }
 .tour-options {
   display: grid;

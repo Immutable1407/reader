@@ -405,16 +405,6 @@ export function GuidedTour({
           transform: `translate(${layout.card.x}px, ${layout.card.y}px)`,
         }}
       >
-        <div
-          className="tour-progress"
-          role="progressbar"
-          aria-label="引导进度"
-          aria-valuemin={0}
-          aria-valuemax={steps.length}
-          aria-valuenow={layout.step + 1}
-        >
-          <span style={{ transform: `scaleX(${progress})` }} />
-        </div>
         <div aria-live="polite">
           <h2 id={`${mask}-title`} className="tour-title">
             {view.title}
@@ -446,14 +436,24 @@ export function GuidedTour({
               ref={slotRef}
               variant="ghost"
               size="sm"
-              className="invisible"
+              className="invisible -ml-2"
               tabIndex={-1}
               aria-hidden="true"
             >
               {skipLabel}
             </Button>
           )}
-          <Button size="sm" className="ml-auto" onClick={next}>
+          <div
+            className="tour-progress"
+            role="progressbar"
+            aria-label="引导进度"
+            aria-valuemin={0}
+            aria-valuemax={steps.length}
+            aria-valuenow={layout.step + 1}
+          >
+            <span style={{ transform: `scaleX(${progress})` }} />
+          </div>
+          <Button size="sm" onClick={next}>
             {view.next ?? "下一步"}
           </Button>
         </div>
