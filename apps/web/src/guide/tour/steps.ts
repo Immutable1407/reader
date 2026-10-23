@@ -324,7 +324,7 @@ export const tourSteps: TourStep[] = [
       body:
         s.library === "book"
           ? "点击封面开始阅读。"
-          : "双击论文开始阅读。导入后的解析和翻译会在后台继续。",
+          : "**双击论文**开始阅读。导入后的解析和翻译会在后台继续。",
       click: [libraryItem],
       pointer: {
         gesture: s.library === "book" ? "click" : "double",
