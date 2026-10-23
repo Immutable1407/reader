@@ -141,6 +141,7 @@
   font-weight: 500;
 }
 .tour-body {
+  white-space: pre-line;
   margin-top: 4px;
   font-size: 12.5px;
   line-height: 1.65;

@@ -118,7 +118,7 @@ function agentView(s: TourState): TourView {
         }
       : {
           title: "填写 API Key",
-          body: "还没有 Key 的话，可以到 DeepSeek 开放平台注册，在「API keys」页创建一个。API 地址填 `https://api.deepseek.com`，把 Key 粘贴到这里并保存，Reader 会拉取模型并逐个检测。暂时没有 Key 也可以直接下一步。",
+          body: "还没有 API Key 的话，推荐到 DeepSeek 开放平台注册。API 地址已经默认填 https://api.deepseek.com，把 Key 粘贴到这里并保存即可。\n当然，也支持其他 API Key，需要改对应平台的 Base URL。",
           focus: [apiKey],
           click: [tour("settings")],
           pointer: { gesture: "click", target: apiKey },
