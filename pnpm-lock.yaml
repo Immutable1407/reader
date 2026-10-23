@@ -65,6 +65,9 @@ importers:
 
   apps/connector:
     dependencies:
+      '@reader/ui':
+        specifier: workspace:*
+        version: link:../../packages/ui
       react:
         specifier: ^19.2.0
         version: 19.3.0
