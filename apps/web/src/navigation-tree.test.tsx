@@ -225,22 +225,21 @@ it("keeps selection and entries when deletion fails", async () => {
     host.querySelectorAll('.navigation-link[aria-pressed="true"]'),
   ).toHaveLength(1);
 });
-it("toggles using the checkbox and clears selection with Escape", async () => {
+it("selects without adding row controls and clears selection with Escape", async () => {
   await render();
   await act(async () =>
     host.querySelector<HTMLButtonElement>('[aria-label="多选目录"]')!.click(),
   );
   await act(async () =>
-    host.querySelector<HTMLElement>('[aria-label="选择 Parent"]')!.click(),
+    host.querySelector<HTMLButtonElement>(".navigation-link")!.click(),
   );
   expect(
     host.querySelectorAll('.navigation-link[aria-pressed="true"]'),
   ).toHaveLength(1);
-  expect(
-    host
-      .querySelector('[aria-label="选择 Parent"]')
-      ?.getAttribute("aria-checked"),
-  ).toBe("true");
+  expect(host.querySelector('[role="checkbox"]')).toBeNull();
+  expect(host.querySelectorAll(".navigation-row.multi-selected")).toHaveLength(
+    1,
+  );
   await act(async () =>
     host
       .querySelector("nav")!

@@ -676,9 +676,6 @@ kbd {
   padding: 3px 8px 56px;
   user-select: none;
 }
-.navigation-checkbox {
-  margin-right: 4px;
-}
 .navigation-selection-toolbar {
   position: absolute;
   bottom: 12px;
@@ -753,6 +750,12 @@ kbd {
 .navigation-row.selected {
   background: var(--muted);
   color: var(--foreground);
+}
+.navigation-row.multi-selected {
+  background: color-mix(in srgb, #22c55e 16%, var(--background));
+}
+.navigation-row.multi-selected .navigation-link:hover {
+  background: transparent;
 }
 .navigation-row.drop-valid {
   outline: 1px solid var(--primary);

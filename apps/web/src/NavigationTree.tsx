@@ -10,7 +10,6 @@ import type {
   TOCItem,
 } from "@reader/core";
 import { Button } from "@reader/ui/components/button";
-import { Checkbox } from "@reader/ui/components/checkbox";
 import { ScrollArea } from "@reader/ui/components/scroll-area";
 import { Input } from "@reader/ui/components/input";
 import {
@@ -243,7 +242,7 @@ export function NavigationTree({
           <ContextMenu>
             <ContextMenuTrigger
               render={<div />}
-              className={`navigation-row ${(selecting ? checked.has(item.id) : active === item.id) ? "selected" : ""} ${dropTarget === item.id ? (moveError ? "drop-invalid" : "drop-valid") : ""}`}
+              className={`navigation-row ${selecting ? (checked.has(item.id) ? "multi-selected" : "") : active === item.id ? "selected" : ""} ${dropTarget === item.id ? (moveError ? "drop-invalid" : "drop-valid") : ""}`}
               style={{ paddingLeft: 8 + Math.min(depth, 12) * 14 }}
               tabIndex={0}
               aria-label={`${item.kind === "bookmark" ? "书签" : "目录"}：${item.label}`}
@@ -290,15 +289,6 @@ export function NavigationTree({
                 setDropTarget(undefined);
               }}
             >
-              {selecting && !item.id.startsWith("page-") && (
-                <Checkbox
-                  className="navigation-checkbox"
-                  aria-label={`选择 ${item.label}`}
-                  checked={checked.has(item.id)}
-                  disabled={disabled}
-                  onClick={(event) => selectItem(item.id, event)}
-                />
-              )}
               {hasChildren ? (
                 <CollapsibleTrigger
                   disabled={disabled}
