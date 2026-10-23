@@ -212,26 +212,32 @@ async function openLink(url: string) {
   }
 }
 
-/** Renders `code` spans written with backticks and [[warnings]] in red. */
+const code = (text: string) =>
+  text
+    .split("`")
+    .map((piece, i) =>
+      i % 2 ? (
+        <code key={i}>{piece}</code>
+      ) : (
+        <Fragment key={i}>{piece}</Fragment>
+      ),
+    );
+
+/** Renders `code`, **bold** and [[red warnings]]. */
 const rich = (text: string) =>
-  text.split(/\[\[|\]\]/).map((part, i) => {
-    const inline = part
-      .split("`")
-      .map((piece, j) =>
-        j % 2 ? (
-          <code key={j}>{piece}</code>
-        ) : (
-          <Fragment key={j}>{piece}</Fragment>
-        ),
-      );
-    return i % 2 ? (
+  text.split(/(\[\[.*?\]\]|\*\*.*?\*\*)/).map((part, i) =>
+    part.startsWith("[[") ? (
       <strong key={i} className="tour-warn">
-        {inline}
+        {code(part.slice(2, -2))}
+      </strong>
+    ) : part.startsWith("**") ? (
+      <strong key={i} className="tour-strong">
+        {code(part.slice(2, -2))}
       </strong>
     ) : (
-      <Fragment key={i}>{inline}</Fragment>
-    );
-  });
+      <Fragment key={i}>{code(part)}</Fragment>
+    ),
+  );
 
 /**
  * The first-run tour: a window-wide layer that dims the app, lights the areas
