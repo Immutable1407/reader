@@ -172,8 +172,11 @@ func (a configuredCLIAdapter) streamWith(ctx context.Context, req GenerateReques
 		}
 		return nil
 	})
-	if err == nil || !automatic || cli.model == "" || visible.Load() || emitFailed.Load() || ctx.Err() != nil || errorKind(err) == ErrorCanceled || errorKind(err) == ErrorBusy {
+	if err == nil || !automatic || cli.model == "" || visible.Load() || emitFailed.Load() || ctx.Err() != nil || errorKind(err) == ErrorCanceled || errorKind(err) == ErrorBusy || inChatHasWebTools(req.Input.Chat) {
 		return result, err
+	}
+	if req.Input.Chat != nil {
+		req.Input.Chat.settleTools("failed")
 	}
 	log.Printf("%s %s model %s failed before output, retrying with the CLI default: %v", a.provider, a.task, cli.model, err)
 	cli.model = ""
@@ -312,6 +315,13 @@ func (g *GenerationService) attempt(ctx context.Context, provider string, in AII
 		return runAttempt(ctx, g.connections[provider].Adapter, in, send)
 	})
 
+	if err != nil && in.Chat != nil {
+		status := "failed"
+		if ctx.Err() != nil {
+			status = "cancelled"
+		}
+		in.Chat.settleTools(status)
+	}
 	return result, err
 }
 func (g *GenerationService) generate(ctx context.Context, in AIInput, interactive, exposeText bool, emit func(ProviderEvent) error) (AIResult, error) {
@@ -363,7 +373,7 @@ func (g *GenerationService) generate(ctx context.Context, in AIInput, interactiv
 	if errorKind(err) == ErrorSave || errorKind(err) == ErrorBusy {
 		return AIResult{}, err
 	}
-	if visible {
+	if visible || in.Chat != nil && in.Chat.WebSearch {
 		return AIResult{}, err
 	}
 	target := "text-api"

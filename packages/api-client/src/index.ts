@@ -672,6 +672,7 @@ export const api = {
       prompt: string;
       context: string;
       userMessageId?: string;
+      webSearch?: boolean;
       references: SourceReference[];
       attachments: string[];
       readingLocation?: DocumentLocation;
@@ -753,6 +754,7 @@ export async function chat(
   onEvent?: (event: ChatStreamEvent) => void,
   readingLocation?: DocumentLocation,
   userMessageId?: string,
+  webSearch?: boolean,
 ) {
   const response = await diagnosticFetch(`/api/documents/${id}/chat`, {
     method: "POST",
@@ -768,6 +770,7 @@ export async function chat(
       readingLocation,
       attachments,
       userMessageId,
+      webSearch,
     }),
     signal,
   });

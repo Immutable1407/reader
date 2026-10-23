@@ -275,3 +275,13 @@ READER_TEST_STREAM_PROVIDER=kimi go test ./internal/reader -run '^TestLiveAgentS
 pi 原生 entries 保留工具调用配对、推理协议字段及压缩记录。历史图片二进制不重复写入数据库，而以明确提示替换；下一轮需要图片细节时必须重新读取页面，手动附件需再次提供。最终正文、当前候选正文、思考各限制 1 MiB；运行事件最多 8 MiB，接受的 native entries 最多 32 MiB，超过限制明确失败并保留之前的历史。
 
 后台翻译、概要、分类和公式处理继续使用既有链路。自有 Agent 仍按已有能力检测结果选择工具或预检索；本次没有扩充模型检测/登录协议。安装包通过现有 Electron 的 Node 模式运行 worker，不要求用户安装 Node。打包 smoke 在移动后的资源目录验证 pi 的模型流、工具往返和 entries，防止依赖意外从开发 checkout 解析。
+
+## 2026-10-23：联网授权与工具执行记录
+
+两个聊天 POST 入口接受可选 `webSearch: boolean`，默认 false。该值保存在用户消息，重新生成必须与原问题一致。支持范围和请求边界见 [联网搜索](web-search.md)。
+
+增加 `event: tool`，`data` 为统一的 `ToolActivity`：`id`、`kind`（search/web/tool）、`tool`、`title`、可选 `target`/`url`/`detail`、`status`（running/completed/failed/cancelled）、`startedAt` 和可选 `finishedAt`。同一个 id 更新同一步；正文、思考、done 或错误不删除已有步骤。最多 256 个步骤，记录独立于回答正文，不作为 delta 追加。
+
+成功的助手 Message 可带 `tools` 与 `webSources`。网页来源保存 URL、标题、search/page 类型、获取时间、可选正文快照和 truncated 状态，不与原文位置引用混用。独立会话已有运行事件存储同时保留失败和取消过程；客户端恢复同一个 run 时按 id 合并步骤。
+
+新增事件不改变 `done` 的含义：完整 Provider 结束、原文来源校验和回答/执行记录保存成功后才发送 done。取消、部分输出失败不追加备用答案；开启联网的回合也不静默切换搜索后端。

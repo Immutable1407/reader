@@ -2152,6 +2152,8 @@ export interface paths {
                             /** @enum {string} */
                             precision?: "page" | "block" | "paragraph";
                         }[];
+                        /** @description Omission uses saved search settings. Explicit true requires those settings to permit search; false opts out. Saved questions retain their permission on regeneration. */
+                        webSearch?: boolean;
                     };
                 };
             };
@@ -4474,6 +4476,8 @@ export interface paths {
                             /** @enum {string} */
                             precision?: "page" | "block" | "paragraph";
                         }[];
+                        /** @description Omission uses saved search settings. Explicit true requires those settings to permit search; false opts out. Saved questions retain their permission on regeneration. */
+                        webSearch?: boolean;
                     };
                 };
             };
@@ -4908,6 +4912,10 @@ export interface components {
             }[];
             /** @description Stable side chat session identity; omitted only by legacy clients. */
             sessionId?: string;
+            /** @default false */
+            webSearch: boolean;
+            tools?: components["schemas"]["ToolActivity"][];
+            webSources?: components["schemas"]["WebSource"][];
         };
         Provider: {
             /** @enum {string} */
@@ -4974,6 +4982,10 @@ export interface components {
                 /** @enum {boolean} */
                 ok: true;
             };
+        } | {
+            /** @constant */
+            event: "tool";
+            data: components["schemas"]["ToolActivity"];
         };
         Error: {
             error: string;
@@ -5083,7 +5095,22 @@ export interface components {
         };
         /** @enum {string} */
         ReasoningEffort: "low" | "medium" | "high" | "max";
+        WebSearchConfig: {
+            /** @description Allow supported CLI native web search. Currently Codex. */
+            cliEnabled: boolean;
+            /**
+             * @description Empty disables the search API.
+             * @enum {string}
+             */
+            provider: "" | "deepseek";
+            /** @description DeepSeek Search/Fetch compatible base URL. Independent of the chat model endpoint. */
+            url: string;
+            key?: string;
+            /** @description An empty key with hasKey=true preserves the saved key only at the same address. */
+            hasKey: boolean;
+        };
         AIConfig: {
+            webSearch?: components["schemas"]["WebSearchConfig"];
             primary: string;
             models: {
                 [key: string]: string;
@@ -5335,6 +5362,33 @@ export interface components {
             createdAt: string;
             updatedAt: string;
             latestRun?: components["schemas"]["ChatRun"];
+        };
+        ToolActivity: {
+            id: string;
+            /** @enum {unknown} */
+            kind: "search" | "web" | "tool";
+            tool: string;
+            title: string;
+            target?: string;
+            /** Format: uri */
+            url?: string;
+            /** @enum {unknown} */
+            status: "running" | "completed" | "failed" | "cancelled";
+            detail?: string;
+            startedAt: string;
+            finishedAt?: string;
+        };
+        WebSource: {
+            id: string;
+            /** Format: uri */
+            url: string;
+            title: string;
+            text?: string;
+            /** @enum {unknown} */
+            kind: "search" | "page";
+            retrievedAt: string;
+            publishedAt?: string;
+            truncated?: boolean;
         };
     };
     responses: never;

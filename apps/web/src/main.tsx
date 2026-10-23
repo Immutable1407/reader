@@ -28,6 +28,10 @@ if (import.meta.env.DEV && location.pathname === "/__streaming-benchmark") {
   void import("./chat/StreamingPreview").then(({ default: Preview }) =>
     root.render(<Preview />),
   );
+} else if (import.meta.env.DEV && location.pathname === "/__web-search") {
+  void import("./chat/WebSearchPreview").then(({ default: Preview }) =>
+    root.render(<Preview />),
+  );
 } else if (import.meta.env.DEV && location.pathname === "/__link-preview") {
   void import("./LinkPreviewDemo").then(({ default: Preview }) =>
     root.render(<Preview />),

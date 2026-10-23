@@ -564,7 +564,32 @@ export interface ImageAttachment {
   label: string;
   caption?: string;
 }
+export interface ToolActivity {
+  id: string;
+  kind: "search" | "web" | "tool";
+  tool: string;
+  title: string;
+  target?: string;
+  url?: string;
+  status: "running" | "completed" | "failed" | "cancelled";
+  detail?: string;
+  startedAt: string;
+  finishedAt?: string;
+}
+export interface WebSource {
+  id: string;
+  url: string;
+  title: string;
+  text?: string;
+  kind: "search" | "page";
+  retrievedAt: string;
+  publishedAt?: string;
+  truncated?: boolean;
+}
 export interface Message {
+  webSearch?: boolean;
+  tools?: ToolActivity[];
+  webSources?: WebSource[];
   sessionId?: string;
   /** Provider-returned thinking, displayed separately and never added to answer context. */
   reasoning?: string;
@@ -666,7 +691,17 @@ export interface APIConnection {
 }
 export type ReasoningEffort = "low" | "medium" | "high" | "max";
 
+export interface WebSearchConfig {
+  cliEnabled: boolean;
+  provider: "" | "deepseek";
+  url: string;
+  key?: string;
+  hasKey: boolean;
+}
+
 export interface AIConfig {
+  /** Persistent search permissions and a search connection independent of the model. */
+  webSearch?: WebSearchConfig;
   primary: string;
   models: Record<string, string>;
   efforts?: Record<string, Record<string, ReasoningEffort>>;

@@ -233,7 +233,7 @@ func sessionTitle(question string) string {
 }
 
 func (s *Store) saveChatAnswer(ctx context.Context, chat *chatInput, text, reasoning string) error {
-	message := Message{ID: id(), CreatedAt: now(), DocumentID: chat.DocumentID, SessionID: chat.SessionID, Role: "assistant", Content: text, Reasoning: reasoning}
+	message := Message{ID: id(), CreatedAt: now(), DocumentID: chat.DocumentID, SessionID: chat.SessionID, Role: "assistant", Content: text, Reasoning: reasoning, Tools: chat.toolSnapshot(), WebSources: chat.webSourcesSnapshot()}
 	tx, err := s.DB.BeginTx(ctx, nil)
 	if err != nil {
 		return err

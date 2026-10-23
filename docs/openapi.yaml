@@ -2533,6 +2533,11 @@
                                           "required": ["text", "location"],
                                         },
                                     },
+                                  "webSearch":
+                                    {
+                                      "type": "boolean",
+                                      "description": "Omission uses saved search settings. Explicit true requires those settings to permit search; false opts out. Saved questions retain their permission on regeneration.",
+                                    },
                                 },
                               "required": ["provider", "prompt", "context"],
                             },
@@ -5205,6 +5210,11 @@
                                           "required": ["text", "location"],
                                         },
                                     },
+                                  "webSearch":
+                                    {
+                                      "type": "boolean",
+                                      "description": "Omission uses saved search settings. Explicit true requires those settings to permit search; false opts out. Saved questions retain their permission on regeneration.",
+                                    },
                                 },
                               "required": ["provider", "prompt", "context"],
                             },
@@ -6143,6 +6153,19 @@
                       "type": "string",
                       "description": "Stable side chat session identity; omitted only by legacy clients.",
                     },
+                  "webSearch": { "type": "boolean", "default": false },
+                  "tools":
+                    {
+                      "type": "array",
+                      "maxItems": 256,
+                      "items": { "$ref": "#/components/schemas/ToolActivity" },
+                    },
+                  "webSources":
+                    {
+                      "type": "array",
+                      "maxItems": 24,
+                      "items": { "$ref": "#/components/schemas/WebSource" },
+                    },
                 },
               "required": ["id", "documentId", "role", "content", "createdAt"],
             },
@@ -6312,6 +6335,15 @@
                               { "ok": { "type": "boolean", "enum": [true] } },
                           },
                       },
+                  },
+                  {
+                    "type": "object",
+                    "properties":
+                      {
+                        "event": { "const": "tool", "type": "string" },
+                        "data": { "$ref": "#/components/schemas/ToolActivity" },
+                      },
+                    "required": ["event", "data"],
                   },
                 ],
             },
@@ -6551,11 +6583,43 @@
             },
           "ReasoningEffort":
             { "type": "string", "enum": ["low", "medium", "high", "max"] },
+          "WebSearchConfig":
+            {
+              "type": "object",
+              "properties":
+                {
+                  "cliEnabled":
+                    {
+                      "type": "boolean",
+                      "description": "Allow supported CLI native web search. Currently Codex.",
+                    },
+                  "provider":
+                    {
+                      "type": "string",
+                      "enum": ["", "deepseek"],
+                      "description": "Empty disables the search API.",
+                    },
+                  "url":
+                    {
+                      "type": "string",
+                      "description": "DeepSeek Search/Fetch compatible base URL. Independent of the chat model endpoint.",
+                    },
+                  "key": { "type": "string", "writeOnly": true },
+                  "hasKey":
+                    {
+                      "type": "boolean",
+                      "description": "An empty key with hasKey=true preserves the saved key only at the same address.",
+                    },
+                },
+              "required": ["cliEnabled", "provider", "url", "hasKey"],
+            },
           "AIConfig":
             {
               "type": "object",
               "properties":
                 {
+                  "webSearch":
+                    { "$ref": "#/components/schemas/WebSearchConfig" },
                   "primary": { "type": "string" },
                   "models":
                     {
@@ -7183,6 +7247,42 @@
                   "createdAt": { "type": "string" },
                   "updatedAt": { "type": "string" },
                   "latestRun": { "$ref": "#/components/schemas/ChatRun" },
+                },
+            },
+          "ToolActivity":
+            {
+              "type": "object",
+              "required":
+                ["id", "kind", "tool", "title", "status", "startedAt"],
+              "properties":
+                {
+                  "id": { "type": "string" },
+                  "kind": { "enum": ["search", "web", "tool"] },
+                  "tool": { "type": "string" },
+                  "title": { "type": "string" },
+                  "target": { "type": "string" },
+                  "url": { "type": "string", "format": "uri" },
+                  "status":
+                    { "enum": ["running", "completed", "failed", "cancelled"] },
+                  "detail": { "type": "string" },
+                  "startedAt": { "type": "string" },
+                  "finishedAt": { "type": "string" },
+                },
+            },
+          "WebSource":
+            {
+              "type": "object",
+              "required": ["id", "url", "title", "kind", "retrievedAt"],
+              "properties":
+                {
+                  "id": { "type": "string" },
+                  "url": { "type": "string", "format": "uri" },
+                  "title": { "type": "string" },
+                  "text": { "type": "string" },
+                  "kind": { "enum": ["search", "page"] },
+                  "retrievedAt": { "type": "string" },
+                  "publishedAt": { "type": "string" },
+                  "truncated": { "type": "boolean" },
                 },
             },
         },

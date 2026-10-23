@@ -1,6 +1,7 @@
 import { api, chat, type ChatStreamEvent } from "@reader/api";
 import type {
   ChatRun,
+  ToolActivity,
   DocumentLocation,
   ImageAttachment,
   Message,
@@ -8,6 +9,7 @@ import type {
 } from "@reader/core";
 import { refreshAIConfig } from "../store";
 export type ChatInput = {
+  webSearch?: boolean;
   /** Stable identity of the question across explicit regeneration attempts. */
   userMessageId?: string;
   readingLocation?: DocumentLocation;
@@ -18,6 +20,7 @@ export type ChatInput = {
   attachments: ImageAttachment[];
 };
 export type PendingAnswer = {
+  tools?: ToolActivity[];
   reasoning?: string;
   draft?: string;
   key: string;
@@ -80,6 +83,7 @@ const transport: ChatTransport = {
         emit,
         input.readingLocation,
         input.userMessageId,
+        input.webSearch,
       );
     } finally {
       // The server records failed primary attempts even when a fallback succeeds.
@@ -162,6 +166,7 @@ export class ChatSession {
               references: last.references ?? [],
               attachments: last.attachments ?? [],
               readingLocation: last.readingLocation,
+              webSearch: last.webSearch,
             },
             controller: new AbortController(),
           };
@@ -173,7 +178,12 @@ export class ChatSession {
           loaded: true,
           loadError: undefined,
         });
-        if (run?.status === "running" && this.current(serial)) {
+        if (
+          run &&
+          this.current(serial) &&
+          (run.status === "running" ||
+            (last?.role === "user" && run.userMessageId === last.id))
+        ) {
           const question = messages.find((m) => m.id === run.userMessageId);
           if (question)
             void this.generate(
@@ -185,6 +195,7 @@ export class ChatSession {
                 references: question.references ?? [],
                 attachments: question.attachments ?? [],
                 readingLocation: question.readingLocation,
+                webSearch: question.webSearch,
               },
               this.active,
               run,
@@ -248,6 +259,16 @@ export class ChatSession {
       if (!this.current(serial) || controller.signal.aborted || terminal)
         return;
       received = true;
+      if (event.event === "tool") {
+        const tools = [...(pending.tools ?? [])];
+        const index = tools.findIndex((t) => t.id === event.data.id);
+        if (index < 0) {
+          if (tools.length < 256) tools.push(event.data);
+        } else tools[index] = event.data;
+        pending.tools = tools;
+        this.flush();
+        return;
+      }
       if (event.event === "reasoning") {
         pending.reasoning = (pending.reasoning || "") + event.data.text;
         pending.notice = "";
@@ -290,6 +311,9 @@ export class ChatSession {
         pending.notice = event.data.message;
       }
       if (event.event === "error") {
+        pending.tools = pending.tools?.map((t) =>
+          t.status === "running" ? { ...t, status: "failed" } : t,
+        );
         pending.error = event.data.error;
         pending.activity = undefined;
         terminal = true;
@@ -311,12 +335,18 @@ export class ChatSession {
         await this.io.stream(this.documentId, input, controller.signal, emit);
       if (!this.current(serial)) return;
       if (!terminal && !controller.signal.aborted) {
+        pending.tools = pending.tools?.map((t) =>
+          t.status === "running" ? { ...t, status: "failed" } : t,
+        );
         pending.phase = "unconfirmed";
         pending.notice = "完成状态未确认";
       }
     } catch (error) {
       if (!this.current(serial)) return;
       if (!terminal && !controller.signal.aborted) {
+        pending.tools = pending.tools?.map((t) =>
+          t.status === "running" ? { ...t, status: "failed" } : t,
+        );
         pending.phase = "unconfirmed";
         pending.error = (error as Error).message;
         pending.notice = `${(error as Error).message}；完成状态未确认`;
@@ -341,6 +371,9 @@ export class ChatSession {
       this.serial++;
       this.regeneration = undefined;
       this.query?.abort();
+      pending.tools = pending.tools?.map((t) =>
+        t.status === "running" ? { ...t, status: "cancelled" } : t,
+      );
       pending.phase = "cancelled";
       pending.notice = "已取消重新生成。";
       this.publish({ busy: false });
@@ -352,10 +385,16 @@ export class ChatSession {
         !(this.io.cancel && pending.phase === "unconfirmed"))
     )
       return;
+    pending.tools = pending.tools?.map((t) =>
+      t.status === "running" ? { ...t, status: "cancelled" } : t,
+    );
     pending.phase = "cancelled";
     pending.notice = "已停止；正在核对保存状态";
     if (this.io.cancel) {
       void this.io.cancel().catch((error: Error) => {
+        pending.tools = pending.tools?.map((t) =>
+          t.status === "running" ? { ...t, status: "failed" } : t,
+        );
         pending.phase = "unconfirmed";
         pending.notice = `停止状态未确认：${error.message}`;
         this.flush();
@@ -454,6 +493,7 @@ export class ChatSession {
         pending.savedId = assistant.id;
         pending.content = assistant.content;
         pending.reasoning = assistant.reasoning;
+        pending.tools = assistant.tools;
         pending.draft = "";
         pending.phase = "saved";
         pending.notice = "";

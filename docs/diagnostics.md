@@ -144,3 +144,7 @@ API 厂商规则、实际强度映射、上游错误分类和请求关联字段�
 最终事件的 `nativeTrace` 额外保留最近 32 个白名单原生源码文件名与行号（例如 `inference_session.cc:534`），不含本机路径和原始消息。它用于对照原生库源码缩小初始化内部的失败范围。
 
 最终事件增加 `exitCodeHex`。Windows 的 `0xFFFF7003` 对应 Crashpad 未连接到崩溃处理程序，不能据此判断最初的异常原因。本次补充不会恢复旧诊断包中已丢弃的 stderr，也不保证所有原生崩溃均可仅凭日志确诊。
+
+## 联网搜索配置与权限
+
+`web.search.config_saved / config_rejected` 记录保存结果、CLI 是否启用、搜索服务类型和是否配置密钥；`web.search.permissions` 记录一次提问请求的提供方、请求的联网状态及设置核验后的授权结果，均带 `requestId`。不采集搜索服务地址、任何 Key、搜索词、网页内容或问题正文。

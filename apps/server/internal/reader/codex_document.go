@@ -55,8 +55,9 @@ func (s *codexSession) documentConfig(ctx context.Context) (map[string]codexMCPC
 	s.contextWindow = codexConfiguredWindow(raw)
 	var result struct {
 		Config struct {
-			Servers  map[string]codexMCPConfig  `json:"mcp_servers"`
-			Features map[string]json.RawMessage `json:"features"`
+			Servers   map[string]codexMCPConfig  `json:"mcp_servers"`
+			Features  map[string]json.RawMessage `json:"features"`
+			WebSearch string                     `json:"web_search"`
 		} `json:"config"`
 	}
 	if json.Unmarshal(raw, &result) != nil || result.Config.Servers == nil {
@@ -70,6 +71,13 @@ func (s *codexSession) documentConfig(ctx context.Context) (map[string]codexMCPC
 		if enabled {
 			return nil, generationError(ErrorCapability, "Codex 无关能力未关闭")
 		}
+	}
+	expectedWeb := "disabled"
+	if s.webSearch {
+		expectedWeb = "live"
+	}
+	if result.Config.WebSearch != expectedWeb {
+		return nil, generationError(ErrorCapability, "Codex 联网搜索权限与本轮设置不符")
 	}
 	return result.Config.Servers, nil
 }
@@ -115,7 +123,8 @@ func (s *codexSession) verifyDocumentConfig(ctx context.Context) (map[string]cod
 	}
 	return servers, nil
 }
-func isolatedDocumentCodex(ctx context.Context, work, model, url, token string) (*codexSession, error) {
+func isolatedDocumentCodex(ctx context.Context, work, model, url, token string, search ...bool) (*codexSession, error) {
+	webSearch := len(search) > 0 && search[0]
 	probe, e := newCodexSession(work, model)
 	if e != nil {
 		return nil, e
@@ -136,6 +145,9 @@ func isolatedDocumentCodex(ctx context.Context, work, model, url, token string) 
 	sort.Strings(names)
 	// Keep the native harness from truncating Reader's bounded range results.
 	overrides := []string{"tool_output_token_limit=24000"}
+	if webSearch {
+		overrides = append(overrides, `web_search="live"`)
+	}
 	readerName := "reader_document"
 	if _, collision := servers[readerName]; collision {
 		readerName += "_" + sourceKey(work)[:8]
@@ -154,9 +166,10 @@ func isolatedDocumentCodex(ctx context.Context, work, model, url, token string) 
 	if e != nil {
 		return nil, e
 	}
+	session.webSearch = webSearch
 	session.documentMCP = url
 	session.documentMCPName = readerName
-	session.baseInstructions = readerSystemPrompt
+	session.baseInstructions = webInstructions(readerSystemPrompt, webSearch)
 	if e = session.initializeControl(ctx); e == nil {
 		_, e = session.verifyDocumentConfig(ctx)
 	}
@@ -206,6 +219,7 @@ func validDocumentMCPStatus(raw json.RawMessage, expected string) bool {
 }
 func streamCodexDocumentChat(ctx context.Context, root, model string, in AIInput, emit func(ProviderEvent) error) (GenerateResult, error) {
 	a := in.Chat.Agent
+	a.chat = in.Chat
 	a.resetAttempt("codex")
 	a.Mode = "agent"
 	if err := a.prepareReading(ctx, in); err != nil {

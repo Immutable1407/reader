@@ -167,6 +167,8 @@ func runAgentProcess() {
 			switch req.Method {
 			case "initialize":
 				respond(map[string]string{"userAgent": "test"})
+			case "config/read":
+				respond(map[string]any{"config": map[string]any{"mcp_servers": map[string]any{}, "features": map[string]bool{}, "web_search": "disabled"}})
 			case "initialized":
 			case "model/list":
 				respond(map[string]any{"data": []any{map[string]any{"model": "test-model", "displayName": "Test", "isDefault": true}}})
@@ -222,6 +224,7 @@ func runAgentProcess() {
 				}
 				notify("item/reasoning/textDelta", map[string]any{"delta": "private"})
 				notify("item/commandExecution/outputDelta", map[string]any{"delta": "tool output"})
+				notify("item/started", map[string]any{"item": map[string]string{"id": "answer", "type": "agentMessage", "phase": "final_answer"}})
 				notify("item/agentMessage/delta", map[string]any{"itemId": "answer", "delta": "你好"})
 				if mode == "interleaved" {
 					respond(map[string]any{"turn": map[string]string{"id": currentTurn, "status": "inProgress"}})

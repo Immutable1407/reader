@@ -1,3 +1,4 @@
+import { webSearchEnabled } from "./chat/web-search";
 import { NavigationTree } from "./NavigationTree";
 import { useShortcut } from "./shortcuts/shortcuts";
 import { useDocumentTheme } from "./useDocumentTheme";
@@ -374,6 +375,7 @@ export function Workspace({
   const currentSession =
     sessions.find((s) => s.id === preferred) ?? sessions[0];
   const provider = aiConfig?.primary ?? "";
+  const webSearch = webSearchEnabled(provider, aiConfig?.webSearch);
   const sessionListSerial = useRef(0);
   const refreshSessions = useCallback(async () => {
     const serial = ++sessionListSerial.current;
@@ -813,6 +815,7 @@ export function Workspace({
       if (!directImage) setPrompt("");
       await session.send({
         provider,
+        webSearch,
         prompt: question,
         context,
         references: captured.references,
