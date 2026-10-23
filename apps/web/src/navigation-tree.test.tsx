@@ -248,7 +248,14 @@ it("toggles using the checkbox and clears selection with Escape", async () => {
         new KeyboardEvent("keydown", { bubbles: true, key: "Escape" }),
       ),
   );
-  expect(host.querySelector('[aria-label="删除所选目录"]')).toBeNull();
+  expect(
+    host
+      .querySelector(".navigation-selection-actions")
+      ?.getAttribute("aria-hidden"),
+  ).toBe("true");
+  expect(document.activeElement).toBe(
+    host.querySelector('[aria-label="多选目录"]'),
+  );
 });
 it("selects collapsed descendants with select all and can deselect all", async () => {
   mocks.load.mockResolvedValue({

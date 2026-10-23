@@ -70,6 +70,7 @@ export function NavigationTree({
   const [dropTarget, setDropTarget] = useState<string>();
   const [selecting, setSelecting] = useState(false);
   const [checked, setChecked] = useState<Set<string>>(new Set());
+  const selectionToggle = useRef<HTMLButtonElement>(null);
   const anchor = useRef<string | undefined>(undefined);
   const [selected, setSelected] = useState<string>();
   useEffect(() => {
@@ -199,6 +200,7 @@ export function NavigationTree({
     if (!event.shiftKey || start < 0) anchor.current = id;
   }
   function exitSelection() {
+    selectionToggle.current?.focus();
     setSelecting(false);
     setChecked(new Set());
     anchor.current = undefined;
@@ -468,6 +470,8 @@ export function NavigationTree({
         <Button
           variant="ghost"
           size="icon-sm"
+          ref={selectionToggle}
+          aria-expanded={selecting}
           aria-label={selecting ? "退出多选" : "多选目录"}
           title={selecting ? "退出多选" : "多选目录"}
           aria-pressed={selecting}
@@ -476,8 +480,12 @@ export function NavigationTree({
         >
           <SquareCheck className="size-4" />
         </Button>
-        {selecting && (
-          <>
+        <div
+          className="navigation-selection-actions"
+          inert={!selecting}
+          aria-hidden={!selecting}
+        >
+          <div className="navigation-selection-actions-inner">
             <Button
               variant="ghost"
               size="sm"
@@ -511,8 +519,8 @@ export function NavigationTree({
             >
               <X className="size-4" />
             </Button>
-          </>
-        )}
+          </div>
+        </div>
       </div>
     </nav>
   );

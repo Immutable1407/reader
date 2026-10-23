@@ -685,7 +685,7 @@ kbd {
   left: 12px;
   display: flex;
   align-items: center;
-  gap: 4px;
+  gap: 0;
   padding: 3px;
   border: 1px solid var(--border);
   border-radius: 999px;
@@ -703,9 +703,43 @@ kbd {
   border-radius: 50%;
 }
 .navigation-selection-toolbar.is-selecting {
-  max-width: calc(100% - 24px);
-  flex-wrap: wrap;
   border-radius: 18px;
+}
+/* Keep actions mounted so closing can finish before they become invisible. */
+.navigation-selection-actions {
+  width: 0;
+  overflow: hidden;
+  opacity: 0;
+  visibility: hidden;
+}
+.navigation-selection-actions-inner {
+  width: 164px;
+  padding-left: 4px;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+.navigation-selection-actions-inner > button:first-child {
+  flex: 1;
+}
+.navigation-selection-toolbar.is-selecting .navigation-selection-actions {
+  width: 164px;
+  opacity: 1;
+  visibility: visible;
+}
+@media (prefers-reduced-motion: no-preference) {
+  .navigation-selection-toolbar {
+    transition: border-radius 180ms ease;
+  }
+  .navigation-selection-actions {
+    transition:
+      width 180ms ease,
+      opacity 140ms ease,
+      visibility 0s 180ms;
+  }
+  .navigation-selection-toolbar.is-selecting .navigation-selection-actions {
+    transition-delay: 0s;
+  }
 }
 .navigation-row {
   display: flex;
