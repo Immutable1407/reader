@@ -1,4 +1,4 @@
-import type { Annotation, ReaderAnnotationTarget } from "@reader/core";
+import type { Annotation, ReaderAnnotationTarget } from "@neoread/core";
 
 // Observe the text layer without intercepting text selection or PDF links.
 export class PDFAnnotationLayer {

@@ -12,7 +12,7 @@ import {
   type ReaderTheme,
   type SearchResult,
   type TranslationBlock,
-} from "@reader/core";
+} from "@neoread/core";
 const fixture = vi.hoisted(() => ({
   events: undefined as ReaderEvents | undefined,
   ready: undefined as ReaderAdapter | undefined,
@@ -26,7 +26,7 @@ const fixture = vi.hoisted(() => ({
     | undefined,
   signal: undefined as AbortSignal | undefined,
 }));
-vi.mock("@reader/api", () => ({
+vi.mock("@neoread/api", () => ({
   api: {
     assistance: vi.fn(async () => undefined),
     translationStream: vi.fn(
@@ -446,7 +446,7 @@ it("links block hover in both directions and clears it without changing sentence
   await act(async () =>
     fixture.events!.blockHover?.({
       id: "p1-b1",
-    } as import("@reader/core").PDFBlock),
+    } as import("@neoread/core").PDFBlock),
   );
   const block = host.querySelector<HTMLElement>(
     '[data-translation-block="p1-b1"]',

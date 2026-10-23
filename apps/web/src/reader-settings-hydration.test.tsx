@@ -2,11 +2,11 @@
 import { act } from "react";
 import { createRoot } from "react-dom/client";
 import { expect, it, vi } from "vitest";
-import { api } from "@reader/api";
-import { defaultTheme, type ReaderTheme } from "@reader/core";
+import { api } from "@neoread/api";
+import { defaultTheme, type ReaderTheme } from "@neoread/core";
 import { useSaveReaderSettings } from "./reader-settings";
 
-vi.mock("@reader/api", () => ({ api: { saveSettings: vi.fn() } }));
+vi.mock("@neoread/api", () => ({ api: { saveSettings: vi.fn() } }));
 vi.mock("sonner", () => ({ toast: { error: vi.fn() } }));
 
 it("saves restored settings once hydration finishes even without another theme change", async () => {

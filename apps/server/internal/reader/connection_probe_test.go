@@ -14,7 +14,7 @@ func TestConnectionStages(t *testing.T) {
 	upstream := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		calls++
 		if calls == 1 {
-			writeAPIReply(w, "Sure — **READER_OK**.")
+			writeAPIReply(w, "Sure — **NEOREAD_OK**.")
 			return
 		}
 		http.Error(w, "image input not supported", http.StatusBadRequest)
@@ -64,7 +64,7 @@ func TestVisionProbeFormatting(t *testing.T) {
 			t.Fatalf("valid image answer rejected: %q", answer)
 		}
 	}
-	for _, answer := range []string{"READER_OK", "I cannot see the image", "RED BLUE", expected + " RED", "YELLOW BLUE GREEN YELLOW RED BLUE GREEN YELLOW"} {
+	for _, answer := range []string{"NEOREAD_OK", "I cannot see the image", "RED BLUE", expected + " RED", "YELLOW BLUE GREEN YELLOW RED BLUE GREEN YELLOW"} {
 		if matchesVisionProbe(answer, expected) {
 			t.Fatalf("invalid image answer accepted: %q", answer)
 		}
@@ -88,7 +88,7 @@ func TestConnectionProbeRejectsStaleResult(t *testing.T) {
 				if err != nil {
 					t.Error(err)
 				}
-				writeAPIReply(w, "READER_OK")
+				writeAPIReply(w, "NEOREAD_OK")
 			}))
 			defer upstream.Close()
 			c := s.aiConfig()
@@ -108,8 +108,8 @@ func TestConnectionProbeRejectsStaleResult(t *testing.T) {
 // and real documents are never read by the test. Vision availability is reported
 // independently because the CLI may point at a text-only model.
 func TestLiveClaudeCapabilities(t *testing.T) {
-	if os.Getenv("READER_TEST_CLAUDE") != "1" {
-		t.Skip("set READER_TEST_CLAUDE=1 to check the local CLI")
+	if os.Getenv("NEOREAD_TEST_CLAUDE") != "1" {
+		t.Skip("set NEOREAD_TEST_CLAUDE=1 to check the local CLI")
 	}
 	s := testServer(t)
 	for _, stage := range []string{"text", "vision"} {

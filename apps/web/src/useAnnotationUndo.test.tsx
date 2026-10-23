@@ -2,13 +2,13 @@
 import { act } from "react";
 import { createRoot, type Root } from "react-dom/client";
 import { beforeEach, afterEach, expect, it, vi } from "vitest";
-import { api } from "@reader/api";
+import { api } from "@neoread/api";
 import { useAnnotationUndo } from "./useAnnotationUndo";
-vi.mock("@reader/api", () => ({ api: { undoAnnotation: vi.fn() } }));
+vi.mock("@neoread/api", () => ({ api: { undoAnnotation: vi.fn() } }));
 vi.mock("sonner", () => ({ toast: { error: vi.fn() } }));
 let root: Root, host: HTMLDivElement;
 const changed = vi.fn();
-function Reader({
+function NeoRead({
   id = "one",
   blocked = false,
 }: {
@@ -35,7 +35,7 @@ beforeEach(async () => {
     undone: true,
     annotations: [],
   });
-  await act(async () => root.render(<Reader />));
+  await act(async () => root.render(<NeoRead />));
 });
 afterEach(async () => {
   await act(async () => root.unmount());
@@ -88,12 +88,12 @@ it("does not overwrite a new document with a late undo response", async () => {
       }),
   );
   await key(window);
-  await act(async () => root.render(<Reader id="two" />));
+  await act(async () => root.render(<NeoRead id="two" />));
   await act(async () => finish({ undone: true, annotations: [] }));
   expect(changed).not.toHaveBeenCalled();
 });
 it("does not undo while preparing an annotation", async () => {
-  await act(async () => root.render(<Reader blocked />));
+  await act(async () => root.render(<NeoRead blocked />));
   await key(window);
   expect(api.undoAnnotation).not.toHaveBeenCalled();
 });

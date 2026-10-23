@@ -18,8 +18,8 @@ import (
 // Opt-in installed-CLI contract check. All state and responses are synthetic.
 // A loopback provider creates the seed turn; no real model or credentials are used.
 func TestCodexHandoffInstalledCLI(t *testing.T) {
-	if os.Getenv("READER_CODEX_HANDOFF_LIVE") != "1" {
-		t.Skip("set READER_CODEX_HANDOFF_LIVE=1 for the offline installed-CLI check")
+	if os.Getenv("NEOREAD_CODEX_HANDOFF_LIVE") != "1" {
+		t.Skip("set NEOREAD_CODEX_HANDOFF_LIVE=1 for the offline installed-CLI check")
 	}
 	if _, err := exec.LookPath("codex"); err != nil {
 		t.Fatal(err)
@@ -67,7 +67,7 @@ stream_max_retries = 0
 	defer seed.close()
 	seed.persistent = true
 	seed.baseInstructions = "Synthetic reading fixture"
-	// generate normally verifies Reader MCP isolation; the fixture has no MCP.
+	// generate normally verifies NeoRead MCP isolation; the fixture has no MCP.
 	if _, err = seed.generate(ctx, AIInput{Prompt: "Synthetic reader question"}, func(string) {}); err != nil {
 		t.Fatal(err)
 	}

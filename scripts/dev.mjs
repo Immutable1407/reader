@@ -6,12 +6,12 @@ const pnpm = process.env.npm_execpath;
 if (!pnpm) throw new Error("Start development with pnpm dev");
 execFileSync(
   process.execPath,
-  [pnpm, "--filter", "@reader/processor", "build"],
+  [pnpm, "--filter", "@neoread/processor", "build"],
   {
     stdio: "inherit",
   },
 );
-execFileSync(process.execPath, [pnpm, "--filter", "@reader/agent", "build"], {
+execFileSync(process.execPath, [pnpm, "--filter", "@neoread/agent", "build"], {
   stdio: "inherit",
 });
 const token = randomBytes(32).toString("hex");
@@ -21,7 +21,7 @@ execFileSync(
   { stdio: "inherit" },
 );
 const binary =
-  process.platform === "win32" ? "reader-server.exe" : "reader-server";
+  process.platform === "win32" ? "neoread-server.exe" : "neoread-server";
 const server = spawn(
   `../desktop/bin/${binary}`,
   [
@@ -29,18 +29,18 @@ const server = spawn(
     "../../.reader",
     "--port",
     "17840",
-    ...(process.env.READER_DEV_CONNECTOR === "1" ? [] : ["--connector=false"]),
+    ...(process.env.NEOREAD_DEV_CONNECTOR === "1" ? [] : ["--connector=false"]),
   ],
   {
     cwd: new URL("../apps/server/", import.meta.url),
     env: {
       ...process.env,
-      READER_TOKEN: token,
-      READER_NODE: process.execPath,
-      READER_AGENT: fileURLToPath(
+      NEOREAD_TOKEN: token,
+      NEOREAD_NODE: process.execPath,
+      NEOREAD_AGENT: fileURLToPath(
         new URL("../apps/agent/dist/main.mjs", import.meta.url),
       ),
-      READER_PROCESSOR: fileURLToPath(
+      NEOREAD_PROCESSOR: fileURLToPath(
         new URL("../apps/processor/dist/main.mjs", import.meta.url),
       ),
     },
@@ -49,7 +49,7 @@ const server = spawn(
 );
 let web;
 createInterface({ input: server.stdout }).once("line", () => {
-  web = spawn(process.execPath, [pnpm, "--filter", "@reader/web", "dev"], {
+  web = spawn(process.execPath, [pnpm, "--filter", "@neoread/web", "dev"], {
     stdio: "inherit",
   });
   console.log(`\nReader: http://127.0.0.1:5173/#token=${token}\n`);

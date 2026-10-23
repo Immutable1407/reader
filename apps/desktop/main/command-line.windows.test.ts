@@ -63,7 +63,7 @@ describe.runIf(process.platform === "win32")(
       const host = {
         platform: "win32" as const,
         packaged: true,
-        binary: join(bin, "reader.exe"),
+        binary: join(bin, "neoread.exe"),
         env: process.env,
       };
       expect(await commandLineStatus(host)).toEqual({
@@ -77,7 +77,7 @@ describe.runIf(process.platform === "win32")(
       const before = await readPath();
       await commandLineStatus({
         ...host,
-        env: { ...process.env, READER_PATH_WRITE: "1", READER_PATH_VALUE: "" },
+        env: { ...process.env, NEOREAD_PATH_WRITE: "1", NEOREAD_PATH_VALUE: "" },
       });
       expect(await readPath()).toEqual(before);
 

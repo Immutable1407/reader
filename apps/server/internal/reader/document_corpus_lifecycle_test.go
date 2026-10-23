@@ -49,8 +49,8 @@ func TestDocumentCorpusPreparedAfterImportWithoutChat(t *testing.T) {
 
 func TestDocumentCorpusPreparedDuringPDFParsing(t *testing.T) {
 	s, p := processingFixture(t)
-	t.Setenv("READER_NODE", "/nonexistent-node")
-	t.Setenv("READER_CORPUS_PROCESSOR", "/nonexistent-worker")
+	t.Setenv("NEOREAD_NODE", "/nonexistent-node")
+	t.Setenv("NEOREAD_CORPUS_PROCESSOR", "/nonexistent-worker")
 	if err := s.learnPDF(t.Context(), &p); err != nil {
 		t.Fatal(err)
 	}

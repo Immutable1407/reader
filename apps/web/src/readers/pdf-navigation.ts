@@ -2,7 +2,7 @@ import { animatePDFScroll } from "./pdf-scroll";
 import { sentenceTextRanges } from "./pdf-sentence-matching";
 import * as pdfjs from "pdfjs-dist";
 import type { PDFViewer } from "pdfjs-dist/web/pdf_viewer.mjs";
-import { isPDFPageDecoration, sentenceAnchor } from "@reader/core";
+import { isPDFPageDecoration, sentenceAnchor } from "@neoread/core";
 import type {
   PDFBlock,
   PDFReadingAnchor,
@@ -11,7 +11,7 @@ import type {
   PDFPassage,
   PDFSentenceLink,
   TranslationBlock,
-} from "@reader/core";
+} from "@neoread/core";
 import { overlap, type Box } from "./pdf-reading";
 
 export class PDFReadingNavigation {

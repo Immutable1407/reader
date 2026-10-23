@@ -19,7 +19,7 @@ func TestCLISystemPrompt(t *testing.T) {
 				fakeAgent(t, provider, "success")
 				s := testServer(t)
 				capture := filepath.Join(t.TempDir(), "system.txt")
-				t.Setenv("READER_SYSTEM_CAPTURE", capture)
+				t.Setenv("NEOREAD_SYSTEM_CAPTURE", capture)
 				in := AIInput{Prompt: "Explain the supplied formula."}
 				if vision {
 					in.Image = []byte{1}

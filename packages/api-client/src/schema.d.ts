@@ -1154,7 +1154,7 @@ export interface paths {
         };
         get?: never;
         put?: never;
-        /** @description Copy one previewed PDF, convert supported embedded marks into Reader annotations and remove only those marks from the copy. Source files are unchanged. */
+        /** @description Copy one previewed PDF, convert supported embedded marks into NeoRead annotations and remove only those marks from the copy. Source files are unchanged. */
         post: {
             parameters: {
                 query?: never;
@@ -1630,7 +1630,7 @@ export interface paths {
             parameters: {
                 query?: never;
                 header: {
-                    "X-Reader-Undo-Session": string;
+                    "X-NeoRead-Undo-Session": string;
                 };
                 path: {
                     id: string;
@@ -1721,7 +1721,7 @@ export interface paths {
                 query?: never;
                 header?: {
                     /** @description Opt into per-window annotation undo history. */
-                    "X-Reader-Undo-Session"?: string;
+                    "X-NeoRead-Undo-Session"?: string;
                 };
                 path: {
                     id: string;
@@ -1785,7 +1785,7 @@ export interface paths {
                 query?: never;
                 header?: {
                     /** @description Opt into per-window annotation undo history. */
-                    "X-Reader-Undo-Session"?: string;
+                    "X-NeoRead-Undo-Session"?: string;
                 };
                 path: {
                     id: string;
@@ -1822,7 +1822,7 @@ export interface paths {
                 query?: never;
                 header?: {
                     /** @description Opt into per-window annotation undo history. */
-                    "X-Reader-Undo-Session"?: string;
+                    "X-NeoRead-Undo-Session"?: string;
                 };
                 path: {
                     id: string;
@@ -2070,7 +2070,7 @@ export interface paths {
         };
         get?: never;
         put?: never;
-        /** @description Fork the last committed Codex reading turn into an independent conversation with local document and chat snapshots. Does not generate a model answer or change the Reader conversation. Repeated requests for the same snapshot reuse the fork. */
+        /** @description Fork the last committed Codex reading turn into an independent conversation with local document and chat snapshots. Does not generate a model answer or change the NeoRead conversation. Repeated requests for the same snapshot reuse the fork. */
         post: {
             parameters: {
                 query?: {
@@ -5115,7 +5115,7 @@ export interface components {
             models: {
                 [key: string]: string;
             };
-            /** @description Reader effort by provider and model ID. Defaults to medium; adapted to SDK-native values on invocation. */
+            /** @description NeoRead effort by provider and model ID. Defaults to medium; adapted to SDK-native values on invocation. */
             efforts?: {
                 [key: string]: {
                     [key: string]: components["schemas"]["ReasoningEffort"];

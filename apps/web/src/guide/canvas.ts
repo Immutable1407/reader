@@ -1,6 +1,6 @@
 // A small canvas engine for guide demonstrations. A scene is a cursor script
 // (moves, clicks, typing, named marks) plus a draw function that paints a
-// simplified Reader interface for any moment of that script.
+// simplified NeoRead interface for any moment of that script.
 
 export interface Point {
   x: number;

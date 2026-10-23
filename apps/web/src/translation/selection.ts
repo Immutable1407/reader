@@ -8,8 +8,8 @@ import type {
   ReaderSelection,
   TranslationBlock,
   TranslationLocation,
-} from "@reader/core";
-import { sentenceAnchor } from "@reader/core";
+} from "@neoread/core";
+import { sentenceAnchor } from "@neoread/core";
 
 export function translatedSelection(
   host: HTMLElement,

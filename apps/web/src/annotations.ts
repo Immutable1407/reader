@@ -1,4 +1,4 @@
-import type { Annotation, HighlightColor, ReaderTheme } from "@reader/core";
+import type { Annotation, HighlightColor, ReaderTheme } from "@neoread/core";
 
 export function activeAnnotation(items: Annotation[], ids: string[]) {
   const matches = items.filter((item) => ids.includes(item.id));

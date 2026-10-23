@@ -1,13 +1,13 @@
 import { readPDFOutline } from "./readers/pdf-outline";
 import { buildNavigation } from "./navigation-model";
-import type { Annotation, Document } from "@reader/core";
-import { api, publicationURL } from "@reader/api";
+import type { Annotation, Document } from "@neoread/core";
+import { api, publicationURL } from "@neoread/api";
 import workerURL from "pdfjs-dist/build/pdf.worker.min.mjs?url";
 import { toast } from "sonner";
 import { downloadBlob, fileTitle } from "./download";
 import { annotatedPDF } from "./readers/pdf-export";
 
-/** Saves a copy of the PDF with Reader's annotations written into it. */
+/** Saves a copy of the PDF with NeoRead's annotations written into it. */
 export async function exportAnnotatedPDF(
   doc: Document,
   kinds?: Annotation["kind"][],

@@ -1,4 +1,4 @@
-import type { PDFLocation } from "@reader/core";
+import type { PDFLocation } from "@neoread/core";
 
 /** Transient navigation feedback, independent of selection and parsed blocks. */
 export class PDFLocationHighlight {

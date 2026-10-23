@@ -14,8 +14,8 @@ app.whenReady().then(async () => {
       await new Promise((resolve, reject) => {
         const timer = setTimeout(() => reject(new Error(`benchmark timeout ${bytes}/${animated}`)), 180000);
         window.webContents.on("console-message", (_, level, message) => {
-          if (message.startsWith("READER_BENCHMARK=")) {
-            const result = JSON.parse(message.slice("READER_BENCHMARK=".length));
+          if (message.startsWith("NEOREAD_BENCHMARK=")) {
+            const result = JSON.parse(message.slice("NEOREAD_BENCHMARK=".length));
             results.push(result); console.log(JSON.stringify(result)); clearTimeout(timer); resolve();
           }
           if (level >= 3) console.error(message);
@@ -25,7 +25,7 @@ app.whenReady().then(async () => {
       window.destroy();
     }
   }
-  if (process.env.READER_BENCHMARK_OUTPUT) fs.writeFileSync(process.env.READER_BENCHMARK_OUTPUT, JSON.stringify(results, null, 2) + "\n");
+  if (process.env.NEOREAD_BENCHMARK_OUTPUT) fs.writeFileSync(process.env.NEOREAD_BENCHMARK_OUTPUT, JSON.stringify(results, null, 2) + "\n");
   app.quit();
 }).catch((error) => { console.error(error); app.exit(1); });
 app.on("window-all-closed", () => {});

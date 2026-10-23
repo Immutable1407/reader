@@ -1,6 +1,6 @@
 import { useEffect, useRef } from "react";
-import type { Annotation } from "@reader/core";
-import { api } from "@reader/api";
+import type { Annotation } from "@neoread/core";
+import { api } from "@neoread/api";
 import { toast } from "sonner";
 import { annotationUndoShortcut } from "../../../packages/reader-core/src/undo-shortcut";
 

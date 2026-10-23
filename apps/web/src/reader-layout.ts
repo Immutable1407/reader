@@ -1,4 +1,4 @@
-import type { ReaderLayout, ReaderTheme } from "@reader/core";
+import type { ReaderLayout, ReaderTheme } from "@neoread/core";
 import { useReaderStore } from "./store";
 
 const defaults: ReaderLayout = {

@@ -9,22 +9,22 @@ import (
 	"time"
 )
 
-// Opt-in, original synthetic text only. Never alter the user's Reader config.
+// Opt-in, original synthetic text only. Never alter the user's NeoRead config.
 func TestLiveOverviewThenOriginal(t *testing.T) {
-	provider := os.Getenv("READER_TEST_OVERVIEW_PROVIDER")
+	provider := os.Getenv("NEOREAD_TEST_OVERVIEW_PROVIDER")
 	if provider != "codex" && provider != "api" {
-		t.Skip("set READER_TEST_OVERVIEW_PROVIDER=codex or api")
+		t.Skip("set NEOREAD_TEST_OVERVIEW_PROVIDER=codex or api")
 	}
 	s, a := originalDocumentFixture(t)
 	config := AIConfig{Primary: provider, Models: map[string]string{}, Capabilities: map[string]Capability{}}
 	if provider == "api" {
-		data, err := os.ReadFile(os.Getenv("READER_TEST_DOCUMENT_API_CONFIG"))
+		data, err := os.ReadFile(os.Getenv("NEOREAD_TEST_DOCUMENT_API_CONFIG"))
 		if err != nil {
-			t.Fatal("existing Reader API connection unavailable")
+			t.Fatal("existing NeoRead API connection unavailable")
 		}
 		var saved savedConfig
 		if json.Unmarshal(data, &saved) != nil {
-			t.Fatal("invalid Reader config")
+			t.Fatal("invalid NeoRead config")
 		}
 		config.API = saved.Config.API
 		if config.API.URL != "https://api.deepseek.com" && config.API.URL != "https://api.deepseek.com/v1" {

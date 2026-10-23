@@ -1,8 +1,8 @@
 import { beforeEach, expect, it, vi } from "vitest";
-import { api } from "@reader/api";
+import { api } from "@neoread/api";
 import { openLinkTarget, useReaderStore } from "./store";
 import { paper } from "./papers/fixtures";
-vi.mock("@reader/api", () => ({
+vi.mock("@neoread/api", () => ({
   api: {
     documents: vi.fn(async () => []),
     saveLibraryPreferences: vi.fn(async (value) => value),

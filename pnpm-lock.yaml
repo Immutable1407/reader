@@ -65,7 +65,7 @@ importers:
 
   apps/connector:
     dependencies:
-      '@reader/ui':
+      '@neoread/ui':
         specifier: workspace:*
         version: link:../../packages/ui
       react:
@@ -131,13 +131,13 @@ importers:
       '@lobehub/streamdown':
         specifier: 1.4.0
         version: 1.4.0(@types/react@19.3.0)(react-dom@19.3.0(react@19.3.0))(react@19.3.0)
-      '@reader/api':
+      '@neoread/api':
         specifier: workspace:*
         version: link:../../packages/api-client
-      '@reader/core':
+      '@neoread/core':
         specifier: workspace:*
         version: link:../../packages/reader-core
-      '@reader/ui':
+      '@neoread/ui':
         specifier: workspace:*
         version: link:../../packages/ui
       '@readium/navigator':
@@ -222,7 +222,7 @@ importers:
 
   packages/api-client:
     dependencies:
-      '@reader/core':
+      '@neoread/core':
         specifier: workspace:*
         version: link:../reader-core
       openapi-fetch:

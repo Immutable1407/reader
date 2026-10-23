@@ -35,7 +35,7 @@ func TestDesktopLibraryLocation(t *testing.T) {
 func TestLibraryLocationExplicitOverrides(t *testing.T) {
 	custom := t.TempDir()
 	explicit := t.TempDir()
-	t.Setenv("READER_DATA", custom)
+	t.Setenv("NEOREAD_DATA", custom)
 	got, err := libraryDir("")
 	if err != nil || got != custom {
 		t.Fatal(got, err)

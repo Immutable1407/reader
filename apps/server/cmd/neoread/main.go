@@ -1,4 +1,4 @@
-// Command reader reads and imports documents in the running Reader app.
+// Command neoread reads and imports documents in the running NeoRead app.
 //
 // It talks to the app's loopback API through the server.json file that the
 // app writes into its library directory, so the app must be open.
@@ -15,10 +15,10 @@ import (
 
 var readerVersion = "dev"
 
-const usage = `reader：在终端里读取和导入 Reader 书库中的文档（需要 Reader 正在运行）。
+const usage = `neoread：在终端里读取和导入 NeoRead 书库中的文档（需要 NeoRead 正在运行）。
 
 用法：
-  reader <命令> [参数] [选项]
+  neoread <命令> [参数] [选项]
 
 命令：
   status                         查看连接状态
@@ -31,8 +31,8 @@ const usage = `reader：在终端里读取和导入 Reader 书库中的文档（
   import <文件…>                 导入 PDF 或 EPUB
 
 <文档> 可以是 ID、ID 前缀（如 list 显示的 8 位），或标题中的一段文字。
-所有命令都支持 --json 输出，以及 --data <目录> 指定书库目录（也可设置 READER_DATA）。
-运行 reader <命令> --help 查看该命令的选项。
+所有命令都支持 --json 输出，以及 --data <目录> 指定书库目录（也可设置 NEOREAD_DATA）。
+运行 neoread <命令> --help 查看该命令的选项。
 `
 
 func main() {
@@ -40,7 +40,7 @@ func main() {
 	if err == nil {
 		return
 	}
-	fmt.Fprintln(os.Stderr, "reader:", err)
+	fmt.Fprintln(os.Stderr, "neoread:", err)
 	var exit exitError
 	if errors.As(err, &exit) {
 		os.Exit(exit.code)
@@ -79,12 +79,12 @@ func run(args []string, out io.Writer) error {
 		return nil
 	}
 	if args[0] == "version" || args[0] == "--version" {
-		fmt.Fprintln(out, "reader", readerVersion)
+		fmt.Fprintln(out, "neoread", readerVersion)
 		return nil
 	}
 	cmd, ok := commands[args[0]]
 	if !ok {
-		return usageError("未知命令 %q，运行 reader help 查看可用命令", args[0])
+		return usageError("未知命令 %q，运行 neoread help 查看可用命令", args[0])
 	}
 	f := &options{}
 	fs := flag.NewFlagSet(args[0], flag.ContinueOnError)
@@ -96,13 +96,13 @@ func run(args []string, out io.Writer) error {
 	}
 	positional, err := parseInterleaved(fs, args[1:])
 	if errors.Is(err, flag.ErrHelp) {
-		fmt.Fprintf(out, "用法：reader %s\n\n选项：\n", cmd.summary)
+		fmt.Fprintf(out, "用法：neoread %s\n\n选项：\n", cmd.summary)
 		fs.SetOutput(out)
 		fs.PrintDefaults()
 		return nil
 	}
 	if err != nil {
-		return usageError("%v\n用法：reader %s", err, cmd.summary)
+		return usageError("%v\n用法：neoread %s", err, cmd.summary)
 	}
 	c, err := connect(f.data)
 	if err != nil {
@@ -112,7 +112,7 @@ func run(args []string, out io.Writer) error {
 }
 
 // parseInterleaved accepts options before, between and after positional
-// arguments, as in `reader read 1a2b --pages 3`. "--" ends option parsing.
+// arguments, as in `neoread read 1a2b --pages 3`. "--" ends option parsing.
 func parseInterleaved(fs *flag.FlagSet, args []string) ([]string, error) {
 	positional := []string{}
 	for {
@@ -133,7 +133,7 @@ func parseInterleaved(fs *flag.FlagSet, args []string) ([]string, error) {
 
 func oneDocument(args []string, name string) (string, error) {
 	if len(args) != 1 {
-		return "", usageError("用法：reader %s <文档>", name)
+		return "", usageError("用法：neoread %s <文档>", name)
 	}
 	return args[0], nil
 }

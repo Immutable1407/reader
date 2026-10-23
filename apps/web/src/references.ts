@@ -3,7 +3,7 @@ import type {
   Message,
   SourceReference,
   TOCItem,
-} from "@reader/core";
+} from "@neoread/core";
 
 export interface ReferenceCard {
   sourceId?: string;

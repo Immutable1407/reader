@@ -3,7 +3,7 @@ import {
   annotationsInRects,
   sentenceRectsAtPoint,
 } from "../translation/annotation-hover";
-import { api } from "@reader/api";
+import { api } from "@neoread/api";
 import type {
   Annotation,
   Document,
@@ -18,10 +18,10 @@ import type {
   ReaderTheme,
   SearchResult,
   TOCItem,
-} from "@reader/core";
+} from "@neoread/core";
 import { toast } from "sonner";
 import { openExternalLink } from "../reading-links";
-import { defaultTheme } from "@reader/core";
+import { defaultTheme } from "@neoread/core";
 import { isSelectionToolbar, selectionAnchor } from "./selection-anchor";
 import { sentenceBounds } from "./sentence-selection";
 import {

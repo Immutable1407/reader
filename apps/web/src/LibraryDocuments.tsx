@@ -12,18 +12,18 @@ import {
   FileDown,
 } from "lucide-react";
 import { exportAnnotatedPDFWithToast } from "./annotated-pdf-export";
-import type { Document, LibraryMode, Processing } from "@reader/core";
-import { api } from "@reader/api";
+import type { Document, LibraryMode, Processing } from "@neoread/core";
+import { api } from "@neoread/api";
 import { toast } from "sonner";
-import { Button } from "@reader/ui/components/button";
-import { Checkbox } from "@reader/ui/components/checkbox";
+import { Button } from "@neoread/ui/components/button";
+import { Checkbox } from "@neoread/ui/components/checkbox";
 import {
   ContextMenu,
   ContextMenuTrigger,
   ContextMenuContent,
   ContextMenuItem,
   ContextMenuSeparator,
-} from "@reader/ui/components/context-menu";
+} from "@neoread/ui/components/context-menu";
 import { DocumentBadges } from "./DocumentManagement";
 import { ProcessingUsageDialog } from "./ProcessingUsage";
 import {

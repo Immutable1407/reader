@@ -2,15 +2,15 @@
 import { act } from "react";
 import { createRoot, type Root } from "react-dom/client";
 import { afterEach, beforeEach, expect, it, vi } from "vitest";
-import type { Annotation, Message } from "@reader/core";
-import { api } from "@reader/api";
+import type { Annotation, Message } from "@neoread/core";
+import { api } from "@neoread/api";
 import { downloadBlob, downloadText } from "./download";
 import { copyText } from "./chat/clipboard";
 import { exportAnnotatedPDFWithToast } from "./annotated-pdf-export";
 import { ExportDocumentDialog } from "./ExportDocumentDialog";
 import { paper } from "./papers/fixtures";
 
-vi.mock("@reader/api", () => ({
+vi.mock("@neoread/api", () => ({
   api: {
     documentNote: vi.fn(),
     translations: vi.fn(),

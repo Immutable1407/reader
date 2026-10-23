@@ -1,4 +1,4 @@
-import type { DocumentLocation, ReaderAdapter } from "@reader/core";
+import type { DocumentLocation, ReaderAdapter } from "@neoread/core";
 
 // Keep the original reading position while visiting several references.
 // A jump that stays on the same screen, or a reader who scrolls back, needs

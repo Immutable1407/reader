@@ -5,7 +5,7 @@ const calls = vi.hoisted(() => [] as string[]);
 vi.mock("./progress", () => ({
   flushProgress: vi.fn(async () => void calls.push("progress")),
 }));
-vi.mock("@reader/api", () => ({
+vi.mock("@neoread/api", () => ({
   api: {
     saveSettings: vi.fn(async () => void calls.push("settings")),
   },

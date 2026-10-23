@@ -11,7 +11,7 @@ import (
 	"strings"
 	"testing"
 
-	"reader.local/server/internal/diagnostics"
+	"neoread.local/server/internal/diagnostics"
 )
 
 func TestProviderErrorsAreClassifiedAndRedacted(t *testing.T) {

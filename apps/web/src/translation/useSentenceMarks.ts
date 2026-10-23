@@ -10,7 +10,7 @@ import type {
   ReaderAnnotationTarget,
   SearchResult,
   TranslationBlock,
-} from "@reader/core";
+} from "@neoread/core";
 import { translatedAnnotationRanges } from "./annotations";
 import { sourcePassage, translatedSentenceRanges } from "./sentence-links";
 import { searchRanges } from "./search-ranges";

@@ -1,12 +1,12 @@
 import { beforeEach, expect, it, vi } from "vitest";
-import type { Document } from "@reader/core";
-import { api } from "@reader/api";
+import type { Document } from "@neoread/core";
+import { api } from "@neoread/api";
 import {
   removeLibraryDocuments,
   toggleDocumentSelection,
 } from "./library-actions";
 import { useReaderStore, refreshLibrary } from "./store";
-vi.mock("@reader/api", () => ({
+vi.mock("@neoread/api", () => ({
   api: {
     trashDocument: vi.fn(),
     restoreDocument: vi.fn(),

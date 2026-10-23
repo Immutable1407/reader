@@ -6,25 +6,25 @@ import {
   Download,
   GripVertical,
 } from "lucide-react";
-import type { Document } from "@reader/core";
-import { Badge } from "@reader/ui/components/badge";
-import { Button } from "@reader/ui/components/button";
-import { Textarea } from "@reader/ui/components/textarea";
+import type { Document } from "@neoread/core";
+import { Badge } from "@neoread/ui/components/badge";
+import { Button } from "@neoread/ui/components/button";
+import { Textarea } from "@neoread/ui/components/textarea";
 import {
   Dialog,
   DialogContent,
   DialogDescription,
   DialogHeader,
   DialogTitle,
-} from "@reader/ui/components/dialog";
+} from "@neoread/ui/components/dialog";
 import {
   Select,
   SelectContent,
   SelectItem,
   SelectTrigger,
   SelectValue,
-} from "@reader/ui/components/select";
-import { Tabs, TabsList, TabsTrigger } from "@reader/ui/components/tabs";
+} from "@neoread/ui/components/select";
+import { Tabs, TabsList, TabsTrigger } from "@neoread/ui/components/tabs";
 import { copyText } from "../chat/clipboard";
 import { downloadText } from "../download";
 import { useReaderStore } from "../store";

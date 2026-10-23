@@ -67,7 +67,7 @@ func startCodexSession(work, model string, overrides []string, token string) (*c
 		addCodexOverride(effectiveOverrides, setting)
 	}
 	if token != "" {
-		cmd.Env = append(os.Environ(), "READER_DOCUMENT_MCP_TOKEN="+token)
+		cmd.Env = append(os.Environ(), "NEOREAD_DOCUMENT_MCP_TOKEN="+token)
 	}
 	cmd.Dir, cmd.Stderr, cmd.WaitDelay = work, io.Discard, 3*time.Second
 	stdin, err := cmd.StdinPipe()
@@ -172,7 +172,7 @@ func (s *codexSession) generate(ctx context.Context, in AIInput, delta func(stri
 		}
 		if len(msg.ID) > 0 && msg.Method != "" {
 			// No client-side tools, permission grants, or credential exchange.
-			return lifecycle.send(map[string]any{"id": msg.ID, "error": map[string]any{"code": -32601, "message": "Reader does not expose this operation"}})
+			return lifecycle.send(map[string]any{"id": msg.ID, "error": map[string]any{"code": -32601, "message": "NeoRead does not expose this operation"}})
 		}
 		var p struct {
 			ThreadID  string `json:"threadId"`
@@ -510,7 +510,7 @@ func (s *codexSession) initializeRPC(ctx context.Context, life *rpcLifecycle, ha
 	if s.initialized {
 		return nil
 	}
-	if _, err := s.callRPC(ctx, life, "initialize", map[string]any{"clientInfo": map[string]string{"name": "reader", "title": "Reader", "version": "0.5.3"}}, handle); err != nil {
+	if _, err := s.callRPC(ctx, life, "initialize", map[string]any{"clientInfo": map[string]string{"name": "reader", "title": "NeoRead", "version": "0.5.3"}}, handle); err != nil {
 		return err
 	}
 	if err := life.send(map[string]any{"method": "initialized", "params": map[string]any{}}); err != nil {

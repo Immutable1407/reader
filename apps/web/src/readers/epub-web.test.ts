@@ -6,13 +6,13 @@ import type {
   EPUBChapter,
   EPUBLocation,
   EPUBReadingBlock,
-} from "@reader/core";
-import { defaultTheme } from "@reader/core";
-import { api } from "@reader/api";
+} from "@neoread/core";
+import { defaultTheme } from "@neoread/core";
+import { api } from "@neoread/api";
 import { EPUBReaderAdapter } from "./epub-web";
 import { resolveEPUBLocation } from "./epub-web-location";
 
-vi.mock("@reader/api", () => ({
+vi.mock("@neoread/api", () => ({
   api: { epubChapters: vi.fn(), epubChapter: vi.fn(), search: vi.fn() },
 }));
 vi.mock("sonner", () => ({ toast: { error: vi.fn() } }));

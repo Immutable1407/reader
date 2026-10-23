@@ -1,10 +1,10 @@
 import { afterEach, expect, it, vi } from "vitest";
-import { api, chat } from "@reader/api";
-import type { AIConfig } from "@reader/core";
+import { api, chat } from "@neoread/api";
+import type { AIConfig } from "@neoread/core";
 import { useReaderStore, refreshAIConfig } from "../store";
 import { ChatSession } from "./chat-session";
 
-vi.mock("@reader/api", () => ({
+vi.mock("@neoread/api", () => ({
   api: { messages: vi.fn().mockResolvedValue([]), aiConfig: vi.fn() },
   chat: vi.fn(),
 }));

@@ -79,7 +79,7 @@ export async function migratePDFMarks(
           for (let i = 0; i < q.length; i += 8) {
             const xs = [q[i], q[i + 2], q[i + 4], q[i + 6]];
             const ys = [q[i + 1], q[i + 3], q[i + 5], q[i + 7]];
-            // Reader can faithfully represent axis-aligned quadrilaterals only.
+            // NeoRead can faithfully represent axis-aligned quadrilaterals only.
             if (
               new Set(xs.map((x) => x.toFixed(2))).size > 2 ||
               new Set(ys.map((y) => y.toFixed(2))).size > 2

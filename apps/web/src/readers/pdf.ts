@@ -29,9 +29,9 @@ import type {
   ReaderTheme,
   SearchResult,
   TOCItem,
-} from "@reader/core";
-import { publicationURL } from "@reader/api";
-import { zoomCommand } from "@reader/core";
+} from "@neoread/core";
+import { publicationURL } from "@neoread/api";
+import { zoomCommand } from "@neoread/core";
 import { selectSentence } from "./sentence-selection";
 import { installPDFExternalLinks } from "./pdf-external-links";
 import { resolvePDFCitation } from "./pdf-citations";
@@ -41,7 +41,7 @@ import {
   processPDFPagePixels,
   type PDFDarkRegion,
 } from "./pdf-dark-mode";
-import { defaultTheme } from "@reader/core";
+import { defaultTheme } from "@neoread/core";
 pdfjs.GlobalWorkerOptions.workerSrc = workerURL;
 
 interface DarkPage {
@@ -884,11 +884,11 @@ export class PDFReaderAdapter implements ReaderAdapter {
     this.navigation.cancelMotion();
     this.viewport.reset();
   }
-  followBlock(anchor: import("@reader/core").PDFReadingAnchor) {
+  followBlock(anchor: import("@neoread/core").PDFReadingAnchor) {
     return this.navigation.follow(anchor);
   }
   previewCitation(
-    location: import("@reader/core").PDFLocation,
+    location: import("@neoread/core").PDFLocation,
     anchor: HTMLAnchorElement,
   ) {
     return this.linkPreview.previewLocation(location, anchor);
@@ -901,7 +901,7 @@ export class PDFReaderAdapter implements ReaderAdapter {
     if (this.pdf && block)
       return resolvePDFCitation(this.pdf, block, label, pdfjs.OPS);
   }
-  sentenceRanges(passages: import("@reader/core").PDFPassage[]) {
+  sentenceRanges(passages: import("@neoread/core").PDFPassage[]) {
     return this.navigation.sentenceRanges(passages);
   }
   focusSentences(blockId: string, sources: string[], scroll = false) {
@@ -910,12 +910,12 @@ export class PDFReaderAdapter implements ReaderAdapter {
   hoverBlock(blockId: string | null) {
     this.blocks.setLinkedBlock(blockId);
   }
-  focusPassages(passages: import("@reader/core").PDFPassage[], scroll = false) {
+  focusPassages(passages: import("@neoread/core").PDFPassage[], scroll = false) {
     return this.navigation.focusPassages(passages, scroll);
   }
   matchSentences(
     location: PDFLocation,
-    translations: import("@reader/core").TranslationBlock[],
+    translations: import("@neoread/core").TranslationBlock[],
   ) {
     return this.navigation.matchSentences(location, translations);
   }

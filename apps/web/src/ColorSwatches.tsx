@@ -1,5 +1,5 @@
 import { Check } from "lucide-react";
-import { Button } from "@reader/ui/components/button";
+import { Button } from "@neoread/ui/components/button";
 import { highlightPalette } from "./annotations";
 import { useReaderStore } from "./store";
 

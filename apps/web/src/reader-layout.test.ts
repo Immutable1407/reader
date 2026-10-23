@@ -1,5 +1,5 @@
 import { afterEach, expect, it } from "vitest";
-import { defaultTheme } from "@reader/core";
+import { defaultTheme } from "@neoread/core";
 import {
   readerLayout,
   sidebarLayout,

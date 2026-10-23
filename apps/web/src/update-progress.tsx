@@ -1,6 +1,6 @@
 import { useEffect } from "react";
 import { toast } from "sonner";
-import { Progress } from "@reader/ui/components/progress";
+import { Progress } from "@neoread/ui/components/progress";
 
 const megabytes = (bytes: number) => Math.round(bytes / 1024 / 1024);
 // Shows desktop update downloads in one persistent toast.
@@ -13,7 +13,7 @@ export function useUpdateProgress() {
           return;
         }
         if (progress.phase === "prepare") {
-          toast.loading(`正在准备安装 Reader ${progress.version}`, {
+          toast.loading(`正在准备安装 NeoRead ${progress.version}`, {
             id: "reader-update",
             description: undefined,
             duration: Infinity,
@@ -21,7 +21,7 @@ export function useUpdateProgress() {
           return;
         }
         const { received, total } = progress;
-        toast.loading(`正在下载 Reader ${progress.version}`, {
+        toast.loading(`正在下载 NeoRead ${progress.version}`, {
           id: "reader-update",
           duration: Infinity,
           description: (

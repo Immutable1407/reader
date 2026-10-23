@@ -5,7 +5,7 @@ const fs = require("node:fs");
 const os = require("node:os");
 const path = require("node:path");
 const binary = process.argv[2];
-if (!binary) throw new Error("Pass the verified backend reader-server binary.");
+if (!binary) throw new Error("Pass the verified backend neoread-server binary.");
 const data = fs.mkdtempSync(path.join(os.tmpdir(), "reader-frontend-preview-"));
 const readyPath = path.join(data, "preview.json");
 const child = spawn(binary, ["--data", data, "--port", "0", "--web", path.resolve("apps/web/dist")], { stdio: ["ignore", "pipe", "inherit"] });

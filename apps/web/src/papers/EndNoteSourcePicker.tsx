@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from "react";
-import { Button } from "@reader/ui/components/button";
-import { RadioGroup, RadioGroupItem } from "@reader/ui/components/radio-group";
-import { Input } from "@reader/ui/components/input";
+import { Button } from "@neoread/ui/components/button";
+import { RadioGroup, RadioGroupItem } from "@neoread/ui/components/radio-group";
+import { Input } from "@neoread/ui/components/input";
 
 type Candidate = { path: string; name: string };
 export function EndNoteSourcePicker({

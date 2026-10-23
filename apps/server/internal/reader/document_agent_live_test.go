@@ -10,23 +10,23 @@ import (
 )
 
 func TestLiveDocumentDeepSeek(t *testing.T) {
-	path := os.Getenv("READER_TEST_DOCUMENT_API_CONFIG")
+	path := os.Getenv("NEOREAD_TEST_DOCUMENT_API_CONFIG")
 	if path == "" {
-		t.Skip("set READER_TEST_DOCUMENT_API_CONFIG to Reader's existing connection config; no configuration is changed")
+		t.Skip("set NEOREAD_TEST_DOCUMENT_API_CONFIG to NeoRead's existing connection config; no configuration is changed")
 	}
 	data, err := os.ReadFile(path)
 	if err != nil {
-		t.Fatal("Reader connection file unavailable")
+		t.Fatal("NeoRead connection file unavailable")
 	}
 	var saved savedConfig
 	if json.Unmarshal(data, &saved) != nil {
-		t.Fatal("Reader connection config invalid")
+		t.Fatal("NeoRead connection config invalid")
 	}
 	connection := saved.Config.API
 	if !strings.HasPrefix(connection.URL, "https://api.deepseek.com") || connection.Key == "" {
 		t.Fatal("expected an existing official DeepSeek connection")
 	}
-	model := os.Getenv("READER_TEST_DOCUMENT_MODEL")
+	model := os.Getenv("NEOREAD_TEST_DOCUMENT_MODEL")
 	if model == "" {
 		for _, id := range []string{"deepseek-v4-pro", "deepseek-flash"} {
 			if saved.Config.Capabilities[apiCapabilityKey(id)].Text {
@@ -76,8 +76,8 @@ func TestLiveDocumentDeepSeek(t *testing.T) {
 }
 
 func TestLiveDocumentCodex(t *testing.T) {
-	if os.Getenv("READER_TEST_DOCUMENT_CODEX") != "1" {
-		t.Skip("set READER_TEST_DOCUMENT_CODEX=1; uses CLI login and only original synthetic passages")
+	if os.Getenv("NEOREAD_TEST_DOCUMENT_CODEX") != "1" {
+		t.Skip("set NEOREAD_TEST_DOCUMENT_CODEX=1; uses CLI login and only original synthetic passages")
 	}
 	s, a := originalDocumentFixture(t)
 	ctx, cancel := context.WithTimeout(t.Context(), 3*time.Minute)
@@ -87,7 +87,7 @@ func TestLiveDocumentCodex(t *testing.T) {
 	var delta strings.Builder
 	start := time.Now()
 	first := time.Duration(0)
-	result, e := streamCodexDocumentChat(ctx, s.Store.Root, os.Getenv("READER_TEST_DOCUMENT_MODEL"), input, func(event ProviderEvent) error {
+	result, e := streamCodexDocumentChat(ctx, s.Store.Root, os.Getenv("NEOREAD_TEST_DOCUMENT_MODEL"), input, func(event ProviderEvent) error {
 		if event.Text != "" {
 			if first == 0 {
 				first = time.Since(start)

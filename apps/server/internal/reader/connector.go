@@ -75,7 +75,7 @@ func (s *Server) connectorRevisionStatus(w http.ResponseWriter, r *http.Request)
 	respond(w, 200, map[string]int64{"revision": s.connectorRevision.Load()})
 }
 
-// ConnectorHandler is deliberately separate from the Reader HTTP API. It has
+// ConnectorHandler is deliberately separate from the NeoRead HTTP API. It has
 // its own narrow routes, credential, and fixed loopback port for discovery.
 func (s *Server) ConnectorHandler() http.Handler {
 	mux := http.NewServeMux()
@@ -309,7 +309,7 @@ func (s *Server) connectorImport(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	if existing, lookupErr := s.Store.Document(hex.EncodeToString(hash.Sum(nil))[:32]); lookupErr == nil && existing.Library != library {
-		fail(w, 409, "相同 PDF 已在另一个书库，请先在 Reader 中移动")
+		fail(w, 409, "相同 PDF 已在另一个书库，请先在 NeoRead 中移动")
 		return
 	}
 	d, status, err := s.importFile(r.Context(), temp.Name(), "paper.pdf", library, r.FormValue("allowLarge") == "1")
@@ -323,7 +323,7 @@ func (s *Server) connectorImport(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	if d.Library != library {
-		fail(w, 409, "相同 PDF 已在另一个书库，请先在 Reader 中移动")
+		fail(w, 409, "相同 PDF 已在另一个书库，请先在 NeoRead 中移动")
 		return
 	}
 	d, err = s.applyFound(d.ID, found, title, "connector", "")

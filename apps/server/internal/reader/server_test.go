@@ -219,7 +219,7 @@ func TestLibraryRoundTrip(t *testing.T) {
 						t.Fatal(e)
 					}
 				}
-				w = request(t, s, "GET", "/api/documents/"+doc.ID+"/search?q=Reader", nil)
+				w = request(t, s, "GET", "/api/documents/"+doc.ID+"/search?q=NeoRead", nil)
 				if w.Code != 200 {
 					t.Fatal(w.Body.String())
 				}
@@ -415,7 +415,7 @@ func TestChatWithFakeCLI(t *testing.T) {
 	s := testServer(t)
 	fakeAgent(t, "codex", "success")
 	capture := filepath.Join(t.TempDir(), "prompt.json")
-	t.Setenv("READER_AGENT_CAPTURE", capture)
+	t.Setenv("NEOREAD_AGENT_CAPTURE", capture)
 	w := upload(t, s, "paper.pdf", sample(t, "reading-notes.pdf"))
 	var d Document
 	json.Unmarshal(w.Body.Bytes(), &d)

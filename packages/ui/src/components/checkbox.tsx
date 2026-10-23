@@ -1,7 +1,7 @@
 "use client";
 
 import { Checkbox as CheckboxPrimitive } from "@base-ui/react/checkbox";
-import { cn } from "@reader/ui/lib/utils";
+import { cn } from "@neoread/ui/lib/utils";
 
 import { CheckIcon, ChevronRightIcon } from "lucide-react";
 

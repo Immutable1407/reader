@@ -1,10 +1,10 @@
 import { useState } from "react";
-import { Button } from "@reader/ui/components/button";
-import { Input } from "@reader/ui/components/input";
+import { Button } from "@neoread/ui/components/button";
+import { Input } from "@neoread/ui/components/input";
 import {
   ToggleGroup,
   ToggleGroupItem,
-} from "@reader/ui/components/toggle-group";
+} from "@neoread/ui/components/toggle-group";
 
 export function TagPicker({
   options,

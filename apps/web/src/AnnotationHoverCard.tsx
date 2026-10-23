@@ -1,12 +1,12 @@
 import { useEffect, useRef, useState } from "react";
-import type { Annotation, ReaderAnnotationTarget } from "@reader/core";
+import type { Annotation, ReaderAnnotationTarget } from "@neoread/core";
 import { Pencil } from "lucide-react";
-import { Button } from "@reader/ui/components/button";
+import { Button } from "@neoread/ui/components/button";
 import {
   Popover,
   PopoverContent,
   PopoverTitle,
-} from "@reader/ui/components/popover";
+} from "@neoread/ui/components/popover";
 
 export function AnnotationHoverCard({
   target,

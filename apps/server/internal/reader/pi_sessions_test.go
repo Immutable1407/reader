@@ -29,8 +29,8 @@ func piTestRuntime(t *testing.T) {
 	if out, err := cmd.CombinedOutput(); err != nil {
 		t.Fatalf("build pi worker: %v\n%s", err, out)
 	}
-	t.Setenv("READER_NODE", node)
-	t.Setenv("READER_AGENT", filepath.Join(root, "dist/main.mjs"))
+	t.Setenv("NEOREAD_NODE", node)
+	t.Setenv("NEOREAD_AGENT", filepath.Join(root, "dist/main.mjs"))
 }
 func createSessionTest(t *testing.T, s *Server) ChatSession {
 	t.Helper()
@@ -353,8 +353,8 @@ func TestRunConcurrencyLimitAndRestartReconciliation(t *testing.T) {
 func TestManagedCodexSessionsKeepSeparateNativeThreads(t *testing.T) {
 	s, a := prepareConversationFixture(t)
 	fakeAgent(t, "codex", "document-conversation")
-	t.Setenv("READER_CONVERSATION_CAPTURE", filepath.Join(t.TempDir(), "capture.jsonl"))
-	t.Setenv("READER_DOCUMENT_TEST_BLOCK", a.corpus.Passages[1].ID)
+	t.Setenv("NEOREAD_CONVERSATION_CAPTURE", filepath.Join(t.TempDir(), "capture.jsonl"))
+	t.Setenv("NEOREAD_DOCUMENT_TEST_BLOCK", a.corpus.Passages[1].ID)
 	first, second := createSessionTest(t, s), createSessionTest(t, s)
 	start := func(session ChatSession, prompt string) ChatRun {
 		out := request(t, s, "POST", "/api/documents/doc/chat-sessions/"+session.ID+"/chat", strings.NewReader(jsonText(map[string]any{"provider": "codex", "prompt": prompt, "context": ""})))

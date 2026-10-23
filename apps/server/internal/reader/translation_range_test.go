@@ -110,8 +110,8 @@ printf '{"pages":80,"model":"fake","parsedPages":[%s],"blocks":[%s],"warnings":[
 	if err := os.WriteFile(script, []byte(body), 0700); err != nil {
 		t.Fatal(err)
 	}
-	t.Setenv("READER_NODE", "/bin/sh")
-	t.Setenv("READER_PROCESSOR", script)
+	t.Setenv("NEOREAD_NODE", "/bin/sh")
+	t.Setenv("NEOREAD_PROCESSOR", script)
 	t.Setenv("FAKE_LAYOUT_LOG", log)
 	return log
 }

@@ -66,7 +66,7 @@ func CopyLibrary(source, destination string) (err error) {
 	defer unlock()
 	// Never merge with or overwrite a directory the user already owns.
 	if err = os.Mkdir(destination, 0700); err != nil {
-		return fmt.Errorf("无法创建新书库，请选择不含 Reader Library 的文件夹：%w", err)
+		return fmt.Errorf("无法创建新书库，请选择不含 NeoRead Library 的文件夹：%w", err)
 	}
 	unlockTarget, err := LockLibrary(destination)
 	if err != nil {
@@ -157,7 +157,7 @@ func checkLibraryDatabase(source, destination string) error {
 	}
 	var tables int
 	if err := db.QueryRow("SELECT count(*) FROM sqlite_schema WHERE type='table' AND name='documents'").Scan(&tables); err != nil || tables != 1 {
-		return fmt.Errorf("新目录不是有效的 Reader 书库")
+		return fmt.Errorf("新目录不是有效的 NeoRead 书库")
 	}
 	return relocateCorpusFingerprints(db, source, destination)
 }

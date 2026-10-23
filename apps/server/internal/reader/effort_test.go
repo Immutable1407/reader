@@ -73,7 +73,7 @@ func TestConfiguredEffortReachesProvider(t *testing.T) {
 			t.Run(tt.provider+"/"+route, func(t *testing.T) {
 				fakeAgent(t, tt.provider, "complete")
 				capture := filepath.Join(t.TempDir(), "request.json")
-				t.Setenv("READER_AGENT_CAPTURE", capture)
+				t.Setenv("NEOREAD_AGENT_CAPTURE", capture)
 				s, _ := imageFixture(t)
 				s.modelCache = map[string]modelCatalogEntry{tt.provider: {models: []AgentModel{{ID: "model", SupportedEfforts: tt.supported}}, expires: time.Now().Add(time.Minute)}}
 				c := AIConfig{Primary: tt.provider, Capabilities: map[string]Capability{}, Models: map[string]string{tt.provider: "model"}, Efforts: map[string]map[string]string{tt.provider: {"model": tt.level}}}

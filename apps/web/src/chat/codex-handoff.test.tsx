@@ -9,7 +9,7 @@ const mocks = vi.hoisted(() => ({
   error: vi.fn(),
   success: vi.fn(),
 }));
-vi.mock("@reader/api", () => ({ api: { codexHandoff: mocks.prepare } }));
+vi.mock("@neoread/api", () => ({ api: { codexHandoff: mocks.prepare } }));
 vi.mock("sonner", () => ({
   toast: { error: mocks.error, success: mocks.success },
 }));

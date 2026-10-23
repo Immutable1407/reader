@@ -2,7 +2,7 @@
 import { act } from "react";
 import { expect, it, vi } from "vitest";
 import { PDFBlockOverlay, hitBlock, referenceBlock } from "./pdf-blocks";
-import type { PDFBlock } from "@reader/core";
+import type { PDFBlock } from "@neoread/core";
 const block: PDFBlock = {
   id: "p2-b1",
   page: 2,

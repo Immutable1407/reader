@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import { Check, Copy } from "lucide-react";
-import { Button } from "@reader/ui/components/button";
+import { Button } from "@neoread/ui/components/button";
 import { copyText } from "./clipboard";
 
 const messageTimeFormat = new Intl.DateTimeFormat("en", {

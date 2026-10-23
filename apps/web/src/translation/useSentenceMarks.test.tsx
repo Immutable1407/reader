@@ -8,7 +8,7 @@ import type {
   ReaderAdapter,
   SearchResult,
   TranslationBlock,
-} from "@reader/core";
+} from "@neoread/core";
 // Geometry/lifecycle assertions are independent of the composited hover renderer.
 vi.mock("./sentence-hover", () => ({
   SentenceHover: class {

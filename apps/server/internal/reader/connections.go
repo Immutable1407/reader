@@ -52,7 +52,7 @@ type AIConfig struct {
 	Models    map[string]string            `json:"models"`
 	Efforts   map[string]map[string]string `json:"efforts,omitempty"`
 	// Translation choices are independent of chat. An empty model means
-	// Reader picks the fast tier from the live catalog.
+	// NeoRead picks the fast tier from the live catalog.
 	TranslationModels  map[string]string            `json:"translationModels,omitempty"`
 	TranslationEfforts map[string]map[string]string `json:"translationEfforts,omitempty"`
 	TranslationPrompt  *string                      `json:"translationPrompt,omitempty"`
@@ -428,7 +428,7 @@ func (s *Server) testConnection(w http.ResponseWriter, r *http.Request) {
 	} else {
 		// A completed, nonempty model response establishes text availability.
 		// Formatting and CLI subscription-login metadata are not capability gates.
-		answer, firstOutput, err := s.probeConnection(r.Context(), c, p, AIInput{Prompt: "Reply with exactly READER_OK. Do not use any tools."}, textTimeout)
+		answer, firstOutput, err := s.probeConnection(r.Context(), c, p, AIInput{Prompt: "Reply with exactly NEOREAD_OK. Do not use any tools."}, textTimeout)
 		cap.TextFirstOutputMs = firstOutput
 		if err != nil {
 			cap.Error = err.Error()

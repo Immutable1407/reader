@@ -20,13 +20,13 @@ const exe = platform === "windows" ? ".exe" : "";
 await mkdir(new URL("../apps/desktop/bin/", import.meta.url), {
   recursive: true,
 });
-// The app's sidecar and the `reader` command line that talks to it.
+// The app's sidecar and the `neoread` command line that talks to it.
 for (const [name, ldflags] of [
   [
-    "reader-server",
+    "neoread-server",
     `-X main.readerVersion=${readerVersion} -X main.buildCommit=${buildCommit}`,
   ],
-  ["reader", `-X main.readerVersion=${readerVersion}`],
+  ["neoread", `-X main.readerVersion=${readerVersion}`],
 ]) {
   const output = new URL(`../apps/desktop/bin/${name}${exe}`, import.meta.url);
   const result = spawnSync(

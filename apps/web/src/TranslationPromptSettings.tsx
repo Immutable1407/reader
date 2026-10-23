@@ -1,6 +1,6 @@
 import { useEffect, useId, useState } from "react";
-import { Button } from "@reader/ui/components/button";
-import { Textarea } from "@reader/ui/components/textarea";
+import { Button } from "@neoread/ui/components/button";
+import { Textarea } from "@neoread/ui/components/textarea";
 
 export function TranslationPromptSettings({
   value,

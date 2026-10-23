@@ -74,7 +74,7 @@ func fakeReader(t *testing.T) (dir string, requests *[]*http.Request) {
 	if err := os.WriteFile(filepath.Join(dir, "server.json"), data, 0600); err != nil {
 		t.Fatal(err)
 	}
-	t.Setenv("READER_DATA", dir)
+	t.Setenv("NEOREAD_DATA", dir)
 	return dir, &seen
 }
 
@@ -255,7 +255,7 @@ func TestImportReportsEachFile(t *testing.T) {
 			t.Fatalf("missing %q in\n%s", want, out)
 		}
 	}
-	// Only the three PDFs reached Reader.
+	// Only the three PDFs reached NeoRead.
 	uploads := 0
 	for _, r := range *requests {
 		if r.Method == "POST" {
@@ -274,7 +274,7 @@ func TestImportReportsEachFile(t *testing.T) {
 
 func TestConnectionFailures(t *testing.T) {
 	dir := t.TempDir()
-	t.Setenv("READER_DATA", dir)
+	t.Setenv("NEOREAD_DATA", dir)
 	if _, err := runCLI(t, "list"); exitCode(err) != 3 {
 		t.Fatalf("no discovery file: %v", err)
 	}
@@ -293,17 +293,17 @@ func TestConnectionFailures(t *testing.T) {
 		t.Fatalf("remote address accepted: %v", err)
 	}
 	fakeReader(t)
-	data, _ := os.ReadFile(filepath.Join(os.Getenv("READER_DATA"), "server.json"))
+	data, _ := os.ReadFile(filepath.Join(os.Getenv("NEOREAD_DATA"), "server.json"))
 	var d discovery
 	_ = json.Unmarshal(data, &d)
 	d.Token = "old"
 	write(d)
-	t.Setenv("READER_DATA", dir)
+	t.Setenv("NEOREAD_DATA", dir)
 	if _, err := runCLI(t, "list"); exitCode(err) != 3 || !strings.Contains(err.Error(), "过期") {
 		t.Fatalf("stale token: %v", err)
 	}
-	if out, err := runCLI(t, "help"); err != nil || !strings.Contains(out, "reader <命令>") {
-		t.Fatal("help needs no running Reader")
+	if out, err := runCLI(t, "help"); err != nil || !strings.Contains(out, "neoread <命令>") {
+		t.Fatal("help needs no running NeoRead")
 	}
 	if _, err := runCLI(t, "launch"); exitCode(err) != 2 {
 		t.Fatal("unknown command accepted")

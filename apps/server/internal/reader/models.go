@@ -74,7 +74,7 @@ func discoverModels(ctx context.Context, root, provider string) ([]AgentModel, e
 	}
 	if provider == "kimi" {
 		profile := filepath.Join(work, "reader.md")
-		if err = os.WriteFile(profile, []byte("---\nname: reader\ndescription: Reader model discovery\ntools: []\nsubagents: []\n---\nNo tools or prompts.\n"), 0600); err != nil {
+		if err = os.WriteFile(profile, []byte("---\nname: reader\ndescription: NeoRead model discovery\ntools: []\nsubagents: []\n---\nNo tools or prompts.\n"), 0600); err != nil {
 			return nil, err
 		}
 		args = []string{"--agent-file", profile, "--skills-dir", work, "acp"}
@@ -133,7 +133,7 @@ func discoverModels(ctx context.Context, root, provider string) ([]AgentModel, e
 				return m.Response.Response, nil
 			}
 			if m.Method != "" && len(m.ID) > 0 {
-				if e := enc.Encode(map[string]any{"jsonrpc": "2.0", "id": m.ID, "error": map[string]any{"code": -32601, "message": "Reader model discovery exposes no client operations"}}); e != nil {
+				if e := enc.Encode(map[string]any{"jsonrpc": "2.0", "id": m.ID, "error": map[string]any{"code": -32601, "message": "NeoRead model discovery exposes no client operations"}}); e != nil {
 					return nil, e
 				}
 				continue

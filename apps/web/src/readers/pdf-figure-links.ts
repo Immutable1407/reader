@@ -1,4 +1,4 @@
-import type { PDFBlock } from "@reader/core";
+import type { PDFBlock } from "@neoread/core";
 import { figureReferences, figureTarget } from "./figure-references";
 
 /** Keep PDF.js spans and their transforms intact; only wrap text inside them. */

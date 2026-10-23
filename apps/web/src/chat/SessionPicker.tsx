@@ -1,22 +1,22 @@
 import { useEffect, useState } from "react";
 import { Plus, Pencil, LoaderCircle } from "lucide-react";
-import { api } from "@reader/api";
-import type { DocumentChatSession } from "@reader/core";
-import { Button } from "@reader/ui/components/button";
+import { api } from "@neoread/api";
+import type { DocumentChatSession } from "@neoread/core";
+import { Button } from "@neoread/ui/components/button";
 import {
   Select,
   SelectTrigger,
   SelectValue,
   SelectContent,
   SelectItem,
-} from "@reader/ui/components/select";
+} from "@neoread/ui/components/select";
 import {
   Dialog,
   DialogContent,
   DialogHeader,
   DialogTitle,
-} from "@reader/ui/components/dialog";
-import { Input } from "@reader/ui/components/input";
+} from "@neoread/ui/components/dialog";
+import { Input } from "@neoread/ui/components/input";
 import { toast } from "sonner";
 
 const statusLabels = {

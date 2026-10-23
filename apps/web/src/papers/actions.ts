@@ -1,10 +1,10 @@
 import { confirmLargePaper } from "../LargePaperDialog";
-import { api, RequestError } from "@reader/api";
+import { api, RequestError } from "@neoread/api";
 import type {
   Document,
   PaperLibraryPreferences,
   ReadingStatus,
-} from "@reader/core";
+} from "@neoread/core";
 import { toast } from "sonner";
 import {
   refreshLibrary,

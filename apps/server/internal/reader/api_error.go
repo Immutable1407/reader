@@ -16,7 +16,7 @@ import (
 	"strings"
 	"time"
 
-	"reader.local/server/internal/diagnostics"
+	"neoread.local/server/internal/diagnostics"
 )
 
 type apiTraceKey struct{}

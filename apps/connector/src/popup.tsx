@@ -37,7 +37,7 @@ function App() {
           const session = await fetch(bridge + "/v1/session", {
             method: "POST",
           });
-          if (!session.ok) throw Error("无法连接 Reader");
+          if (!session.ok) throw Error("无法连接 NeoRead");
           credential = (await session.json()).secret;
           await chrome.storage.local.set({ secret: credential });
           response = await fetch(bridge + "/v1/labels", {
@@ -45,7 +45,7 @@ function App() {
           });
         }
         if (response.status === 404) throw Error(outdatedReaderMessage);
-        if (!response.ok) throw Error("无法读取 Reader 论文库");
+        if (!response.ok) throw Error("无法读取 NeoRead 论文库");
         const labels = (await response.json()) as {
           folders: string[];
           tags: string[];
@@ -57,7 +57,7 @@ function App() {
         setMessage(
           error instanceof Error && error.message === outdatedReaderMessage
             ? error.message
-            : "请先打开 Reader 桌面应用",
+            : "请先打开 NeoRead 桌面应用",
         );
         setMessageTone("error");
       }
@@ -107,7 +107,7 @@ function App() {
         });
         if (tab?.url && /^https?:\/\//.test(tab.url)) {
           // Chrome's built-in PDF viewer does not allow page script injection.
-          // The worker validates the PDF signature before sending anything to Reader.
+          // The worker validates the PDF signature before sending anything to NeoRead.
           setItems([
             {
               title: tab.title || "PDF",
@@ -231,9 +231,9 @@ function App() {
   return (
     <>
       <main>
-        <h1>Reader Connector</h1>
+        <h1>NeoRead Connector</h1>
         {!secret ? (
-          <p>正在连接本机 Reader…</p>
+          <p>正在连接本机 NeoRead…</p>
         ) : (
           <>
             <p>
@@ -307,7 +307,7 @@ function App() {
             disabled={busy || !selected.length}
             onClick={() => void save()}
           >
-            {busy ? "正在处理…" : `收录 ${selected.length} 篇到 Reader`}
+            {busy ? "正在处理…" : `收录 ${selected.length} 篇到 NeoRead`}
           </button>
         </div>
       )}

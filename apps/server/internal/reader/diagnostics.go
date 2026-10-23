@@ -12,7 +12,7 @@ import (
 	"strings"
 	"time"
 
-	"reader.local/server/internal/diagnostics"
+	"neoread.local/server/internal/diagnostics"
 )
 
 type diagnosticRequestKey struct{}
@@ -53,7 +53,7 @@ func (s *Server) diagnosticHTTP(next http.Handler) http.Handler {
 		started := time.Now()
 		rid := id()
 		r = r.WithContext(context.WithValue(r.Context(), diagnosticRequestKey{}, rid))
-		w.Header().Set("X-Reader-Request-ID", rid)
+		w.Header().Set("X-NeoRead-Request-ID", rid)
 		out := &diagnosticResponse{ResponseWriter: w, server: s, requestID: rid}
 		s.diagnosticEvent(slog.LevelInfo, "http.start", "requestId", rid, "method", r.Method)
 		defer func() {
@@ -187,7 +187,7 @@ func (s *Server) exportDiagnostics(w http.ResponseWriter, r *http.Request) {
 	}
 	s.diagnosticEvent(slog.LevelInfo, "diagnostics.export", "requestId", requestID(r.Context()))
 	w.Header().Set("Content-Type", "application/zip")
-	w.Header().Set("Content-Disposition", fmt.Sprintf(`attachment; filename="Reader-diagnostics-%s.zip"`, time.Now().UTC().Format("20060102T150405Z")))
+	w.Header().Set("Content-Disposition", fmt.Sprintf(`attachment; filename="NeoRead-diagnostics-%s.zip"`, time.Now().UTC().Format("20060102T150405Z")))
 	w.Header().Set("Cache-Control", "no-store")
 	if err := s.Diagnostics.Export(w, s.Store.Root, nil, s.diagnosticSettings()); err != nil {
 		s.diagnosticEvent(slog.LevelError, "diagnostics.export_failed", "error", err.Error())

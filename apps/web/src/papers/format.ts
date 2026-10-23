@@ -3,7 +3,7 @@ import type {
   Document,
   PaperItemType,
   PaperMetadata,
-} from "@reader/core";
+} from "@neoread/core";
 
 export const itemTypeLabels: Record<PaperItemType, string> = {
   journal: "期刊论文",

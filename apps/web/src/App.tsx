@@ -22,23 +22,23 @@ import {
   BookOpenText,
 } from "lucide-react";
 import { version } from "../../desktop/package.json";
-import { api, RequestError } from "@reader/api";
+import { api, RequestError } from "@neoread/api";
 import {
   LargePaperConfirmation,
   LargePaperDialog,
   type LargePaper,
 } from "./LargePaperDialog";
-import type { Document, LibraryMode } from "@reader/core";
-import { Button } from "@reader/ui/components/button";
-import { Input } from "@reader/ui/components/input";
-import { TooltipProvider } from "@reader/ui/components/tooltip";
+import type { Document, LibraryMode } from "@neoread/core";
+import { Button } from "@neoread/ui/components/button";
+import { Input } from "@neoread/ui/components/input";
+import { TooltipProvider } from "@neoread/ui/components/tooltip";
 import {
   Dialog,
   DialogContent,
   DialogHeader,
   DialogTitle,
   DialogDescription,
-} from "@reader/ui/components/dialog";
+} from "@neoread/ui/components/dialog";
 import { Toaster, toast } from "sonner";
 import {
   useReaderStore,
@@ -257,7 +257,7 @@ export function App() {
         if (revision !== null && latest !== revision) await refreshLibrary();
         revision = latest;
       } catch {
-        /* Reader shutdown is handled by the desktop shell. */
+        /* NeoRead shutdown is handled by the desktop shell. */
       }
     };
     void check();
@@ -784,7 +784,7 @@ export function App() {
         <Dialog open={about} onOpenChange={setAbout}>
           <DialogContent className="sm:max-w-sm">
             <DialogHeader>
-              <DialogTitle>关于 Reader</DialogTitle>
+              <DialogTitle>关于 NeoRead</DialogTitle>
               <DialogDescription>一千万以内最好的阅读器</DialogDescription>
             </DialogHeader>
             <dl className="flex items-center justify-between text-sm">

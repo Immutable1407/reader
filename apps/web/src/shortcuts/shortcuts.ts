@@ -1,5 +1,5 @@
 import { useEffect, useSyncExternalStore } from "react";
-import { api } from "@reader/api";
+import { api } from "@neoread/api";
 
 export const shortcutActions = [
   { id: "readerLeft", name: "阅读模式－左侧栏", scope: "reader", key: "l" },

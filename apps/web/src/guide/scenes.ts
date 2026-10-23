@@ -222,7 +222,7 @@ const detect = scene({
   },
 });
 
-// Terminal login, then a recheck in Reader.
+// Terminal login, then a recheck in NeoRead.
 const term: Rect = { x: 22, y: 46, w: 360, h: 300 };
 const loginPanel: Rect = { x: 400, y: 96, w: 220, h: 170 };
 const loginRefresh = {
@@ -308,7 +308,7 @@ const login = scene({
     chrome(f);
     terminal(f, term, terminalLines(f), f.after("focus"));
 
-    p.text("Reader", loginPanel.x, 36, {
+    p.text("NeoRead", loginPanel.x, 36, {
       size: 11,
       weight: 600,
       color: c.mutedForeground,
@@ -1741,7 +1741,7 @@ const zotero = scene({
   },
 });
 
-// Reader Connector in Chrome.
+// NeoRead Connector in Chrome.
 const browserBar = 40;
 const extensionButton = { x: 594, y: 17, w: 24, h: 24 };
 const P: Rect = { x: 392, y: 46, w: 232, h: 306 };
@@ -1814,7 +1814,7 @@ const connector = scene({
     if (!f.after("open")) return;
     p.alpha(f.progress("open", 180), () => {
       p.box(P, { fill: c.popover, radius: 10, shadow: 18, stroke: c.border });
-      p.text("Reader Connector", P.x + 14, P.y + 24, { size: 13, weight: 600 });
+      p.text("NeoRead Connector", P.x + 14, P.y + 24, { size: 13, weight: 600 });
       p.text("保存当前页面的 PDF 论文。", P.x + 14, P.y + 46, {
         size: 10.5,
         color: c.mutedForeground,
@@ -1858,7 +1858,7 @@ const connector = scene({
       button(
         f,
         collectButton,
-        f.between("save", "saved") ? "正在处理…" : "收录 1 篇到 Reader",
+        f.between("save", "saved") ? "正在处理…" : "收录 1 篇到 NeoRead",
         "primary",
       );
     });
@@ -2304,7 +2304,7 @@ const appearance = scene({
   },
 });
 
-// The reader command line.
+// The neoread command line.
 const cliPanel: Rect = { x: 22, y: 66, w: 262, h: 212 };
 const installButton = {
   x: cliPanel.x + 16,
@@ -2313,8 +2313,8 @@ const installButton = {
   h: 28,
 };
 const cliTerm: Rect = { x: 300, y: 46, w: 320, h: 316 };
-const searchCommand = "reader search attention dropout";
-const readCommand = "reader read 1a2b3c4d --pages 8";
+const searchCommand = "neoread search attention dropout";
+const readCommand = "neoread read 1a2b3c4d --pages 8";
 
 const cliScript = script({ x: 200, y: 340 })
   .wait(400)
@@ -2364,7 +2364,7 @@ const cli = scene({
   draw(f) {
     const { p, c } = f;
     chrome(f);
-    p.text("Reader 设置 · Agent", cliPanel.x, 36, {
+    p.text("NeoRead 设置 · Agent", cliPanel.x, 36, {
       size: 11,
       weight: 600,
       color: c.mutedForeground,
@@ -2376,7 +2376,7 @@ const cli = scene({
     });
     paragraph(
       f,
-      "在终端运行 reader，让 Claude Code、Codex 等工具检索、阅读和导入书库中的文档。使用时 Reader 需要保持打开。",
+      "在终端运行 reader，让 Claude Code、Codex 等工具检索、阅读和导入书库中的文档。使用时 NeoRead 需要保持打开。",
       cliPanel.x + 16,
       cliPanel.y + 50,
       cliPanel.w - 32,
@@ -2392,7 +2392,7 @@ const cli = scene({
         f.t,
         c.mutedForeground,
       );
-      p.text("安装 reader 命令", installButton.x + 30, installButton.y + 14, {
+      p.text("安装 neoread 命令", installButton.x + 30, installButton.y + 14, {
         size: 11.5,
         weight: 500,
       });
@@ -2400,13 +2400,13 @@ const cli = scene({
       button(
         f,
         installButton,
-        installed ? "卸载 reader 命令" : "安装 reader 命令",
+        installed ? "卸载 neoread 命令" : "安装 neoread 命令",
         "outline",
         { icon: glyphs.terminal },
       );
     p.text(
       installed
-        ? "已安装：/usr/local/bin/reader"
+        ? "已安装：/usr/local/bin/neoread"
         : "将安装到 /usr/local/bin，可能需要输入密码",
       cliPanel.x + 16,
       cliPanel.y + 178,

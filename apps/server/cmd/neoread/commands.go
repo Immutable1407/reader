@@ -124,7 +124,7 @@ func (c *client) resolve(ref string) (document, error) {
 			return document{}, exitError{1, strings.Join(lines, "\n")}
 		}
 	}
-	return document{}, exitError{1, fmt.Sprintf("没有找到文档 %q，运行 reader list 查看全部文档", ref)}
+	return document{}, exitError{1, fmt.Sprintf("没有找到文档 %q，运行 neoread list 查看全部文档", ref)}
 }
 
 func runStatus(c *client, f *options, args []string, out io.Writer) error {
@@ -135,7 +135,7 @@ func runStatus(c *client, f *options, args []string, out io.Writer) error {
 	if f.json {
 		return writeJSON(out, map[string]any{"running": true, "url": c.base, "version": c.version, "library": c.library, "documents": len(docs)})
 	}
-	fmt.Fprintf(out, "Reader %s 正在运行（%s）\n书库：%s\n文档：%d 份\n", c.version, c.base, c.library, len(docs))
+	fmt.Fprintf(out, "NeoRead %s 正在运行（%s）\n书库：%s\n文档：%d 份\n", c.version, c.base, c.library, len(docs))
 	return nil
 }
 
@@ -279,7 +279,7 @@ func searchFlags(fs *flag.FlagSet, f *options) {
 func runSearch(c *client, f *options, args []string, out io.Writer) error {
 	q := strings.TrimSpace(strings.Join(args, " "))
 	if q == "" {
-		return usageError("用法：reader search <关键词…>")
+		return usageError("用法：neoread search <关键词…>")
 	}
 	query := url.Values{"q": {q}, "limit": {strconv.Itoa(f.limit)}}
 	if f.library != "" {
@@ -403,7 +403,7 @@ func runRead(c *client, f *options, args []string, out io.Writer) error {
 		return writeJSON(out, text)
 	}
 	if !text.Parsed {
-		return exitError{1, "这份 PDF 还没有完成版面解析，暂时读不到正文。论文导入后会自动解析，请等待解析完成；解析失败时可在 Reader 中重试。"}
+		return exitError{1, "这份 PDF 还没有完成版面解析，暂时读不到正文。论文导入后会自动解析，请等待解析完成；解析失败时可在 NeoRead 中重试。"}
 	}
 	fmt.Fprintf(out, "# %s\n", d.Title)
 	unit, untranslated := 0, 0
@@ -439,7 +439,7 @@ func runRead(c *client, f *options, args []string, out io.Writer) error {
 		fmt.Fprintf(out, "\n（%d 段尚未翻译）\n", untranslated)
 	}
 	if len(text.ParsedPages) > 0 {
-		fmt.Fprintf(out, "\n（这本书只解析了 %d 页；在 Reader 中翻译对应章节后可读到更多）\n", len(text.ParsedPages))
+		fmt.Fprintf(out, "\n（这本书只解析了 %d 页；在 NeoRead 中翻译对应章节后可读到更多）\n", len(text.ParsedPages))
 	}
 	return nil
 }
@@ -588,7 +588,7 @@ type importResult struct {
 
 func runImport(c *client, f *options, args []string, out io.Writer) error {
 	if len(args) == 0 {
-		return usageError("用法：reader import <文件…>")
+		return usageError("用法：neoread import <文件…>")
 	}
 	if f.library != "papers" && f.library != "books" {
 		return usageError("--library 只能是 papers 或 books")

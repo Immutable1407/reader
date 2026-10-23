@@ -1,6 +1,8 @@
 export { zoomCommand } from "./zoom-shortcut";
 export {
-  READER_SCHEME,
+  NEOREAD_SCHEME,
+  LEGACY_SCHEME,
+  LINK_SCHEMES,
   readerLink,
   parseReaderLink,
   type ReaderLinkTarget,

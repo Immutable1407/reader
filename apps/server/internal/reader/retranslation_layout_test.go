@@ -15,7 +15,7 @@ import (
 
 // Exercise the subprocess boundary on every platform without a model download.
 func init() {
-	mode := os.Getenv("READER_REPARSE_TEST_CHILD")
+	mode := os.Getenv("NEOREAD_REPARSE_TEST_CHILD")
 	if mode == "" {
 		return
 	}
@@ -31,7 +31,7 @@ func init() {
 	if out == "" {
 		os.Exit(8)
 	}
-	f, _ := os.OpenFile(os.Getenv("READER_REPARSE_CALLS"), os.O_CREATE|os.O_APPEND|os.O_WRONLY, 0600)
+	f, _ := os.OpenFile(os.Getenv("NEOREAD_REPARSE_CALLS"), os.O_CREATE|os.O_APPEND|os.O_WRONLY, 0600)
 	_, _ = f.WriteString("parse\n")
 	_ = f.Close()
 	_ = os.MkdirAll(filepath.Join(out, "assets"), 0700)
@@ -39,7 +39,7 @@ func init() {
 		_ = os.WriteFile(filepath.Join(out, "manifest.json"), []byte("partial"), 0600)
 		os.Exit(3)
 	}
-	data, _ := os.ReadFile(os.Getenv("READER_REPARSE_FIXTURE"))
+	data, _ := os.ReadFile(os.Getenv("NEOREAD_REPARSE_FIXTURE"))
 	_ = os.WriteFile(filepath.Join(out, "manifest.json"), data, 0600)
 	var m layoutManifest
 	_ = json.Unmarshal(data, &m)
@@ -66,11 +66,11 @@ func reparseFixture(t *testing.T, m layoutManifest) string {
 		t.Fatal(err)
 	}
 	calls := filepath.Join(dir, "calls")
-	t.Setenv("READER_NODE", executable)
-	t.Setenv("READER_PROCESSOR", "test-layout-worker")
-	t.Setenv("READER_REPARSE_TEST_CHILD", "success")
-	t.Setenv("READER_REPARSE_FIXTURE", fixture)
-	t.Setenv("READER_REPARSE_CALLS", calls)
+	t.Setenv("NEOREAD_NODE", executable)
+	t.Setenv("NEOREAD_PROCESSOR", "test-layout-worker")
+	t.Setenv("NEOREAD_REPARSE_TEST_CHILD", "success")
+	t.Setenv("NEOREAD_REPARSE_FIXTURE", fixture)
+	t.Setenv("NEOREAD_REPARSE_CALLS", calls)
 	return calls
 }
 
@@ -128,7 +128,7 @@ func TestRetranslationParseFailureOrCancellationPreservesOldContent(t *testing.T
 			s, _, m := completedTranslationFixture(t)
 			prepareReparseDocument(t, s)
 			reparseFixture(t, m)
-			t.Setenv("READER_REPARSE_TEST_CHILD", "fail")
+			t.Setenv("NEOREAD_REPARSE_TEST_CHILD", "fail")
 			path := filepath.Join(s.analysisDir("doc"), "manifest.json")
 			before, _ := os.ReadFile(path)
 			p := assistanceRequest(t, s, "retranslate")

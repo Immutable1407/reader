@@ -21,7 +21,7 @@ func TestAPIProbeTimeoutOverride(t *testing.T) {
 		case <-r.Context().Done():
 			return
 		case <-time.After(1100 * time.Millisecond):
-			writeAPIReply(w, "READER_OK")
+			writeAPIReply(w, "NEOREAD_OK")
 		}
 	}))
 	defer upstream.Close()
@@ -81,7 +81,7 @@ func TestAPIProbeFirstOutput(t *testing.T) {
 		fmt.Fprint(w, "data: {\"choices\":[{\"index\":0,\"delta\":{\"reasoning_content\":\"Checking\"}}]}\n\n")
 		w.(http.Flusher).Flush()
 		time.Sleep(200 * time.Millisecond)
-		writeAPIReply(w, "READER_OK")
+		writeAPIReply(w, "NEOREAD_OK")
 	}))
 	defer upstream.Close()
 	s := testServer(t)
@@ -133,7 +133,7 @@ func TestAnthropicProbeFirstThinkingOutput(t *testing.T) {
 					return
 				}
 				w.Header().Set("Content-Type", "text/event-stream")
-				prefix, rest, _ := strings.Cut(anthropicTestWire("READER_OK"), "\n\n")
+				prefix, rest, _ := strings.Cut(anthropicTestWire("NEOREAD_OK"), "\n\n")
 				fmt.Fprint(w, prefix+"\n\ndata: {\"type\":\"ping\"}\n\n")
 				w.(http.Flusher).Flush()
 				time.Sleep(100 * time.Millisecond)

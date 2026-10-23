@@ -18,7 +18,7 @@ import {
   validateDiagnosticEvent,
 } from "../../../packages/reader-core/src/diagnostics";
 
-declare const READER_BUILD_COMMIT: string;
+declare const NEOREAD_BUILD_COMMIT: string;
 
 export function startDiagnosticService(
   getWindow: () => BrowserWindow | undefined,
@@ -41,7 +41,7 @@ export function startDiagnosticService(
       const window = getWindow();
       const options = {
         title: "导出诊断包",
-        defaultPath: `Reader-diagnostics-${new Date().toISOString().replace(/[:.]/g, "-")}.zip`,
+        defaultPath: `NeoRead-diagnostics-${new Date().toISOString().replace(/[:.]/g, "-")}.zip`,
         filters: [{ name: "诊断包", extensions: ["zip"] }],
       };
       const selected =
@@ -65,8 +65,8 @@ export function startDiagnosticService(
             mode: "desktop",
             appVersion: version,
             buildCommit:
-              typeof READER_BUILD_COMMIT === "string"
-                ? READER_BUILD_COMMIT
+              typeof NEOREAD_BUILD_COMMIT === "string"
+                ? NEOREAD_BUILD_COMMIT
                 : "unknown",
             packaged: app.isPackaged,
             platform: platform(),

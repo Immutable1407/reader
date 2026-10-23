@@ -43,7 +43,7 @@ func (s *Server) cachedCatalog(ctx context.Context, key string, discover func(co
 	return models, nil
 }
 
-// Reader exposes exactly four levels. Provider-specific values remain inside
+// NeoRead exposes exactly four levels. Provider-specific values remain inside
 // this adapter. Prefer the same semantic level; clamp to the closest supported
 // tier when a model has fewer controls. Ultra is a delegation mode, not Max.
 func nativeEffort(provider, level, modelID string, models []AgentModel) string {

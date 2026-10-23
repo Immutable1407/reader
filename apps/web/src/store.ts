@@ -7,8 +7,8 @@ import {
   type LibraryMode,
   type LibraryPreferences,
   type ReaderLinkTarget,
-} from "@reader/core";
-import { api } from "@reader/api";
+} from "@neoread/core";
+import { api } from "@neoread/api";
 export const useReaderStore = create<{
   documents: Document[];
   active: Document | null;
@@ -18,7 +18,7 @@ export const useReaderStore = create<{
   libraryPreferences: LibraryPreferences;
   trash: Document[];
   setTrash: (trash: Document[]) => void;
-  /** A reader:// target waiting for its document to open. */
+  /** A neoread:// target waiting for its document to open. */
   linkTarget: ReaderLinkTarget | null;
   setLinkTarget: (target: ReaderLinkTarget | null) => void;
   setLibraryPreferences: (preferences: LibraryPreferences) => void;
@@ -99,7 +99,7 @@ export async function refreshTrash() {
   const trash = await api.trash(libraryMode(state.libraryPreferences));
   if (revision === trashRevision) useReaderStore.getState().setTrash(trash);
 }
-/** Open the document a reader:// link points to, in its own library. */
+/** Open the document a neoread:// link points to, in its own library. */
 export async function openLinkTarget(target: ReaderLinkTarget) {
   let doc = useReaderStore.getState().documents.find((d) => d.id === target.id);
   if (!doc) {

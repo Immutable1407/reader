@@ -1,4 +1,4 @@
-import type { Creator, Document } from "@reader/core";
+import type { Creator, Document } from "@neoread/core";
 import { creatorName, paperCreators, paperLink, paperYear } from "./format";
 
 /**

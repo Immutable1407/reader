@@ -2,7 +2,7 @@
 import { afterEach, beforeEach, expect, it, vi } from "vitest";
 import type { PDFPageProxy } from "pdfjs-dist";
 import type { PDFViewer } from "pdfjs-dist/web/pdf_viewer.mjs";
-import type { PDFBlock } from "@reader/core";
+import type { PDFBlock } from "@neoread/core";
 vi.mock("pdfjs-dist", () => ({
   Util: { transform: (_a: number[], b: number[]) => b },
 }));

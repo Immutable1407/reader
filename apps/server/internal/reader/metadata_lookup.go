@@ -10,7 +10,7 @@ import (
 	"strings"
 	"time"
 
-	"reader.local/server/internal/scholar"
+	"neoread.local/server/internal/scholar"
 )
 
 func (s *Server) scholarClient() *scholar.Client {

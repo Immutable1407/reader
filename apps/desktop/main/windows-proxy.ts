@@ -94,7 +94,7 @@ export function windowsProxySettings(value: unknown): Record<string, unknown> {
     const match = /^(http|https|ftp|socks)\s*=\s*(.+)$/i.exec(entry.trim());
     if (!match) throw new Error("Windows 系统代理规则无效");
     const kind = match[1].toUpperCase();
-    if (kind === "FTP") continue; // Reader never issues FTP requests.
+    if (kind === "FTP") continue; // NeoRead never issues FTP requests.
     if (kind === "SOCKS") throw new Error("暂不支持 Windows SOCKS 代理规则");
     const address = match[2];
     const url = new URL(

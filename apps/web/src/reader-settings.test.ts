@@ -1,9 +1,9 @@
 import { expect, it, vi } from "vitest";
-import { defaultTheme } from "@reader/core";
-import { api } from "@reader/api";
+import { defaultTheme } from "@neoread/core";
+import { api } from "@neoread/api";
 import { saveReaderSettings } from "./reader-settings";
 
-vi.mock("@reader/api", () => ({ api: { saveSettings: vi.fn() } }));
+vi.mock("@neoread/api", () => ({ api: { saveSettings: vi.fn() } }));
 
 it("finishes older writes before the final close snapshot and recovers after a failed save", async () => {
   let finish!: () => void;

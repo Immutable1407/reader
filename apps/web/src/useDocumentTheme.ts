@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from "react";
-import type { Document, ReaderTheme } from "@reader/core";
+import type { Document, ReaderTheme } from "@neoread/core";
 import { useReaderStore } from "./store";
 
 export function documentZoom(

@@ -158,9 +158,9 @@ func TestEndnoteFailedConversionLeavesNoDocument(t *testing.T) {
 // Opt-in integration check against a disposable SQLite snapshot and local PDFs.
 // Never requires a private library in CI and never edits the source library.
 func TestEndnoteLiveSnapshot(t *testing.T) {
-	path := os.Getenv("READER_TEST_ENDNOTE_LIBRARY")
+	path := os.Getenv("NEOREAD_TEST_ENDNOTE_LIBRARY")
 	if path == "" {
-		t.Skip("set READER_TEST_ENDNOTE_LIBRARY to a disposable snapshot")
+		t.Skip("set NEOREAD_TEST_ENDNOTE_LIBRARY to a disposable snapshot")
 	}
 	scan, err := endnoteSource(context.Background(), path)
 	if err != nil {

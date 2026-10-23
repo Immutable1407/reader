@@ -130,7 +130,7 @@ func invokeCLI(ctx context.Context, root, provider, model string, in AIInput, de
 // are advertised; the isolated profile disables all model tools and subagents.
 func invokeKimi(ctx context.Context, work, model string, in AIInput, delta func(string), metrics ...func([]ModelTokens)) (string, error) {
 	profile := filepath.Join(work, "reader.md")
-	if e := os.WriteFile(profile, []byte("---\nname: reader\ndescription: Reader document assistant\ntools: []\nsubagents: []\n---\n"+readerSystemPrompt+"\n"), 0600); e != nil {
+	if e := os.WriteFile(profile, []byte("---\nname: reader\ndescription: NeoRead document assistant\ntools: []\nsubagents: []\n---\n"+readerSystemPrompt+"\n"), 0600); e != nil {
 		return "", e
 	}
 	args := []string{"--agent-file", profile, "--skills-dir", work}
@@ -180,7 +180,7 @@ func invokeKimi(ctx context.Context, work, model string, in AIInput, delta func(
 				return nil, generationError(ErrorProtocol, "Kimi ACP 输出协议无效")
 			}
 			if msg.Method != "" && len(msg.ID) > 0 { // Deny permission and every unsolicited client-side operation.
-				response := map[string]any{"jsonrpc": "2.0", "id": msg.ID, "error": map[string]any{"code": -32601, "message": "Reader does not expose this operation"}}
+				response := map[string]any{"jsonrpc": "2.0", "id": msg.ID, "error": map[string]any{"code": -32601, "message": "NeoRead does not expose this operation"}}
 				if msg.Method == "session/request_permission" {
 					delete(response, "error")
 					response["result"] = map[string]any{"outcome": map[string]string{"outcome": "cancelled"}}

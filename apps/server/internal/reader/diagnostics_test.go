@@ -12,7 +12,7 @@ import (
 	"strings"
 	"testing"
 
-	"reader.local/server/internal/diagnostics"
+	"neoread.local/server/internal/diagnostics"
 )
 
 func TestDiagnosticsAuthenticationAndRequestCorrelation(t *testing.T) {
@@ -25,7 +25,7 @@ func TestDiagnosticsAuthenticationAndRequestCorrelation(t *testing.T) {
 		t.Fatal(denied.Code)
 	}
 	first := request(t, s, "GET", "/api/documents", nil)
-	rid := first.Header().Get("X-Reader-Request-ID")
+	rid := first.Header().Get("X-NeoRead-Request-ID")
 	if len(rid) != 32 {
 		t.Fatal("missing request ID")
 	}
@@ -112,7 +112,7 @@ func TestDiagnosticsHTTPFailureKeepsPrivateMessageInResponseOnly(t *testing.T) {
 			}
 			if event["event"] == "http.failure" {
 				found = true
-				if event["errorCode"] != "http_502" || event["requestId"] != w.Header().Get("X-Reader-Request-ID") {
+				if event["errorCode"] != "http_502" || event["requestId"] != w.Header().Get("X-NeoRead-Request-ID") {
 					t.Fatal("failure lost its code or request correlation")
 				}
 			}

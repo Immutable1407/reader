@@ -368,11 +368,11 @@ func (s *Server) pdfCorpus(ctx context.Context, d Document, c *documentCorpus) e
 		}
 	}
 	needsExtraction := layoutErr != nil || len(missingPages) > 0
-	worker := os.Getenv("READER_CORPUS_PROCESSOR")
-	if worker == "" && os.Getenv("READER_PROCESSOR") != "" {
-		worker = filepath.Join(filepath.Dir(os.Getenv("READER_PROCESSOR")), "corpus.mjs")
+	worker := os.Getenv("NEOREAD_CORPUS_PROCESSOR")
+	if worker == "" && os.Getenv("NEOREAD_PROCESSOR") != "" {
+		worker = filepath.Join(filepath.Dir(os.Getenv("NEOREAD_PROCESSOR")), "corpus.mjs")
 	}
-	node := os.Getenv("READER_NODE")
+	node := os.Getenv("NEOREAD_NODE")
 	if needsExtraction && worker != "" && node != "" {
 		work, err := os.MkdirTemp(filepath.Join(s.Store.Root, "ai-work"), "corpus-")
 		if err != nil {
@@ -407,7 +407,7 @@ func (s *Server) pdfCorpus(ctx context.Context, d Document, c *documentCorpus) e
 		}
 	}
 	if len(extracted.Pages) == 0 && layoutErr != nil {
-		return generationError(ErrorConfiguration, "全文检索需要本地 PDF 文字提取程序，请重新构建 Reader")
+		return generationError(ErrorConfiguration, "全文检索需要本地 PDF 文字提取程序，请重新构建 NeoRead")
 	}
 	if layoutErr == nil {
 		c.Coverage.TotalUnits = layout.Pages

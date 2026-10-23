@@ -8,7 +8,7 @@ import (
 	"reflect"
 )
 
-const annotationUndoHeader = "X-Reader-Undo-Session"
+const annotationUndoHeader = "X-NeoRead-Undo-Session"
 const annotationUndoLimit = 100
 const annotationUndoBytes = 16 << 20
 

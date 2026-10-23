@@ -11,7 +11,7 @@ import (
 	"sync/atomic"
 	"testing"
 
-	"reader.local/server/internal/scholar"
+	"neoread.local/server/internal/scholar"
 )
 
 const lookupAtom = `<feed xmlns="http://www.w3.org/2005/Atom"><entry><id>http://arxiv.org/abs/1706.03762v7</id>

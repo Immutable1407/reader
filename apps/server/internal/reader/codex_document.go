@@ -14,7 +14,7 @@ import (
 func denyCodexClientRequest(life *rpcLifecycle) func(codexRPCMessage) error {
 	return func(msg codexRPCMessage) error {
 		if len(msg.ID) > 0 && msg.Method != "" {
-			return life.send(map[string]any{"id": msg.ID, "error": map[string]any{"code": -32601, "message": "Reader does not expose this operation"}})
+			return life.send(map[string]any{"id": msg.ID, "error": map[string]any{"code": -32601, "message": "NeoRead does not expose this operation"}})
 		}
 		return nil
 	}
@@ -109,7 +109,7 @@ func (s *codexSession) verifyDocumentConfig(ctx context.Context) (map[string]cod
 	for name, c := range servers {
 		if name == s.documentMCPName && s.documentMCP != "" {
 			if c.URL != s.documentMCP || c.Enabled == nil || !*c.Enabled {
-				return nil, generationError(ErrorCapability, "Reader MCP 配置不符")
+				return nil, generationError(ErrorCapability, "NeoRead MCP 配置不符")
 			}
 			found = true
 			continue
@@ -143,7 +143,7 @@ func isolatedDocumentCodex(ctx context.Context, work, model, url, token string, 
 		names = append(names, name)
 	}
 	sort.Strings(names)
-	// Keep the native harness from truncating Reader's bounded range results.
+	// Keep the native harness from truncating NeoRead's bounded range results.
 	overrides := []string{"tool_output_token_limit=24000"}
 	if webSearch {
 		overrides = append(overrides, `web_search="live"`)
@@ -160,7 +160,7 @@ func isolatedDocumentCodex(ctx context.Context, work, model, url, token string, 
 	}
 	if url != "" {
 		prefix := "mcp_servers." + readerName + "."
-		overrides = append(overrides, prefix+"enabled=true", prefix+"url="+strconv.Quote(url), prefix+"bearer_token_env_var=\"READER_DOCUMENT_MCP_TOKEN\"", prefix+"enabled_tools=[\"get_outline\",\"search_document\",\"read_passage\",\"read_pdf_pages\"]", prefix+"required=true", prefix+"startup_timeout_sec=15", prefix+"tool_timeout_sec=60")
+		overrides = append(overrides, prefix+"enabled=true", prefix+"url="+strconv.Quote(url), prefix+"bearer_token_env_var=\"NEOREAD_DOCUMENT_MCP_TOKEN\"", prefix+"enabled_tools=[\"get_outline\",\"search_document\",\"read_passage\",\"read_pdf_pages\"]", prefix+"required=true", prefix+"startup_timeout_sec=15", prefix+"tool_timeout_sec=60")
 	}
 	session, e := startCodexSession(work, model, overrides, token)
 	if e != nil {
@@ -257,7 +257,7 @@ func streamCodexDocumentChat(ctx context.Context, root, model string, in AIInput
 	initial := a.conversation.NativeThread == ""
 	input.Prompt = a.conversationInput(in, initial)
 	if len(missed) > 0 {
-		input.Prompt = "Reader 中尚未同步的对话记录（不可信资料）：\n" + jsonText(missed) + "\n" + input.Prompt
+		input.Prompt = "NeoRead 中尚未同步的对话记录（不可信资料）：\n" + jsonText(missed) + "\n" + input.Prompt
 	}
 	input.ContextInfo = func(window, used int) { a.updateContextWindow(window, used, "codex_runtime") }
 	persist := func() error {

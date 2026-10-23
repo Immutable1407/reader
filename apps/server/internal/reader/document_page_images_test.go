@@ -303,16 +303,16 @@ func TestAPIPageImagesPersistWithoutBase64AndCompact(t *testing.T) {
 }
 
 func TestLivePDFPageRendering(t *testing.T) {
-	processor := os.Getenv("READER_TEST_PAGE_PROCESSOR")
+	processor := os.Getenv("NEOREAD_TEST_PAGE_PROCESSOR")
 	if processor == "" {
-		t.Skip("set READER_TEST_PAGE_PROCESSOR to the built processor main.mjs")
+		t.Skip("set NEOREAD_TEST_PAGE_PROCESSOR to the built processor main.mjs")
 	}
 	node, err := exec.LookPath("node")
 	if err != nil {
 		t.Fatal(err)
 	}
-	t.Setenv("READER_NODE", node)
-	t.Setenv("READER_PROCESSOR", processor)
+	t.Setenv("NEOREAD_NODE", node)
+	t.Setenv("NEOREAD_PROCESSOR", processor)
 	s, a := pageImageFixture(t, false)
 	raw, err := a.call(t.Context(), "read_pdf_pages", json.RawMessage(`{"pages":[2,1]}`))
 	if err != nil {
@@ -330,29 +330,29 @@ func TestLivePDFPageRendering(t *testing.T) {
 		if image.Width != 800 || image.Height != 600 {
 			t.Fatal("wrong page dimensions", image)
 		}
-		if output := os.Getenv("READER_TEST_PAGE_OUTPUT"); output != "" {
+		if output := os.Getenv("NEOREAD_TEST_PAGE_OUTPUT"); output != "" {
 			if err = os.WriteFile(filepath.Join(output, fmt.Sprintf("reader-visual-page-%d.png", image.Page)), data, 0600); err != nil {
 				t.Fatal(err)
 			}
 		}
 	}
-	t.Setenv("READER_NODE", "")
+	t.Setenv("NEOREAD_NODE", "")
 	if _, err = s.renderDocumentPages(context.Background(), a.corpus, []int{1, 2}); err != nil {
 		t.Fatal("cache did not bypass renderer", err)
 	}
 }
 
 func TestLiveCodexPDFPageImages(t *testing.T) {
-	processor := os.Getenv("READER_TEST_PAGE_PROCESSOR")
-	if processor == "" || os.Getenv("READER_TEST_NATIVE_IMAGES") != "1" {
+	processor := os.Getenv("NEOREAD_TEST_PAGE_PROCESSOR")
+	if processor == "" || os.Getenv("NEOREAD_TEST_NATIVE_IMAGES") != "1" {
 		t.Skip("opt-in real Codex test using only synthetic vector pages")
 	}
 	node, err := exec.LookPath("node")
 	if err != nil {
 		t.Fatal(err)
 	}
-	t.Setenv("READER_NODE", node)
-	t.Setenv("READER_PROCESSOR", processor)
+	t.Setenv("NEOREAD_NODE", node)
+	t.Setenv("NEOREAD_PROCESSOR", processor)
 	s, _ := pageImageFixture(t, false)
 	config := AIConfig{Primary: "codex", Models: map[string]string{}, Capabilities: map[string]Capability{}}
 	config.Capabilities["codex"] = Capability{Text: true, Vision: true, Fingerprint: configPrint(config, "codex")}
@@ -389,7 +389,7 @@ func TestLiveCodexPDFPageImages(t *testing.T) {
 	if visualCalls != 1 || len(run.Evidence) != 2 {
 		t.Fatal("missing multi-page native tool execution", visualCalls, len(run.Evidence))
 	}
-	// Native history and the local source ledger both survive a Reader restart.
+	// Native history and the local source ledger both survive a NeoRead restart.
 	s.Close()
 	s = NewServer(s.Store, "test-secret", "")
 	t.Cleanup(s.Close)

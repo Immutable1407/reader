@@ -24,7 +24,7 @@ const event = () => ({
   sender: window.webContents,
   senderFrame: window.webContents.mainFrame,
 });
-const move = () => handlers.get("reader:move-library")!(event());
+const move = () => handlers.get("neoread:move-library")!(event());
 
 beforeEach(async () => {
   vi.resetModules();
@@ -166,7 +166,7 @@ beforeEach(async () => {
   );
   await import("./index");
   await vi.waitFor(() =>
-    expect(handlers.has("reader:check-updates")).toBe(true),
+    expect(handlers.has("neoread:check-updates")).toBe(true),
   );
 });
 afterEach(() => {
@@ -184,13 +184,13 @@ it("waits for flushed reading data, then copies once despite repeated quit event
   });
   const result = move();
   await vi.waitFor(() =>
-    expect(window.webContents.send).toHaveBeenCalledWith("reader:flush"),
+    expect(window.webContents.send).toHaveBeenCalledWith("neoread:flush"),
   );
   expect(migrate).not.toHaveBeenCalled();
-  ipc.emit("reader:flushed", event(), null);
+  ipc.emit("neoread:flushed", event(), null);
   await vi.waitFor(() => expect(stop).toHaveBeenCalledOnce());
   app.quit();
-  ipc.emit("reader:flushed", event(), null);
+  ipc.emit("neoread:flushed", event(), null);
   expect(migrate).toHaveBeenCalledOnce();
   expect(app.relaunch).not.toHaveBeenCalled();
   await vi.waitFor(() => expect(complete).toBeTypeOf("function"));
@@ -199,7 +199,7 @@ it("waits for flushed reading data, then copies once despite repeated quit event
   expect(migrate).toHaveBeenCalledWith(
     "/userdata",
     "/old/library",
-    "/destination/Reader Library",
+    "/destination/NeoRead Library",
     expect.any(String),
     expect.any(Function),
   );
@@ -209,9 +209,9 @@ it("waits for flushed reading data, then copies once despite repeated quit event
 it("cancels migration after a save failure and allows returning to reading", async () => {
   const result = move();
   await vi.waitFor(() =>
-    expect(window.webContents.send).toHaveBeenCalledWith("reader:flush"),
+    expect(window.webContents.send).toHaveBeenCalledWith("neoread:flush"),
   );
-  ipc.emit("reader:flushed", event(), "save failed");
+  ipc.emit("neoread:flushed", event(), "save failed");
   expect(await result).toBe(false);
   expect(migrate).not.toHaveBeenCalled();
   expect(app.relaunch).not.toHaveBeenCalled();
@@ -228,9 +228,9 @@ it("reopens the old library after shutdown or copy fails", async () => {
   stop.mockRejectedValueOnce(new Error("shutdown failed"));
   const result = move();
   await vi.waitFor(() =>
-    expect(window.webContents.send).toHaveBeenCalledWith("reader:flush"),
+    expect(window.webContents.send).toHaveBeenCalledWith("neoread:flush"),
   );
-  ipc.emit("reader:flushed", event(), null);
+  ipc.emit("neoread:flushed", event(), null);
   expect(await result).toBe(false);
   expect(showMessageBox).toHaveBeenCalledWith(
     window,
@@ -239,7 +239,7 @@ it("reopens the old library after shutdown or copy fails", async () => {
       detail: expect.stringContaining("原书库已保留"),
     }),
   );
-  expect(handlers.get("reader:library-location")!(event())).toBe(
+  expect(handlers.get("neoread:library-location")!(event())).toBe(
     "/old/library",
   );
   expect(app.relaunch).toHaveBeenCalledOnce();
@@ -248,7 +248,7 @@ it("reopens the old library after shutdown or copy fails", async () => {
 it("does not close the reader when the native confirmation is cancelled", async () => {
   showMessageBox.mockResolvedValueOnce({ response: 1 });
   expect(await move()).toBe(false);
-  expect(window.webContents.send).not.toHaveBeenCalledWith("reader:flush");
+  expect(window.webContents.send).not.toHaveBeenCalledWith("neoread:flush");
   expect(migrate).not.toHaveBeenCalled();
 });
 
@@ -263,11 +263,11 @@ it.each(["/destination?question", "/parent?question/destination"])(
     showMessageBox.mockResolvedValueOnce({ response: 1 });
     await expect(move()).rejects.toThrow("书库路径不能包含 ?");
     expect(showMessageBox).not.toHaveBeenCalled();
-    expect(window.webContents.send).not.toHaveBeenCalledWith("reader:flush");
+    expect(window.webContents.send).not.toHaveBeenCalledWith("neoread:flush");
     expect(stop).not.toHaveBeenCalled();
     expect(migrate).not.toHaveBeenCalled();
     expect(app.relaunch).not.toHaveBeenCalled();
-    expect(handlers.get("reader:library-location")!(event())).toBe(
+    expect(handlers.get("neoread:library-location")!(event())).toBe(
       "/old/library",
     );
 

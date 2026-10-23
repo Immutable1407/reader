@@ -1,8 +1,8 @@
 import { useState } from "react";
 import { ArrowDown, ArrowUp, Plus, RotateCcw, Trash2 } from "lucide-react";
-import type { HighlightColor } from "@reader/core";
-import { Button } from "@reader/ui/components/button";
-import { Input } from "@reader/ui/components/input";
+import type { HighlightColor } from "@neoread/core";
+import { Button } from "@neoread/ui/components/button";
+import { Input } from "@neoread/ui/components/input";
 import {
   MAX_HIGHLIGHT_COLORS,
   highlightColors,

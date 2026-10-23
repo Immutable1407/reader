@@ -1,5 +1,5 @@
-import type { ReaderTheme } from "@reader/core";
-import { api } from "@reader/api";
+import type { ReaderTheme } from "@neoread/core";
+import { api } from "@neoread/api";
 import { useEffect } from "react";
 import { toast } from "sonner";
 

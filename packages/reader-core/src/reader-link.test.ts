@@ -10,11 +10,18 @@ it("round-trips document, annotation and page targets", () => {
   ])
     expect(parseReaderLink(readerLink(target))).toEqual(target);
 });
+it("still opens links exported with the old scheme", () => {
+  expect(readerLink({ id })).toBe(`neoread://open?id=${id}`);
+  expect(parseReaderLink(`reader://open?id=${id}&page=3`)).toEqual({
+    id,
+    page: 3,
+  });
+});
 it("rejects other schemes, actions and malformed parameters", () => {
   for (const link of [
     `https://open?id=${id}`,
-    `reader://delete?id=${id}`,
-    "reader://open?id=../../etc",
+    `neoread://delete?id=${id}`,
+    "neoread://open?id=../../etc",
     "not a link",
   ])
     expect(parseReaderLink(link)).toBeNull();

@@ -6,14 +6,14 @@ import {
   type PointerEvent as ReactPointerEvent,
 } from "react";
 import { ArrowUpRight, Grip, Minus, Pin, Plus, X } from "lucide-react";
-import type { DocumentLocation, LinkPreview } from "@reader/core";
-import { Button } from "@reader/ui/components/button";
-import { Popover, PopoverContent } from "@reader/ui/components/popover";
+import type { DocumentLocation, LinkPreview } from "@neoread/core";
+import { Button } from "@neoread/ui/components/button";
+import { Popover, PopoverContent } from "@neoread/ui/components/popover";
 import {
   Dialog,
   DialogContent,
   DialogTitle,
-} from "@reader/ui/components/dialog";
+} from "@neoread/ui/components/dialog";
 
 interface Frame {
   x: number;

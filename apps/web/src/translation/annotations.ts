@@ -1,4 +1,4 @@
-import type { Annotation, TranslationBlock } from "@reader/core";
+import type { Annotation, TranslationBlock } from "@neoread/core";
 
 export function textRange(
   root: HTMLElement,

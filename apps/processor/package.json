@@ -1,5 +1,5 @@
 {
-  "name": "@reader/processor",
+  "name": "@neoread/processor",
   "private": true,
   "type": "module",
   "scripts": {

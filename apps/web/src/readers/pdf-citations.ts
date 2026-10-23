@@ -1,5 +1,5 @@
 import type { PDFDocumentProxy } from "pdfjs-dist";
-import type { PDFBlock, PDFLocation } from "@reader/core";
+import type { PDFBlock, PDFLocation } from "@neoread/core";
 import { destinationPoint } from "./pdf-link-preview";
 
 // TextContent can merge differently colored links into an entire line. Use the

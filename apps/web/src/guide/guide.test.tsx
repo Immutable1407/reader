@@ -2,7 +2,7 @@
 import { act } from "react";
 import { createRoot, type Root } from "react-dom/client";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { api } from "@reader/api";
+import { api } from "@neoread/api";
 import { toast } from "sonner";
 import {
   cursorAt,
@@ -17,7 +17,7 @@ import { guideTopics } from "./topics";
 import { guideLaunch, releaseNotes } from "./releases";
 import { GuideHost } from "./GuideHost";
 
-vi.mock("@reader/api", () => ({
+vi.mock("@neoread/api", () => ({
   api: { guidePreferences: vi.fn(), saveGuidePreferences: vi.fn() },
 }));
 vi.mock("sonner", () => ({ toast: { error: vi.fn() } }));
@@ -206,7 +206,7 @@ describe("guide host", () => {
     const [version, items] = Object.entries(releaseNotes)[0];
     vi.mocked(api.guidePreferences).mockResolvedValue({});
     await render(true, version);
-    expect(document.body.textContent).toContain(`Reader ${version} 更新内容`);
+    expect(document.body.textContent).toContain(`NeoRead ${version} 更新内容`);
     expect(document.body.textContent).toContain(items[0].title);
     const open = vi
       .spyOn(window, "open")

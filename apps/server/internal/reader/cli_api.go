@@ -7,7 +7,7 @@ import (
 	"strings"
 )
 
-// Plain-text access for the `reader` command line. PDFs are read from the
+// Plain-text access for the `neoread` command line. PDFs are read from the
 // layout index, so a PDF has text only after its layout has been parsed.
 // EPUB text comes from the chapters. Units are pages for a PDF and reading-order
 // chapters for an EPUB.

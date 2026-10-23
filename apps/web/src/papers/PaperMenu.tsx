@@ -12,7 +12,7 @@ import {
   Tag,
   Trash2,
 } from "lucide-react";
-import { readerLink, type Document, type ReadingStatus } from "@reader/core";
+import { readerLink, type Document, type ReadingStatus } from "@neoread/core";
 import { copyText } from "../chat/clipboard";
 import {
   ContextMenuCheckboxItem,
@@ -23,7 +23,7 @@ import {
   ContextMenuSub,
   ContextMenuSubContent,
   ContextMenuSubTrigger,
-} from "@reader/ui/components/context-menu";
+} from "@neoread/ui/components/context-menu";
 import {
   DropdownMenuCheckboxItem,
   DropdownMenuItem,
@@ -33,7 +33,7 @@ import {
   DropdownMenuSub,
   DropdownMenuSubContent,
   DropdownMenuSubTrigger,
-} from "@reader/ui/components/dropdown-menu";
+} from "@neoread/ui/components/dropdown-menu";
 import { useReaderStore } from "../store";
 import {
   addToCategory,

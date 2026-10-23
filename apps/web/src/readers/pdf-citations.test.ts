@@ -1,6 +1,6 @@
 import { expect, it, vi } from "vitest";
 import type { PDFDocumentProxy } from "pdfjs-dist";
-import type { PDFBlock } from "@reader/core";
+import type { PDFBlock } from "@neoread/core";
 import { numberedReference, resolvePDFCitation } from "./pdf-citations";
 const block: PDFBlock = {
   id: "p1-b1",

@@ -1,8 +1,8 @@
 import { useEffect, useRef, useState } from "react";
 import * as pdfjs from "pdfjs-dist";
 import workerURL from "pdfjs-dist/build/pdf.worker.min.mjs?url";
-import { defaultTheme, type LinkPreview, type ReaderTheme } from "@reader/core";
-import { Button } from "@reader/ui/components/button";
+import { defaultTheme, type LinkPreview, type ReaderTheme } from "@neoread/core";
+import { Button } from "@neoread/ui/components/button";
 import { LinkPreviewPanel } from "./LinkPreviewPanel";
 import { PDFLinkPreview } from "./readers/pdf-link-preview";
 

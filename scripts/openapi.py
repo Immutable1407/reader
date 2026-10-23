@@ -34,5 +34,5 @@ paths['/api/documents/{id}/chat']['post']['requestBody']['content']['application
 paths['/api/documents/{id}/chat']['post']['responses']['200']={'description':'SSE: status, delta {text}, error {error}, done {ok}. Disconnection cancels CLI.','content':{'text/event-stream':{'schema':string}}}
 add('/api/providers','get',array(ref('Provider')))
 add('/api/settings','get',ref('Settings'));add('/api/settings','put',ref('Settings'),ref('Settings'))
-spec={'openapi':'3.1.0','info':{'title':'Reader Local API','version':'0.1.0'},'security':[{'session':[]}],'paths':paths,'components':{'securitySchemes':{'session':{'type':'http','scheme':'bearer'}},'schemas':schemas}}
+spec={'openapi':'3.1.0','info':{'title':'NeoRead Local API','version':'0.1.0'},'security':[{'session':[]}],'paths':paths,'components':{'securitySchemes':{'session':{'type':'http','scheme':'bearer'}},'schemas':schemas}}
 open('docs/openapi.yaml','w').write(json.dumps(spec,ensure_ascii=False,indent=2)+'\n')

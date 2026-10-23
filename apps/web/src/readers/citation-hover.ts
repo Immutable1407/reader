@@ -1,4 +1,4 @@
-import type { PDFLocation } from "@reader/core";
+import type { PDFLocation } from "@neoread/core";
 
 /** Delegate to rendered Markdown links, including lazily mounted translations. */
 export function installCitationHover(

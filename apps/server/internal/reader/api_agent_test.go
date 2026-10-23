@@ -158,7 +158,7 @@ func TestAPIModelCheckIsPerModel(t *testing.T) {
 		if call.Model == "broken" {
 			return ""
 		}
-		return "READER_OK"
+		return "NEOREAD_OK"
 	})
 	config := AIConfig{Primary: "api", API: APIConnection{URL: upstream.URL + "/v1", Key: "sk-test"}, Models: map[string]string{}}
 	if err := s.writeAIConfig(config); err != nil {
@@ -285,12 +285,12 @@ func TestAPIAgentConfigKeepsKeyPrivate(t *testing.T) {
 	}
 }
 
-// READER_TEST_DEEPSEEK=1 runs a real translation batch and a follow-up turn on
+// NEOREAD_TEST_DEEPSEEK=1 runs a real translation batch and a follow-up turn on
 // the same session with DEEPSEEK_API_KEY.
 func TestLiveDeepSeekTranslationSession(t *testing.T) {
 	key := os.Getenv("DEEPSEEK_API_KEY")
-	if os.Getenv("READER_TEST_DEEPSEEK") != "1" || key == "" {
-		t.Skip("set READER_TEST_DEEPSEEK=1 and DEEPSEEK_API_KEY")
+	if os.Getenv("NEOREAD_TEST_DEEPSEEK") != "1" || key == "" {
+		t.Skip("set NEOREAD_TEST_DEEPSEEK=1 and DEEPSEEK_API_KEY")
 	}
 	s := testServer(t)
 	conn := APIConnection{URL: "https://api.deepseek.com", Key: key}
@@ -326,12 +326,12 @@ func TestLiveDeepSeekTranslationSession(t *testing.T) {
 	}
 }
 
-// READER_TEST_DEEPSEEK=1 saves the API agent through HTTP and runs the same
+// NEOREAD_TEST_DEEPSEEK=1 saves the API agent through HTTP and runs the same
 // text and vision checks as Settings.
 func TestLiveDeepSeekCapabilityCheck(t *testing.T) {
 	key := os.Getenv("DEEPSEEK_API_KEY")
-	if os.Getenv("READER_TEST_DEEPSEEK") != "1" || key == "" {
-		t.Skip("set READER_TEST_DEEPSEEK=1 and DEEPSEEK_API_KEY")
+	if os.Getenv("NEOREAD_TEST_DEEPSEEK") != "1" || key == "" {
+		t.Skip("set NEOREAD_TEST_DEEPSEEK=1 and DEEPSEEK_API_KEY")
 	}
 	s := testServer(t)
 	config, _ := json.Marshal(AIConfig{Primary: "api", API: APIConnection{URL: "https://api.deepseek.com", Key: key}, Models: map[string]string{}})

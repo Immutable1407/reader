@@ -25,7 +25,7 @@ func runChatSessionProcess() {
 		if json.Unmarshal(scan.Bytes(), &req) != nil {
 			os.Exit(1)
 		}
-		f, err := os.OpenFile(os.Getenv("READER_CHAT_CAPTURE"), os.O_CREATE|os.O_APPEND|os.O_WRONLY, 0600)
+		f, err := os.OpenFile(os.Getenv("NEOREAD_CHAT_CAPTURE"), os.O_CREATE|os.O_APPEND|os.O_WRONLY, 0600)
 		if err != nil {
 			os.Exit(2)
 		}
@@ -54,7 +54,7 @@ func runChatSessionProcess() {
 				p["turnId"] = tid
 				_ = enc.Encode(map[string]any{"method": method, "params": p})
 			}
-			if os.Getenv("READER_CHAT_SKIP_USAGE") != "1" {
+			if os.Getenv("NEOREAD_CHAT_SKIP_USAGE") != "1" {
 				notify("thread/tokenUsage/updated", map[string]any{"tokenUsage": map[string]any{"total": TokenCounts{InputTokens: int64(turn * 20), OutputTokens: int64(turn * 10), TotalTokens: int64(turn * 30), CachedInputTokens: tokenCount(int64(turn * 8))}}})
 			}
 			notify("item/started", map[string]any{"item": map[string]string{"id": "answer", "type": "agentMessage", "phase": "final_answer"}})
@@ -68,7 +68,7 @@ func chatFixture(t *testing.T) (*Server, string) {
 	t.Helper()
 	fakeAgent(t, "codex", "chat-session")
 	capture := filepath.Join(t.TempDir(), "requests.jsonl")
-	t.Setenv("READER_CHAT_CAPTURE", capture)
+	t.Setenv("NEOREAD_CHAT_CAPTURE", capture)
 	s := testServer(t)
 	for _, doc := range []string{"doc", "other"} {
 		if _, err := s.Store.DB.Exec("INSERT INTO documents(id,type,title,author,size,created_at,last_opened_at) VALUES(?,'pdf','test','',1,?,?)", doc, now(), now()); err != nil {
@@ -302,7 +302,7 @@ func TestCodexUsageRejectsDecreasingTotals(t *testing.T) {
 
 func TestCodexChatMissingUsageRebuildsBeforeNextTurn(t *testing.T) {
 	s, path := chatFixture(t)
-	t.Setenv("READER_CHAT_SKIP_USAGE", "1")
+	t.Setenv("NEOREAD_CHAT_SKIP_USAGE", "1")
 	for _, q := range []string{"第一问", "第二问"} {
 		if b := sendChat(t, s, "doc", q, "原始资料"); !strings.Contains(b, "event: done") {
 			t.Fatal(b)

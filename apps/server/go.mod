@@ -1,4 +1,4 @@
-module reader.local/server
+module neoread.local/server
 
 go 1.26.5
 

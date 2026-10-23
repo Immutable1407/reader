@@ -1,4 +1,4 @@
-import type { PDFBlock } from "@reader/core";
+import type { PDFBlock } from "@neoread/core";
 
 /** Pair neighboring equation numbers without changing the extracted source blocks. */
 export function formulaNumbers(blocks: PDFBlock[]) {

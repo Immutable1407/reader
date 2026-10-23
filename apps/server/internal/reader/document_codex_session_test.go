@@ -44,7 +44,7 @@ func runPersistentDocumentProcess() {
 		if json.Unmarshal(scan.Bytes(), &r) != nil {
 			os.Exit(2)
 		}
-		f, e := os.OpenFile(os.Getenv("READER_CONVERSATION_CAPTURE"), os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0600)
+		f, e := os.OpenFile(os.Getenv("NEOREAD_CONVERSATION_CAPTURE"), os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0600)
 		if e != nil {
 			os.Exit(3)
 		}
@@ -73,7 +73,7 @@ func runPersistentDocumentProcess() {
 			if p.Thread != thread {
 				os.Exit(4)
 			}
-			if failure := os.Getenv("READER_CONVERSATION_RESUME_ERROR"); failure != "" {
+			if failure := os.Getenv("NEOREAD_CONVERSATION_RESUME_ERROR"); failure != "" {
 				_ = enc.Encode(map[string]any{"id": r.ID, "error": json.RawMessage(failure)})
 				continue
 			}
@@ -128,9 +128,9 @@ func runPersistentDocumentProcess() {
 			notify("item/started", map[string]any{"item": map[string]string{"id": "commentary", "type": "agentMessage", "phase": "commentary"}})
 			notify("item/agentMessage/delta", map[string]any{"itemId": "commentary", "delta": "private planning prose"})
 			if state.Source == "" || strings.HasSuffix(input, "verify-again") {
-				body := jsonText(map[string]any{"jsonrpc": "2.0", "id": 1, "method": "tools/call", "params": map[string]any{"name": "read_passage", "arguments": map[string]string{"blockId": os.Getenv("READER_DOCUMENT_TEST_BLOCK")}}})
+				body := jsonText(map[string]any{"jsonrpc": "2.0", "id": 1, "method": "tools/call", "params": map[string]any{"name": "read_passage", "arguments": map[string]string{"blockId": os.Getenv("NEOREAD_DOCUMENT_TEST_BLOCK")}}})
 				request, _ := http.NewRequest("POST", url, strings.NewReader(body))
-				request.Header.Set("Authorization", "Bearer "+os.Getenv("READER_DOCUMENT_MCP_TOKEN"))
+				request.Header.Set("Authorization", "Bearer "+os.Getenv("NEOREAD_DOCUMENT_MCP_TOKEN"))
 				request.Header.Set("Content-Type", "application/json")
 				request.Header.Set("Accept", "application/json, text/event-stream")
 				request.Header.Set("MCP-Protocol-Version", "2025-11-25")
@@ -169,8 +169,8 @@ func TestCodexConversationReportsActiveWriterAndPreservesHistory(t *testing.T) {
 	s, a := prepareConversationFixture(t)
 	fakeAgent(t, "codex", "document-conversation")
 	capture := filepath.Join(t.TempDir(), "capture.jsonl")
-	t.Setenv("READER_CONVERSATION_CAPTURE", capture)
-	t.Setenv("READER_DOCUMENT_TEST_BLOCK", a.corpus.Passages[1].ID)
+	t.Setenv("NEOREAD_CONVERSATION_CAPTURE", capture)
+	t.Setenv("NEOREAD_DOCUMENT_TEST_BLOCK", a.corpus.Passages[1].ID)
 	if out := conversationRequest(t, s, "codex", "记住 CIVET-42"); !strings.Contains(out.Body.String(), "event: done") {
 		t.Fatal(out.Body.String())
 	}
@@ -181,7 +181,7 @@ func TestCodexConversationReportsActiveWriterAndPreservesHistory(t *testing.T) {
 	s.Close()
 	s = NewServer(s.Store, "test-secret", "")
 	t.Cleanup(s.Close)
-	t.Setenv("READER_CONVERSATION_RESUME_ERROR", `{"code":-32600,"message":"thread private-thread already has an active writer: PRIVATE-TOKEN","data":{"secret":"PRIVATE-DATA"}}`)
+	t.Setenv("NEOREAD_CONVERSATION_RESUME_ERROR", `{"code":-32600,"message":"thread private-thread already has an active writer: PRIVATE-TOKEN","data":{"secret":"PRIVATE-DATA"}}`)
 	out := conversationRequest(t, s, "codex", "继续解释")
 	text := out.Body.String()
 	if !strings.Contains(text, "event: error") || !strings.Contains(text, "会话仍由 Codex App 占用") || strings.Contains(text, "event: done") || strings.Contains(text, "PRIVATE-") || strings.Contains(text, "private-thread") {
@@ -202,7 +202,7 @@ func TestCodexConversationReportsActiveWriterAndPreservesHistory(t *testing.T) {
 	if strings.Count(string(data), `"method":"thread/start"`) != 1 || strings.Count(string(data), `"method":"turn/start"`) != 1 || strings.Count(string(data), `"method":"thread/resume"`) != 1 || strings.Contains(string(data), `"method":"thread/revert"`) {
 		t.Fatal("occupied thread was retried, replaced or reverted", string(data))
 	}
-	t.Setenv("READER_CONVERSATION_RESUME_ERROR", "")
+	t.Setenv("NEOREAD_CONVERSATION_RESUME_ERROR", "")
 	if out := conversationRequest(t, s, "codex", "占用已释放，继续解释"); !strings.Contains(out.Body.String(), "event: done") || !strings.Contains(out.Body.String(), "CIVET-42") {
 		t.Fatal("same conversation did not recover after the writer was released", out.Body.String())
 	}
@@ -211,8 +211,8 @@ func TestCodexConversationRetainsThreadAndSources(t *testing.T) {
 	s, a := prepareConversationFixture(t)
 	fakeAgent(t, "codex", "document-conversation")
 	capture := filepath.Join(t.TempDir(), "capture.jsonl")
-	t.Setenv("READER_CONVERSATION_CAPTURE", capture)
-	t.Setenv("READER_DOCUMENT_TEST_BLOCK", a.corpus.Passages[1].ID)
+	t.Setenv("NEOREAD_CONVERSATION_CAPTURE", capture)
+	t.Setenv("NEOREAD_DOCUMENT_TEST_BLOCK", a.corpus.Passages[1].ID)
 	for i := 0; i < 13; i++ {
 		prompt := fmt.Sprintf("继续第 %d 个问题", i)
 		if i == 0 {

@@ -23,7 +23,7 @@ import { codexThreadURL } from "../../../packages/reader-core/src/codex-link";
 import { annotationUndoShortcut } from "../../../packages/reader-core/src/undo-shortcut";
 import { zoomCommand } from "../../../packages/reader-core/src/zoom-shortcut";
 import {
-  READER_SCHEME,
+  LINK_SCHEMES,
   parseReaderLink,
   type ReaderLinkTarget,
 } from "../../../packages/reader-core/src/reader-link";
@@ -34,6 +34,7 @@ import {
 } from "./proxy-settings";
 import { startUpdateService } from "./update-service";
 import { devIsolation } from "./dev-isolation";
+import { adoptLegacyData } from "./legacy-data";
 import { startDiagnosticService } from "./diagnostic-service";
 import { serverSpawnDiagnostics } from "./server-spawn-diagnostics";
 import { discoverEndNote } from "./endnote-discovery";
@@ -47,6 +48,12 @@ if (isolation.userDataDirectory)
     "userData",
     join(app.getPath("appData"), isolation.userDataDirectory),
   );
+else
+  try {
+    adoptLegacyData(app.getPath("appData"), app.getPath("userData"));
+  } catch (error) {
+    console.warn("Could not move data from Reader:", error);
+  }
 let updateService: Awaited<ReturnType<typeof startUpdateService>> | undefined;
 let diagnostics: ReturnType<typeof startDiagnosticService> | undefined;
 let child: ChildProcess | undefined;
@@ -63,19 +70,19 @@ let choosingLibrary = false;
 let pendingLibraryMove:
   { destination: string; resolve: (moved: boolean) => void } | undefined;
 const root = resolve(__dirname, "../..");
-function bundledBinary(name: "reader-server" | "reader") {
+function bundledBinary(name: "neoread-server" | "neoread") {
   const file = process.platform === "win32" ? `${name}.exe` : name;
   return app.isPackaged
     ? join(process.resourcesPath, "bin", file)
     : join(root, "desktop", "bin", file);
 }
 function serverBinary() {
-  return bundledBinary("reader-server");
+  return bundledBinary("neoread-server");
 }
 const commandLineHost = () => ({
   platform: process.platform,
   packaged: app.isPackaged,
-  binary: bundledBinary("reader"),
+  binary: bundledBinary("neoread"),
   env: process.env,
 });
 async function startServer() {
@@ -107,13 +114,13 @@ async function startServer() {
     {
       env: {
         ...childEnv,
-        READER_TOKEN: serverToken,
+        NEOREAD_TOKEN: serverToken,
         PATH: pathValue,
-        READER_NODE: process.execPath,
-        READER_AGENT: app.isPackaged
+        NEOREAD_NODE: process.execPath,
+        NEOREAD_AGENT: app.isPackaged
           ? join(process.resourcesPath, "agent", "dist", "main.mjs")
           : join(root, "agent", "dist", "main.mjs"),
-        READER_PROCESSOR: app.isPackaged
+        NEOREAD_PROCESSOR: app.isPackaged
           ? join(process.resourcesPath, "processor", "main.mjs")
           : join(root, "processor", "dist", "main.mjs"),
       },
@@ -154,8 +161,8 @@ async function startServer() {
       if (window && !quitting) {
         void diagnostics!
           .failure(
-            "Reader 本地服务已停止",
-            "已保存的文档和笔记仍保留在本地。可先导出诊断包，再重新打开 Reader。",
+            "NeoRead 本地服务已停止",
+            "已保存的文档和笔记仍保留在本地。可先导出诊断包，再重新打开 NeoRead。",
           )
           .then(() => {
             flushed = true;
@@ -238,10 +245,10 @@ async function importPaths(
       large.push({ id, name, pages: failure.pages });
     }
   }
-  window?.webContents.send("reader:library-changed");
+  window?.webContents.send("neoread:library-changed");
   return large;
 }
-// reader:// links reach one window. The renderer claims queued links once its
+// neoread:// (and legacy neoread://) links reach one window. The renderer claims queued links once its
 // listener exists; later links are sent directly.
 const primary = app.requestSingleInstanceLock();
 if (!primary) app.quit();
@@ -251,13 +258,17 @@ function openLink(link: string) {
   const target = parseReaderLink(link);
   if (!target) return;
   if (linksClaimed && window && !window.isDestroyed()) {
-    window.webContents.send("reader:open-link", target);
+    window.webContents.send("neoread:open-link", target);
     if (window.isMinimized()) window.restore();
     window.focus();
   } else pendingLinks.push(target);
 }
 const linkArgument = (argv: string[]) =>
-  argv.find((arg) => arg.toLowerCase().startsWith(`${READER_SCHEME}://`));
+  argv.find((arg) =>
+    LINK_SCHEMES.some((scheme) =>
+      arg.toLowerCase().startsWith(`${scheme}://`),
+    ),
+  );
 app.on("open-url", (event, link) => {
   event.preventDefault();
   openLink(link);
@@ -291,22 +302,23 @@ app
       () => window,
       () => activeLibrary,
     );
-    ipcMain.on("reader:diagnostic-event", (event, value) =>
+    ipcMain.on("neoread:diagnostic-event", (event, value) =>
       diagnostics!.receive(event, value),
     );
-    ipcMain.on("reader:diagnostic-settings", (event, value) =>
+    ipcMain.on("neoread:diagnostic-settings", (event, value) =>
       diagnostics!.receiveSettings(event, value),
     );
-    ipcMain.handle("reader:export-diagnostics", (event) =>
+    ipcMain.handle("neoread:export-diagnostics", (event) =>
       diagnostics!.invoke(event),
     );
     // Development runs need the entry script registered beside Electron.
     if (isolation.registerProtocol) {
-      if (process.defaultApp && process.argv.length >= 2)
-        app.setAsDefaultProtocolClient(READER_SCHEME, process.execPath, [
-          resolve(process.argv[1]),
-        ]);
-      else app.setAsDefaultProtocolClient(READER_SCHEME);
+      for (const scheme of LINK_SCHEMES)
+        if (process.defaultApp && process.argv.length >= 2)
+          app.setAsDefaultProtocolClient(scheme, process.execPath, [
+            resolve(process.argv[1]),
+          ]);
+        else app.setAsDefaultProtocolClient(scheme);
     }
     proxySettings = await ProxySettingsService.open(
       app.getPath("userData"),
@@ -319,7 +331,7 @@ app
     const url = await startServer();
     session.defaultSession.setPermissionRequestHandler(
       (contents, permission, callback, details) => {
-        // Only Reader's own page may list installed fonts, for the
+        // Only NeoRead's own page may list installed fonts, for the
         // translation font picker; every other request stays denied.
         let origin = "";
         try {
@@ -357,7 +369,7 @@ app
       height: 940,
       minWidth: 1000,
       minHeight: 660,
-      title: "Reader",
+      title: "NeoRead",
       ...(process.platform === "darwin"
         ? {
             titleBarStyle: "hidden" as const,
@@ -381,7 +393,7 @@ app
       });
       if (!quitting)
         void diagnostics!
-          .failure("Reader 界面已停止", "可先导出诊断包，再重新打开 Reader。")
+          .failure("NeoRead 界面已停止", "可先导出诊断包，再重新打开 NeoRead。")
           .then(() => {
             flushed = true;
             app.quit();
@@ -399,7 +411,7 @@ app
       event.preventDefault();
       if (closing) return;
       closing = true;
-      window!.webContents.send("reader:flush");
+      window!.webContents.send("neoread:flush");
       const timer = setTimeout(() => {
         void finish("保存超时，请重试。");
       }, 10000);
@@ -416,7 +428,7 @@ app
         if (finished) return;
         finished = true;
         clearTimeout(timer);
-        ipcMain.removeListener("reader:flushed", handler);
+        ipcMain.removeListener("neoread:flushed", handler);
         if (error) {
           // A failed flush must never produce a migrated, stale snapshot.
           pendingLibraryMove?.resolve(false);
@@ -458,7 +470,7 @@ app
               type: "error",
               message: "书库迁移失败",
               detail: `${(error as Error).message}\n原书库已保留，将重新打开原来的位置。`,
-              buttons: ["重新打开 Reader"],
+              buttons: ["重新打开 NeoRead"],
             });
             move.resolve(false);
           }
@@ -466,7 +478,7 @@ app
         flushed = true;
         window?.close();
       };
-      ipcMain.on("reader:flushed", handler);
+      ipcMain.on("neoread:flushed", handler);
     });
     // Let the renderer handle reading shortcuts; editable fields keep native undo.
     window.webContents.on("before-input-event", (_event, input) => {
@@ -501,11 +513,11 @@ app
     window.webContents.on("will-attach-webview", (event) =>
       event.preventDefault(),
     );
-    ipcMain.handle("reader:clipboard-write", (event, text: unknown) =>
+    ipcMain.handle("neoread:clipboard-write", (event, text: unknown) =>
       writeClipboardText(event, text, window?.webContents, url),
     );
     ipcMain.handle(
-      "reader:clipboard-write-image",
+      "neoread:clipboard-write-image",
       (event, data: unknown, text: unknown) =>
         writeClipboardImage(event, data, text, window?.webContents, url),
     );
@@ -517,23 +529,23 @@ app
       )
         throw new Error("Invalid sender");
     };
-    ipcMain.handle("reader:library-location", (event) => {
+    ipcMain.handle("neoread:library-location", (event) => {
       settingsSender(event);
       return activeLibrary;
     });
-    ipcMain.handle("reader:move-library", async (event) => {
+    ipcMain.handle("neoread:move-library", async (event) => {
       settingsSender(event);
       if (choosingLibrary || closing || restartRequested) return false;
       choosingLibrary = true;
       try {
         const selected = await dialog.showOpenDialog(window!, {
-          title: "选择书库保存位置（将在其中新建 Reader Library）",
+          title: "选择书库保存位置（将在其中新建 NeoRead Library）",
           properties: ["openDirectory", "createDirectory"],
         });
         if (selected.canceled || !selected.filePaths[0]) return false;
         const destination = join(
           await realpath(selected.filePaths[0]),
-          "Reader Library",
+          "NeoRead Library",
         );
         // The server's SQLite DSN treats ? as the start of query parameters.
         if (destination.includes("?"))
@@ -541,14 +553,14 @@ app
         try {
           await lstat(destination);
           throw new Error(
-            "所选位置已有 Reader Library 文件夹，请选择其他位置。",
+            "所选位置已有 NeoRead Library 文件夹，请选择其他位置。",
           );
         } catch (error) {
           if ((error as NodeJS.ErrnoException).code !== "ENOENT") throw error;
         }
         const confirmed = await dialog.showMessageBox(window!, {
           type: "question",
-          message: "迁移书库并重启 Reader？",
+          message: "迁移书库并重启 NeoRead？",
           detail: `新位置：${destination}\nPDF、笔记、批注和阅读记录将一起复制。原书库保留。`,
           buttons: ["迁移并重启", "取消"],
           defaultId: 0,
@@ -564,35 +576,35 @@ app
         choosingLibrary = false;
       }
     });
-    ipcMain.handle("reader:proxy-settings", (event) => {
+    ipcMain.handle("neoread:proxy-settings", (event) => {
       settingsSender(event);
       return proxySettings.state();
     });
-    ipcMain.handle("reader:save-proxy-settings", (event, value: unknown) => {
+    ipcMain.handle("neoread:save-proxy-settings", (event, value: unknown) => {
       settingsSender(event);
       return proxySettings.save(value);
     });
-    ipcMain.handle("reader:check-proxy", (event, value: unknown) => {
+    ipcMain.handle("neoread:check-proxy", (event, value: unknown) => {
       settingsSender(event);
       return proxySettings.check(value, serverBinary());
     });
-    ipcMain.handle("reader:command-line", (event) => {
+    ipcMain.handle("neoread:command-line", (event) => {
       settingsSender(event);
       return commandLineStatus(commandLineHost());
     });
-    ipcMain.handle("reader:set-command-line", (event, installed: unknown) => {
+    ipcMain.handle("neoread:set-command-line", (event, installed: unknown) => {
       settingsSender(event);
       if (typeof installed !== "boolean") throw new Error("Invalid request");
       return setCommandLine(commandLineHost(), installed);
     });
-    ipcMain.handle("reader:restart", (event) => {
+    ipcMain.handle("neoread:restart", (event) => {
       settingsSender(event);
       if (closing || restartRequested) return;
       restartRequested = true;
       app.quit();
     });
     ipcMain.handle(
-      "reader:appearance",
+      "neoread:appearance",
       (event, appearance: unknown, palettes: unknown) => {
         if (
           event.sender !== window?.webContents ||
@@ -612,7 +624,7 @@ app
       },
     );
     ipcMain.handle(
-      "reader:document-file",
+      "neoread:document-file",
       async (event, id: unknown, type: unknown, action: unknown) => {
         if (
           event.sender !== window?.webContents ||
@@ -639,7 +651,7 @@ app
         }
       },
     );
-    ipcMain.handle("reader:take-links", (event) => {
+    ipcMain.handle("neoread:take-links", (event) => {
       if (
         event.sender !== window?.webContents ||
         event.senderFrame !== window.webContents.mainFrame
@@ -649,7 +661,7 @@ app
       return pendingLinks.splice(0);
     });
     ipcMain.handle(
-      "reader:open-codex-thread",
+      "neoread:open-codex-thread",
       async (event, threadId: unknown) => {
         if (
           event.sender !== window?.webContents ||
@@ -659,7 +671,7 @@ app
         await shell.openExternal(codexThreadURL(threadId));
       },
     );
-    ipcMain.handle("reader:open-external", async (event, url: unknown) => {
+    ipcMain.handle("neoread:open-external", async (event, url: unknown) => {
       if (
         event.sender !== window?.webContents ||
         event.senderFrame !== window.webContents.mainFrame
@@ -677,7 +689,7 @@ app
       )
         throw new Error("Invalid sender");
     };
-    ipcMain.handle("reader:find-endnote", async (event, id: unknown) => {
+    ipcMain.handle("neoread:find-endnote", async (event, id: unknown) => {
       checkEndnoteSender(event);
       if (typeof id !== "string" || id.length > 100)
         throw new Error("Invalid search");
@@ -702,13 +714,13 @@ app
         if (endnoteSearch === search) endnoteSearch = undefined;
       }
     });
-    ipcMain.handle("reader:cancel-endnote-search", (event, id: unknown) => {
+    ipcMain.handle("neoread:cancel-endnote-search", (event, id: unknown) => {
       checkEndnoteSender(event);
       if (endnoteSearch && endnoteSearch.id === id)
         endnoteSearch.controller.abort();
     });
     ipcMain.handle(
-      "reader:choose-endnote",
+      "neoread:choose-endnote",
       async (event, directory: unknown) => {
         checkEndnoteSender(event);
         const selected = await dialog.showOpenDialog(window!, {
@@ -727,7 +739,7 @@ app
         return selected.canceled ? null : selected.filePaths[0] || null;
       },
     );
-    ipcMain.handle("reader:choose-zotero-directory", async (event) => {
+    ipcMain.handle("neoread:choose-zotero-directory", async (event) => {
       if (
         event.sender !== window?.webContents ||
         event.senderFrame !== window.webContents.mainFrame
@@ -740,7 +752,7 @@ app
       return selected.canceled ? null : selected.filePaths[0] || null;
     });
     ipcMain.handle(
-      "reader:import",
+      "neoread:import",
       async (event, library: unknown, folder: unknown) => {
         if (
           event.sender !== window?.webContents ||
@@ -764,7 +776,7 @@ app
       },
     );
     ipcMain.handle(
-      "reader:import-large",
+      "neoread:import-large",
       async (event, ids: unknown, library: unknown, folder: unknown) => {
         if (
           event.sender !== window?.webContents ||
@@ -789,7 +801,7 @@ app
     await window.loadURL(`${url}/#token=${serverToken}`);
     if (pendingFiles.length) await importPaths(pendingFiles.splice(0));
     updateService = await startUpdateService(window);
-    ipcMain.handle("reader:check-updates", (event) => {
+    ipcMain.handle("neoread:check-updates", (event) => {
       if (
         event.sender !== window?.webContents ||
         event.senderFrame !== window.webContents.mainFrame
@@ -802,10 +814,10 @@ app
     diagnostics?.record("desktop.start_failed", error);
     if (diagnostics)
       await diagnostics.failure(
-        "无法打开 Reader",
+        "无法打开 NeoRead",
         "可导出启动日志供开发者排查，然后退出重试。",
       );
-    else dialog.showErrorBox("无法打开 Reader", String(error));
+    else dialog.showErrorBox("无法打开 NeoRead", String(error));
     flushed = true;
     app.quit();
   });

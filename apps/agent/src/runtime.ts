@@ -70,12 +70,12 @@ export async function runAgent(
   });
   const provider = createProvider({
     id: model.provider,
-    name: "Reader",
+    name: "NeoRead",
     baseUrl: model.baseUrl,
     models: [model],
     auth: {
       apiKey: {
-        name: "Reader API",
+        name: "NeoRead API",
         resolve: async () => ({
           auth: { apiKey: input.key || "reader-keyless" },
         }),
@@ -211,7 +211,7 @@ export async function runAgent(
       .map((part) => part.text)
       .join("");
     if (!text.trim()) throw new Error("模型未返回回答");
-    // Images stay in Reader's document cache. Historical attachments must be
+    // Images stay in NeoRead's document cache. Historical attachments must be
     // re-read through scoped tools, never silently become unbounded DB blobs.
     const entries = JSON.parse(
       JSON.stringify(

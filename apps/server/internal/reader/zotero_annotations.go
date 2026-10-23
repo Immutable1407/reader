@@ -11,7 +11,7 @@ import (
 	"rsc.io/pdf"
 )
 
-// Zotero positions are PDF user-space coordinates. Reader stores fractions of
+// Zotero positions are PDF user-space coordinates. NeoRead stores fractions of
 // the displayed PDF.js viewport. Account for inherited crop boxes and rotation.
 func zoteroConvertAnnotation(path, documentID string, library int, a zoteroAnnotation) (annotation *Annotation, warning string) {
 	fallback := func() (*Annotation, string) {

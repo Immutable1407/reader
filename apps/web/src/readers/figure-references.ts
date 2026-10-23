@@ -1,4 +1,4 @@
-import type { PDFBlock } from "@reader/core";
+import type { PDFBlock } from "@neoread/core";
 
 const number = String.raw`(?:[Ss]?\d+(?:\.\d+)*|[零〇一二三四五六七八九十百两]+)`;
 const pattern = new RegExp(

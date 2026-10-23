@@ -47,7 +47,7 @@ func runTranslationSessionProcess() {
 		if json.Unmarshal(scan.Bytes(), &req) != nil {
 			os.Exit(1)
 		}
-		f, err := os.OpenFile(os.Getenv("READER_TRANSLATION_CAPTURE"), os.O_CREATE|os.O_APPEND|os.O_WRONLY, 0600)
+		f, err := os.OpenFile(os.Getenv("NEOREAD_TRANSLATION_CAPTURE"), os.O_CREATE|os.O_APPEND|os.O_WRONLY, 0600)
 		if err != nil {
 			os.Exit(2)
 		}
@@ -94,7 +94,7 @@ func runTranslationSessionProcess() {
 				_ = enc.Encode(map[string]any{"method": "item/agentMessage/delta", "params": map[string]any{"threadId": "thread", "turnId": fmt.Sprintf("turn-%d", turn-1), "itemId": "old", "delta": "stale\n"}})
 			}
 			notify("thread/tokenUsage/updated", map[string]any{"tokenUsage": map[string]any{"total": TokenCounts{InputTokens: int64(turn * 20), OutputTokens: int64(turn * 10), TotalTokens: int64(turn * 30), CachedInputTokens: tokenCount(int64(turn * 8))}}})
-			if os.Getenv("READER_TRANSLATION_FAIL_SECOND") == "1" && turn == 2 || os.Getenv("READER_TRANSLATION_FAIL_MODEL") == model && model != "" {
+			if os.Getenv("NEOREAD_TRANSLATION_FAIL_SECOND") == "1" && turn == 2 || os.Getenv("NEOREAD_TRANSLATION_FAIL_MODEL") == model && model != "" {
 				notify("turn/completed", map[string]any{"turn": map[string]string{"id": tid, "status": "failed"}})
 				continue
 			}
@@ -103,7 +103,7 @@ func runTranslationSessionProcess() {
 				text += translationParagraphLine(p)
 			}
 			notify("item/agentMessage/delta", map[string]any{"itemId": "answer", "delta": text})
-			if os.Getenv("READER_TRANSLATION_CANCEL") == "1" {
+			if os.Getenv("NEOREAD_TRANSLATION_CANCEL") == "1" {
 				if !scan.Scan() {
 					return
 				}
@@ -114,7 +114,7 @@ func runTranslationSessionProcess() {
 				if interrupt.Method != "turn/interrupt" {
 					os.Exit(4)
 				}
-				_ = os.WriteFile(os.Getenv("READER_AGENT_ACK"), []byte("interrupt"), 0600)
+				_ = os.WriteFile(os.Getenv("NEOREAD_AGENT_ACK"), []byte("interrupt"), 0600)
 				return
 			}
 			notify("item/completed", map[string]any{"item": map[string]string{"id": "answer", "type": "agentMessage", "text": text}})
@@ -135,7 +135,7 @@ func TestTranslationCodexUsesMainAutomaticSelectionAndFallback(t *testing.T) {
 				expires: time.Now().Add(time.Minute),
 			}}
 			if fallback {
-				t.Setenv("READER_TRANSLATION_FAIL_MODEL", "gpt-6-luna")
+				t.Setenv("NEOREAD_TRANSLATION_FAIL_MODEL", "gpt-6-luna")
 			}
 			service, adapter := s.translationService(config)
 			defer adapter.close()
@@ -179,7 +179,7 @@ func translationSessionFixture(t *testing.T) (*Server, Processing, layoutManifes
 	t.Helper()
 	fakeAgent(t, "codex", "translation-session")
 	capture := filepath.Join(t.TempDir(), "requests.jsonl")
-	t.Setenv("READER_TRANSLATION_CAPTURE", capture)
+	t.Setenv("NEOREAD_TRANSLATION_CAPTURE", capture)
 	s, p, m := translationFixture(t)
 	s.modelCache = map[string]modelCatalogEntry{"codex": {models: []AgentModel{{ID: "selected-codex", SupportedEfforts: []string{"low", "medium", "high"}}}, expires: time.Now().Add(time.Minute)}}
 	for i := range m.Blocks {
@@ -293,7 +293,7 @@ func TestTranslationCodexWorkersReuseSelectedModelAndEffort(t *testing.T) {
 }
 func TestTranslationCodexCancellationClosesSession(t *testing.T) {
 	s, _, m, _ := translationSessionFixture(t)
-	t.Setenv("READER_TRANSLATION_CANCEL", "1")
+	t.Setenv("NEOREAD_TRANSLATION_CANCEL", "1")
 	_, sessions := s.translationService(s.aiConfig())
 	defer sessions.close()
 	a := sessions.codex
@@ -316,7 +316,7 @@ func TestTranslationCodexCancellationClosesAllWorkers(t *testing.T) {
 	b := m.Blocks[0]
 	b.ID = "p1-b3"
 	m.Blocks = append(m.Blocks, b)
-	t.Setenv("READER_TRANSLATION_CANCEL", "1")
+	t.Setenv("NEOREAD_TRANSLATION_CANCEL", "1")
 	ctx, cancel := context.WithCancel(t.Context())
 	defer cancel()
 	done := make(chan error, 1)
@@ -362,7 +362,7 @@ func TestTranslationCodexCancellationClosesAllWorkers(t *testing.T) {
 
 func TestTranslationCodexFailureRetryPreservesCompletedParagraphs(t *testing.T) {
 	s, p, m, capture := translationSessionFixture(t)
-	t.Setenv("READER_TRANSLATION_FAIL_SECOND", "1")
+	t.Setenv("NEOREAD_TRANSLATION_FAIL_SECOND", "1")
 	// Exercise a failed subsequent turn on one worker's reused conversation.
 	service, adapter := s.translationService(s.aiConfig())
 	defer adapter.close()
@@ -388,7 +388,7 @@ func TestTranslationCodexFailureRetryPreservesCompletedParagraphs(t *testing.T) 
 	if !capable(s.aiConfig(), "codex", false) {
 		t.Fatal("translation failure invalidated chat capability")
 	}
-	t.Setenv("READER_TRANSLATION_FAIL_SECOND", "")
+	t.Setenv("NEOREAD_TRANSLATION_FAIL_SECOND", "")
 	items[1].Status = "pending"
 	items[1].Error = ""
 	if err := s.saveTranslation("doc", items[1]); err != nil {

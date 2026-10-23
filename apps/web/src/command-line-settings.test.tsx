@@ -2,7 +2,7 @@
 import { act } from "react";
 import { createRoot, type Root } from "react-dom/client";
 import { afterEach, beforeEach, expect, it, vi } from "vitest";
-import type { CommandLineStatus } from "@reader/core";
+import type { CommandLineStatus } from "@neoread/core";
 import { CommandLineSettings } from "./CommandLineSettings";
 
 let root: Root;
@@ -10,7 +10,7 @@ let host: HTMLDivElement;
 const status = (value: Partial<CommandLineStatus>): CommandLineStatus => ({
   supported: true,
   installed: false,
-  location: "/usr/local/bin/reader",
+  location: "/usr/local/bin/neoread",
   ...value,
 });
 function desktop(initial: CommandLineStatus, platform = "darwin") {
@@ -51,11 +51,11 @@ it("installs and uninstalls the command", async () => {
   expect(host.textContent).toContain("可能需要输入密码");
   await act(async () => button().click());
   expect(api.setCommandLine).toHaveBeenCalledWith(true);
-  expect(host.textContent).toContain("已安装：/usr/local/bin/reader");
-  expect(button().textContent).toContain("卸载 reader 命令");
+  expect(host.textContent).toContain("已安装：/usr/local/bin/neoread");
+  expect(button().textContent).toContain("卸载 neoread 命令");
   await act(async () => button().click());
   expect(api.setCommandLine).toHaveBeenLastCalledWith(false);
-  expect(button().textContent).toContain("安装 reader 命令");
+  expect(button().textContent).toContain("安装 neoread 命令");
 });
 
 it("waits until the settings open", async () => {
@@ -74,11 +74,11 @@ it("does not touch another program's reader", async () => {
 
 it("shows the binary in development builds and errors in place", async () => {
   desktop(
-    status({ supported: false, location: "/repo/apps/desktop/bin/reader" }),
+    status({ supported: false, location: "/repo/apps/desktop/bin/neoread" }),
   );
   await render();
   expect(host.querySelector("button")).toBeNull();
-  expect(host.textContent).toContain("/repo/apps/desktop/bin/reader");
+  expect(host.textContent).toContain("/repo/apps/desktop/bin/neoread");
 
   const api = desktop(status({}), "win32");
   api.setCommandLine.mockRejectedValueOnce(new Error("已取消"));
@@ -88,7 +88,7 @@ it("shows the binary in development builds and errors in place", async () => {
 });
 
 it("tells Windows users to open a new terminal", async () => {
-  desktop(status({ location: "C:\\Reader\\resources\\bin" }), "win32");
+  desktop(status({ location: "C:\\NeoRead\\resources\\bin" }), "win32");
   await render();
   expect(host.textContent).toContain("将加入当前用户的 PATH");
   await act(async () => button().click());

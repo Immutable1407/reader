@@ -1,5 +1,5 @@
 import ReactDOM from "react-dom/client";
-import { configureAPI } from "@reader/api";
+import { configureAPI } from "@neoread/api";
 import { App } from "./App";
 import { installCloseFlush } from "./close-flush";
 import { AppCrash, ErrorBoundary } from "./ErrorBoundary";

@@ -25,17 +25,17 @@ import type {
   SearchResult,
   TOCItem,
   TranslationBlock,
-} from "@reader/core";
-import { defaultTheme, isPDFPageDecoration } from "@reader/core";
-import { api } from "@reader/api";
-import { Button } from "@reader/ui/components/button";
-import { Tabs, TabsList, TabsTrigger } from "@reader/ui/components/tabs";
+} from "@neoread/core";
+import { defaultTheme, isPDFPageDecoration } from "@neoread/core";
+import { api } from "@neoread/api";
+import { Button } from "@neoread/ui/components/button";
+import { Tabs, TabsList, TabsTrigger } from "@neoread/ui/components/tabs";
 import {
   Tooltip,
   TooltipContent,
   TooltipTrigger,
-} from "@reader/ui/components/tooltip";
-import { Popover, PopoverContent } from "@reader/ui/components/popover";
+} from "@neoread/ui/components/tooltip";
+import { Popover, PopoverContent } from "@neoread/ui/components/popover";
 import { toast } from "sonner";
 import { ReaderView } from "../ReaderView";
 import { overlap, ReadingSync } from "../readers/pdf-reading";

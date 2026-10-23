@@ -1,9 +1,9 @@
 import { useEffect, useState } from "react";
 import { Check, ScanLine, RefreshCw, Languages } from "lucide-react";
-import type { Processing } from "@reader/core";
-import { api } from "@reader/api";
-import { Progress } from "@reader/ui/components/progress";
-import { Button } from "@reader/ui/components/button";
+import type { Processing } from "@neoread/core";
+import { api } from "@neoread/api";
+import { Progress } from "@neoread/ui/components/progress";
+import { Button } from "@neoread/ui/components/button";
 import { toast } from "sonner";
 
 export function useProcessing() {

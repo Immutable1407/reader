@@ -933,7 +933,7 @@ kbd {
   visibility: hidden;
 }
 /* Keep every page canvas inside a single stacking context below the text,
-   search and Reader annotation layers. Native PDF.js selection lives inside it. */
+   search and NeoRead annotation layers. Native PDF.js selection lives inside it. */
 .pdf-container .canvasWrapper {
   isolation: isolate;
 }
@@ -946,7 +946,7 @@ kbd {
   z-index: 1;
 }
 /* Native PDF.js highlight blending must brighten dark paper rather than
-   multiply it toward black. Reader annotations use the same dark-mode rule. */
+   multiply it toward black. NeoRead annotations use the same dark-mode rule. */
 .pdf-container[data-theme="dark"] .canvasWrapper > svg.highlight {
   --blend-mode: screen;
 }

@@ -3,17 +3,17 @@ import type {
   ProxySettings as Configuration,
   ProxySettingsState,
   ProxyCheckResult,
-} from "@reader/core";
+} from "@neoread/core";
 import { LoaderCircle, CircleCheck, TriangleAlert } from "lucide-react";
-import { Button } from "@reader/ui/components/button";
-import { Input } from "@reader/ui/components/input";
+import { Button } from "@neoread/ui/components/button";
+import { Input } from "@neoread/ui/components/input";
 import {
   Select,
   SelectContent,
   SelectItem,
   SelectTrigger,
   SelectValue,
-} from "@reader/ui/components/select";
+} from "@neoread/ui/components/select";
 
 const labels = { system: "跟随系统", manual: "手动 HTTP 代理", direct: "直连" };
 
@@ -189,16 +189,16 @@ export function ProxySettings({ open }: { open: boolean }) {
               disabled={pending || changed || !desktop.restart}
               onClick={() => void perform("restart")}
             >
-              重启 Reader
+              重启 NeoRead
             </Button>
           )}
         </div>
         <p className="mt-2 text-xs text-muted-foreground">
           {state?.restartRequired
-            ? "代理配置已变化，重启 Reader 后生效。"
+            ? "代理配置已变化，重启 NeoRead 后生效。"
             : mode === "system"
-              ? "切换系统代理后，请重启 Reader 再检测。"
-              : "修改后需保存并重启 Reader。"}
+              ? "切换系统代理后，请重启 NeoRead 再检测。"
+              : "修改后需保存并重启 NeoRead。"}
         </p>
         {state?.warning && (
           <p className="mt-2 text-xs text-muted-foreground">{state.warning}</p>

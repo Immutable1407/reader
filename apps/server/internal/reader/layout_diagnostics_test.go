@@ -9,18 +9,18 @@ import (
 	"strings"
 	"testing"
 
-	"reader.local/server/internal/diagnostics"
+	"neoread.local/server/internal/diagnostics"
 )
 
 // Run the actual subprocess boundary without a platform-specific shell or DLL.
 func init() {
-	if os.Getenv("READER_LAYOUT_TEST_CHILD") == "telemetry" {
+	if os.Getenv("NEOREAD_LAYOUT_TEST_CHILD") == "telemetry" {
 		if os.Getenv("ORT_DISABLE_TELEMETRY") != "1" {
 			os.Exit(24)
 		}
 		os.Exit(0)
 	}
-	if os.Getenv("READER_LAYOUT_TEST_CHILD") == "1" {
+	if os.Getenv("NEOREAD_LAYOUT_TEST_CHILD") == "1" {
 		fmt.Println(`{"event":"diagnostic","stage":"onnx_load","status":"start"}`)
 		fmt.Println(`{"event":"diagnostic","stage":"onnx_load","status":"failed","errorCode":"ERR_DLOPEN_FAILED","errorType":"Error","errorFingerprint":"0123456789abcdef"}`)
 		fmt.Println(`{"event":"diagnostic","stage":"PRIVATE_PDF_TEXT","status":"failed"}`)
@@ -36,9 +36,9 @@ func TestLayoutDisablesTelemetry(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	t.Setenv("READER_NODE", executable)
-	t.Setenv("READER_PROCESSOR", "unused-worker")
-	t.Setenv("READER_LAYOUT_TEST_CHILD", "telemetry")
+	t.Setenv("NEOREAD_NODE", executable)
+	t.Setenv("NEOREAD_PROCESSOR", "unused-worker")
+	t.Setenv("NEOREAD_LAYOUT_TEST_CHILD", "telemetry")
 	// Override even an inherited setting that enables telemetry.
 	t.Setenv("ORT_DISABLE_TELEMETRY", "0")
 	if err := s.runLayout(context.Background(), Document{ID: "test-document"}, filepath.Join(s.Store.Root, "work"), 0, 0, &Processing{}); err != nil {
@@ -58,9 +58,9 @@ func TestLayoutFailureDiagnostics(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	t.Setenv("READER_NODE", executable)
-	t.Setenv("READER_PROCESSOR", "unused-worker")
-	t.Setenv("READER_LAYOUT_TEST_CHILD", "1")
+	t.Setenv("NEOREAD_NODE", executable)
+	t.Setenv("NEOREAD_PROCESSOR", "unused-worker")
+	t.Setenv("NEOREAD_LAYOUT_TEST_CHILD", "1")
 	err = s.runLayout(context.Background(), Document{ID: "test-document"}, filepath.Join(s.Store.Root, "work"), 0, 0, &Processing{})
 	if err == nil {
 		t.Fatal("child failure was lost")

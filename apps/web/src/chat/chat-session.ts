@@ -1,4 +1,4 @@
-import { api, chat, type ChatStreamEvent } from "@reader/api";
+import { api, chat, type ChatStreamEvent } from "@neoread/api";
 import type {
   ChatRun,
   ToolActivity,
@@ -6,7 +6,7 @@ import type {
   ImageAttachment,
   Message,
   SourceReference,
-} from "@reader/core";
+} from "@neoread/core";
 import { refreshAIConfig } from "../store";
 export type ChatInput = {
   webSearch?: boolean;

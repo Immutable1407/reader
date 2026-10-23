@@ -56,14 +56,14 @@ it("waits for shutdown and copies before switching the saved path", async () => 
     directory,
     join(directory, "library"),
     target,
-    "/reader-server",
+    "/neoread-server",
     async () => {
       order.push("stop");
     },
   );
   expect(order).toEqual(["stop", "copy"]);
   expect(execute).toHaveBeenCalledWith(
-    "/reader-server",
+    "/neoread-server",
     ["--data", join(directory, "library"), "--migrate-library", target],
     expect.objectContaining({ windowsHide: true }),
   );

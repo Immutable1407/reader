@@ -2,7 +2,7 @@
 import { afterEach, beforeEach, expect, it, vi } from "vitest";
 import { act } from "react";
 import { PDFBlockOverlay } from "./pdf-blocks";
-import type { Annotation, PDFBlock } from "@reader/core";
+import type { Annotation, PDFBlock } from "@neoread/core";
 import { PDFAnnotationLayer } from "./pdf-annotations";
 import { readFileSync } from "node:fs";
 

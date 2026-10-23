@@ -1,5 +1,5 @@
 {
-  "name": "@reader/core",
+  "name": "@neoread/core",
   "private": true,
   "type": "module",
   "exports": "./src/index.ts"

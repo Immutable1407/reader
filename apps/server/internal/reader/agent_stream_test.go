@@ -43,19 +43,19 @@ func fakeAgent(t *testing.T, provider, mode string) string {
 		}
 	}
 	t.Setenv("PATH", dir+string(os.PathListSeparator)+os.Getenv("PATH"))
-	t.Setenv("READER_AGENT_HELPER", provider)
-	t.Setenv("READER_AGENT_MODE", mode)
+	t.Setenv("NEOREAD_AGENT_HELPER", provider)
+	t.Setenv("NEOREAD_AGENT_MODE", mode)
 	ack := filepath.Join(dir, "received")
-	t.Setenv("READER_AGENT_ACK", ack)
+	t.Setenv("NEOREAD_AGENT_ACK", ack)
 	return ack
 }
 
 func runAgentProcess() {
-	provider := os.Getenv("READER_AGENT_HELPER")
+	provider := os.Getenv("NEOREAD_AGENT_HELPER")
 	if provider == "" {
 		return
 	}
-	mode := os.Getenv("READER_AGENT_MODE")
+	mode := os.Getenv("NEOREAD_AGENT_MODE")
 	defer os.Exit(0)
 	emit := func(v any) { _ = json.NewEncoder(os.Stdout).Encode(v) }
 	gate := func() {
@@ -64,7 +64,7 @@ func runAgentProcess() {
 		}
 		deadline := time.Now().Add(3 * time.Second)
 		for time.Now().Before(deadline) {
-			if _, err := os.Stat(os.Getenv("READER_AGENT_ACK")); err == nil {
+			if _, err := os.Stat(os.Getenv("NEOREAD_AGENT_ACK")); err == nil {
 				return
 			}
 			time.Sleep(time.Millisecond)
@@ -87,7 +87,7 @@ func runAgentProcess() {
 		if mode == "user-settings" && !strings.Contains(args, "--setting-sources user") {
 			os.Exit(1)
 		}
-		if path := os.Getenv("READER_SYSTEM_CAPTURE"); path != "" {
+		if path := os.Getenv("NEOREAD_SYSTEM_CAPTURE"); path != "" {
 			for i, arg := range os.Args {
 				if arg == "--append-system-prompt" && i+1 < len(os.Args) {
 					_ = os.WriteFile(path, []byte(os.Args[i+1]), 0600)
@@ -107,7 +107,7 @@ func runAgentProcess() {
 			return
 		}
 		_, _ = io.ReadAll(reader)
-		if path := os.Getenv("READER_AGENT_CAPTURE"); path != "" {
+		if path := os.Getenv("NEOREAD_AGENT_CAPTURE"); path != "" {
 			_ = os.WriteFile(path, []byte(args), 0600)
 		}
 		if mode == "fail-before" {
@@ -139,7 +139,7 @@ func runAgentProcess() {
 		return
 	}
 	if provider == "kimi" {
-		if path := os.Getenv("READER_SYSTEM_CAPTURE"); path != "" {
+		if path := os.Getenv("NEOREAD_SYSTEM_CAPTURE"); path != "" {
 			for i, arg := range os.Args {
 				if arg == "--agent-file" && i+1 < len(os.Args) {
 					data, _ := os.ReadFile(os.Args[i+1])
@@ -175,21 +175,21 @@ func runAgentProcess() {
 			case "thread/start":
 				var params map[string]any
 				_ = json.Unmarshal(req.Params, &params)
-				if path := os.Getenv("READER_SYSTEM_CAPTURE"); path != "" {
+				if path := os.Getenv("NEOREAD_SYSTEM_CAPTURE"); path != "" {
 					instructions, _ := params["baseInstructions"].(string)
 					_ = os.WriteFile(path, []byte(instructions), 0600)
 				}
 				if params["ephemeral"] != true || params["sandbox"] != "read-only" || params["approvalPolicy"] != "never" {
 					os.Exit(13)
 				}
-				if path := os.Getenv("READER_AGENT_THREAD_CAPTURE"); path != "" {
+				if path := os.Getenv("NEOREAD_AGENT_THREAD_CAPTURE"); path != "" {
 					_ = os.WriteFile(path, req.Params, 0600)
 				}
 				respond(map[string]any{"thread": map[string]string{"id": "thread"}, "model": "actual-codex"})
 			case "turn/start":
 				turnNumber++
 				currentTurn := fmt.Sprintf("turn-%d", turnNumber)
-				if path := os.Getenv("READER_AGENT_CAPTURE"); path != "" {
+				if path := os.Getenv("NEOREAD_AGENT_CAPTURE"); path != "" {
 					_ = os.WriteFile(path, req.Params, 0600)
 				}
 				if mode != "interleaved" {
@@ -237,7 +237,7 @@ func runAgentProcess() {
 					if decoder.Decode(&interrupt) != nil || interrupt.Method != "turn/interrupt" {
 						os.Exit(20)
 					}
-					_ = os.WriteFile(os.Getenv("READER_AGENT_ACK"), []byte("interrupt"), 0600)
+					_ = os.WriteFile(os.Getenv("NEOREAD_AGENT_ACK"), []byte("interrupt"), 0600)
 					if mode == "ignore-cancel" {
 						time.Sleep(10 * time.Second)
 						return
@@ -276,7 +276,7 @@ func runAgentProcess() {
 			case "session/new":
 				respond(map[string]any{"sessionId": "session", "configOptions": []any{map[string]any{"id": "model", "currentValue": "test-model", "options": []any{map[string]string{"value": "test-model", "name": "Test"}}}}})
 			case "session/set_config_option":
-				if path := os.Getenv("READER_AGENT_CAPTURE"); path != "" {
+				if path := os.Getenv("NEOREAD_AGENT_CAPTURE"); path != "" {
 					_ = os.WriteFile(path, req.Params, 0600)
 				}
 				respond(map[string]any{})
@@ -301,7 +301,7 @@ func runAgentProcess() {
 					if decoder.Decode(&interrupt) != nil || interrupt.Method != "session/cancel" || len(interrupt.ID) > 0 {
 						os.Exit(21)
 					}
-					_ = os.WriteFile(os.Getenv("READER_AGENT_ACK"), []byte("cancel"), 0600)
+					_ = os.WriteFile(os.Getenv("NEOREAD_AGENT_ACK"), []byte("cancel"), 0600)
 					if mode == "ignore-cancel" {
 						time.Sleep(10 * time.Second)
 						return
@@ -378,8 +378,8 @@ func TestCodexProtocolBoundaries(t *testing.T) {
 			s := testServer(t)
 			capture := filepath.Join(t.TempDir(), "input.json")
 			threadCapture := filepath.Join(t.TempDir(), "thread.json")
-			t.Setenv("READER_AGENT_CAPTURE", capture)
-			t.Setenv("READER_AGENT_THREAD_CAPTURE", threadCapture)
+			t.Setenv("NEOREAD_AGENT_CAPTURE", capture)
+			t.Setenv("NEOREAD_AGENT_THREAD_CAPTURE", threadCapture)
 			var parts []string
 			answer, err := invokeCLI(t.Context(), s.Store.Root, "codex", "selected-model", AIInput{Prompt: "test", Images: [][]byte{{1}, {2}}}, func(part string) { parts = append(parts, part) })
 			if mode == "rewrite" {
@@ -578,9 +578,9 @@ func TestChatPartialFailureIsNotSaved(t *testing.T) {
 
 // Opt in with a provider name; uses only a synthetic prompt and the CLI login.
 func TestLiveAgentStreaming(t *testing.T) {
-	provider := os.Getenv("READER_TEST_STREAM_PROVIDER")
+	provider := os.Getenv("NEOREAD_TEST_STREAM_PROVIDER")
 	if !validAgent(provider) {
-		t.Skip("set READER_TEST_STREAM_PROVIDER to codex, claude, or kimi")
+		t.Skip("set NEOREAD_TEST_STREAM_PROVIDER to codex, claude, or kimi")
 	}
 	s := testServer(t)
 	ctx, cancel := context.WithTimeout(t.Context(), 90*time.Second)
@@ -603,9 +603,9 @@ func TestLiveAgentStreaming(t *testing.T) {
 
 // Uses only original prompts and generated pixels, never library content.
 func TestLiveGenerationAdapter(t *testing.T) {
-	provider := os.Getenv("READER_TEST_STREAM_PROVIDER")
+	provider := os.Getenv("NEOREAD_TEST_STREAM_PROVIDER")
 	if !validAgent(provider) {
-		t.Skip("set READER_TEST_STREAM_PROVIDER")
+		t.Skip("set NEOREAD_TEST_STREAM_PROVIDER")
 	}
 	for _, vision := range []bool{false, true} {
 		t.Run(fmt.Sprintf("image=%t", vision), func(t *testing.T) {

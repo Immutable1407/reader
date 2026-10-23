@@ -35,7 +35,7 @@ func handoffFixture(t *testing.T) *Server {
 func TestCodexHandoffCopiesCommittedContextWithoutMutatingReader(t *testing.T) {
 	fakeAgent(t, "codex", "codex-handoff")
 	capture := filepath.Join(t.TempDir(), "rpc.jsonl")
-	t.Setenv("READER_HANDOFF_CAPTURE", capture)
+	t.Setenv("NEOREAD_HANDOFF_CAPTURE", capture)
 	s := handoffFixture(t)
 	before, _ := s.Store.chatHistory("doc")
 	w := request(t, s, "POST", "/api/documents/doc/codex-handoff", nil)
@@ -78,7 +78,7 @@ func TestCodexHandoffCopiesCommittedContextWithoutMutatingReader(t *testing.T) {
 		t.Fatalf("fork: %+v", fork)
 	}
 	if !strings.Contains(fork["baseInstructions"].(string), "READING_CONTEXT.md") {
-		t.Fatal("Reader tool instructions survived")
+		t.Fatal("NeoRead tool instructions survived")
 	}
 	w = request(t, s, "POST", "/api/documents/doc/codex-handoff", nil)
 	if w.Code != 200 {
@@ -94,21 +94,21 @@ func TestCodexHandoffCopiesCommittedContextWithoutMutatingReader(t *testing.T) {
 	after, _ := s.Store.chatHistory("doc")
 	c, _ := s.Store.documentConversation(t.Context(), "doc", "codex", "codex-native-v1")
 	if jsonText(before) != jsonText(after) || c.NativeThread != handoffTestThread || c.NativeCommitted != "committed-turn" {
-		t.Fatal("modified Reader conversation")
+		t.Fatal("modified NeoRead conversation")
 	}
 }
 
 func TestCodexHandoffRetryAfterNamingFailureKeepsForkAndSnapshot(t *testing.T) {
 	fakeAgent(t, "codex", "codex-handoff")
 	capture := filepath.Join(t.TempDir(), "rpc.jsonl")
-	t.Setenv("READER_HANDOFF_CAPTURE", capture)
-	t.Setenv("READER_HANDOFF_FAIL_NAME", "1")
+	t.Setenv("NEOREAD_HANDOFF_CAPTURE", capture)
+	t.Setenv("NEOREAD_HANDOFF_FAIL_NAME", "1")
 	s := handoffFixture(t)
 	w := request(t, s, "POST", "/api/documents/doc/codex-handoff", nil)
 	if w.Code != 502 {
 		t.Fatalf("failure: %d %s", w.Code, w.Body.String())
 	}
-	t.Setenv("READER_HANDOFF_FAIL_NAME", "")
+	t.Setenv("NEOREAD_HANDOFF_FAIL_NAME", "")
 	w = request(t, s, "POST", "/api/documents/doc/codex-handoff", nil)
 	if w.Code != 200 {
 		t.Fatalf("retry: %d %s", w.Code, w.Body.String())
@@ -174,7 +174,7 @@ func runCodexHandoffProcess() {
 		if json.Unmarshal(scan.Bytes(), &r) != nil {
 			os.Exit(2)
 		}
-		f, err := os.OpenFile(os.Getenv("READER_HANDOFF_CAPTURE"), os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0600)
+		f, err := os.OpenFile(os.Getenv("NEOREAD_HANDOFF_CAPTURE"), os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0600)
 		if err != nil {
 			os.Exit(3)
 		}
@@ -182,7 +182,7 @@ func runCodexHandoffProcess() {
 		_ = f.Close()
 		switch r.Method {
 		case "thread/name/set":
-			if os.Getenv("READER_HANDOFF_FAIL_NAME") != "" {
+			if os.Getenv("NEOREAD_HANDOFF_FAIL_NAME") != "" {
 				_ = enc.Encode(map[string]any{"id": r.ID, "error": map[string]any{"code": -32000, "message": "failed"}})
 			} else {
 				_ = enc.Encode(map[string]any{"id": r.ID, "result": map[string]any{}})

@@ -9,7 +9,7 @@ import {
   defaultTheme,
   type Annotation,
   type Document as ReaderDocument,
-} from "@reader/core";
+} from "@neoread/core";
 import { Locator, Publication } from "@readium/shared";
 
 const bridge = vi.hoisted(() => ({

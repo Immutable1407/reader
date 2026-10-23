@@ -1,5 +1,8 @@
-/** `reader://open?id=<document>[&annotation=<id>][&page=<n>]` opens a place in the library. */
-export const READER_SCHEME = "reader";
+/** `neoread://open?id=<document>[&annotation=<id>][&page=<n>]` opens a place in the library. */
+export const NEOREAD_SCHEME = "neoread";
+/** Links exported before the rename keep opening. */
+export const LEGACY_SCHEME = "reader";
+export const LINK_SCHEMES = [NEOREAD_SCHEME, LEGACY_SCHEME];
 
 export interface ReaderLinkTarget {
   id: string;
@@ -13,7 +16,7 @@ export function readerLink(target: ReaderLinkTarget) {
   const query = new URLSearchParams({ id: target.id });
   if (target.annotation) query.set("annotation", target.annotation);
   if (target.page) query.set("page", String(target.page));
-  return `${READER_SCHEME}://open?${query}`;
+  return `${NEOREAD_SCHEME}://open?${query}`;
 }
 
 /** Only the open action with known, well-formed parameters is accepted. */
@@ -25,7 +28,8 @@ export function parseReaderLink(link: string): ReaderLinkTarget | null {
     return null;
   }
   const action = url.hostname || url.pathname.replace(/^\/+/, "");
-  if (url.protocol !== `${READER_SCHEME}:` || action !== "open") return null;
+  const scheme = url.protocol.slice(0, -1);
+  if (!LINK_SCHEMES.includes(scheme) || action !== "open") return null;
   const id = url.searchParams.get("id") || "";
   if (!hash.test(id)) return null;
   const target: ReaderLinkTarget = { id };

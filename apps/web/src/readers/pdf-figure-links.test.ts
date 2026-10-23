@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 import { afterEach, expect, it, vi } from "vitest";
-import type { PDFBlock } from "@reader/core";
+import type { PDFBlock } from "@neoread/core";
 import { PDFFigureLinks } from "./pdf-figure-links";
 const image: PDFBlock = {
   id: "figure-3",

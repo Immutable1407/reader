@@ -48,7 +48,7 @@ import {
   Check,
   CircleHelp,
 } from "lucide-react";
-import { api, blockImageURL } from "@reader/api";
+import { api, blockImageURL } from "@neoread/api";
 import {
   locationLabel,
   type DocumentChatSession,
@@ -67,41 +67,41 @@ import {
   type ImageAttachment,
   type LinkPreview,
   readerLink,
-} from "@reader/core";
-import { Button } from "@reader/ui/components/button";
-import { Badge } from "@reader/ui/components/badge";
-import { Input } from "@reader/ui/components/input";
-import { Textarea } from "@reader/ui/components/textarea";
+} from "@neoread/core";
+import { Button } from "@neoread/ui/components/button";
+import { Badge } from "@neoread/ui/components/badge";
+import { Input } from "@neoread/ui/components/input";
+import { Textarea } from "@neoread/ui/components/textarea";
 import {
   Tabs,
   TabsList,
   TabsTrigger,
   TabsContent,
-} from "@reader/ui/components/tabs";
-import { ScrollArea } from "@reader/ui/components/scroll-area";
+} from "@neoread/ui/components/tabs";
+import { ScrollArea } from "@neoread/ui/components/scroll-area";
 import {
   Popover,
   PopoverTrigger,
   PopoverContent,
-} from "@reader/ui/components/popover";
+} from "@neoread/ui/components/popover";
 import {
   Dialog,
   DialogContent,
   DialogHeader,
   DialogTitle,
   DialogDescription,
-} from "@reader/ui/components/dialog";
+} from "@neoread/ui/components/dialog";
 import {
   ResizablePanelGroup,
   ResizablePanel,
   usePanelRef,
   ResizableHandle,
-} from "@reader/ui/components/resizable";
+} from "@neoread/ui/components/resizable";
 import {
   Tooltip,
   TooltipTrigger,
   TooltipContent,
-} from "@reader/ui/components/tooltip";
+} from "@neoread/ui/components/tooltip";
 import { toast } from "sonner";
 import { DocumentOverviewDialog } from "./DocumentOverview";
 import { ProcessingUsageDialog } from "./ProcessingUsage";
@@ -134,7 +134,7 @@ import { EPUBReadingView } from "./translation/EPUBReadingView";
 import { PDFReadingView } from "./translation/PDFReadingView";
 import { useReaderStore } from "./store";
 import { scheduleProgress, flushProgress } from "./progress";
-import { Slider } from "@reader/ui/components/slider";
+import { Slider } from "@neoread/ui/components/slider";
 import { TranslationFontControls } from "./TranslationFontControls";
 import { AppearancePicker } from "./AppearancePicker";
 function IconButton({
@@ -543,7 +543,7 @@ export function Workspace({
     void go?.catch((e) => toast.error(e.message));
   };
   useEffect(() => {
-    // Follow a reader:// link once the reader and annotations are ready.
+    // Follow a neoread:// link once the reader and annotations are ready.
     if (linkTarget?.id !== doc.id || !adapter || !annotationsLoaded) return;
     useReaderStore.getState().setLinkTarget(null);
     if (linkTarget.annotation) {

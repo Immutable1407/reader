@@ -2,13 +2,13 @@
 import { act, type ComponentProps, type ReactNode } from "react";
 import { createRoot, type Root } from "react-dom/client";
 import { afterEach, beforeEach, expect, it, vi } from "vitest";
-import type { AIConfig, AgentModel, ProxySettingsState } from "@reader/core";
-import { api } from "@reader/api";
+import type { AIConfig, AgentModel, ProxySettingsState } from "@neoread/core";
+import { api } from "@neoread/api";
 import { toast } from "sonner";
 import { Settings } from "./Settings";
 import { useReaderStore } from "./store";
 
-vi.mock("@reader/api", () => ({
+vi.mock("@neoread/api", () => ({
   api: {
     connectorStatus: vi.fn(async () => ({ available: true })),
     journalRankConfig: vi.fn(async () => ({
@@ -26,7 +26,7 @@ vi.mock("@reader/api", () => ({
   },
 }));
 vi.mock("sonner", () => ({ toast: { error: vi.fn(), warning: vi.fn() } }));
-vi.mock("@reader/ui/components/dialog", () => {
+vi.mock("@neoread/ui/components/dialog", () => {
   const Content = ({ children }: { children: ReactNode }) => (
     <div>{children}</div>
   );

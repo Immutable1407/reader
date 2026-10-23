@@ -28,7 +28,7 @@ export async function diagnosticFetch(path: string, init: RequestInit = {}) {
       route,
       method,
       status: response.status,
-      requestId: response.headers.get("X-Reader-Request-ID") || undefined,
+      requestId: response.headers.get("X-NeoRead-Request-ID") || undefined,
       durationMs: Math.round(performance.now() - started),
     });
     return response;

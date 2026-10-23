@@ -63,11 +63,11 @@ func runDocumentReadingProcess() {
 			for i := 0; i < documentToolCalls; i++ {
 				name, args := "search_document", map[string]string{"query": fmt.Sprintf("probe-%d", i)}
 				if i == 0 {
-					name, args = "read_passage", map[string]string{"blockId": os.Getenv("READER_DOCUMENT_TEST_BLOCK")}
+					name, args = "read_passage", map[string]string{"blockId": os.Getenv("NEOREAD_DOCUMENT_TEST_BLOCK")}
 				}
 				body := jsonText(map[string]any{"jsonrpc": "2.0", "id": i + 1, "method": "tools/call", "params": map[string]any{"name": name, "arguments": args}})
 				r, _ := http.NewRequest("POST", url, strings.NewReader(body))
-				r.Header.Set("Authorization", "Bearer "+os.Getenv("READER_DOCUMENT_MCP_TOKEN"))
+				r.Header.Set("Authorization", "Bearer "+os.Getenv("NEOREAD_DOCUMENT_MCP_TOKEN"))
 				r.Header.Set("Content-Type", "application/json")
 				r.Header.Set("Accept", "application/json, text/event-stream")
 				r.Header.Set("MCP-Protocol-Version", "2025-11-25")
@@ -88,7 +88,7 @@ func runDocumentReadingProcess() {
 func TestCodexDocumentReadingBudgetKeepsEvidence(t *testing.T) {
 	s, a := originalDocumentFixture(t)
 	fakeAgent(t, "codex", "document-reading")
-	t.Setenv("READER_DOCUMENT_TEST_BLOCK", a.corpus.Passages[1].ID)
+	t.Setenv("NEOREAD_DOCUMENT_TEST_BLOCK", a.corpus.Passages[1].ID)
 	ctx, cancel := context.WithTimeout(t.Context(), 90*time.Second)
 	defer cancel()
 	a.ctx = ctx

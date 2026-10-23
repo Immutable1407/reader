@@ -6,10 +6,10 @@ import (
 	"path/filepath"
 )
 
-// DiscoveryFile tells the `reader` command line where the running server
+// DiscoveryFile tells the `neoread` command line where the running server
 // listens. It holds the API token, so only the owner may read it. A file left
 // behind by a crash points at a closed port, which the command line reports as
-// Reader not running.
+// NeoRead not running.
 const DiscoveryFile = "server.json"
 
 type Discovery struct {

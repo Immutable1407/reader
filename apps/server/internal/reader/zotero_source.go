@@ -137,7 +137,7 @@ func readZoteroWithBaseResolver(ctx context.Context, directory, linkedBase strin
 				return "", errors.New("分类层级损坏")
 			}
 			seen[key] = true
-			// A slash within a Zotero name is literal, not a Reader hierarchy separator.
+			// A slash within a Zotero name is literal, not a NeoRead hierarchy separator.
 			parts = append([]string{strings.ReplaceAll(c.name, "/", "／")}, parts...)
 			key = c.parent
 		}

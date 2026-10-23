@@ -7,7 +7,7 @@ import type {
   ReaderEvents,
   ReaderTheme,
   TOCItem,
-} from "@reader/core";
+} from "@neoread/core";
 import { Loader2 } from "lucide-react";
 import { toast } from "sonner";
 export function ReaderView({

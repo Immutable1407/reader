@@ -104,7 +104,7 @@ func TestCopyLibraryRejectsQuestionMarkPathsBeforeCopying(t *testing.T) {
 		t.Skip("Windows does not allow question marks in directory names")
 	}
 	source := migrationSource(t)
-	for _, relative := range []string{"Reader?Library", filepath.Join("parent?question", "Reader Library")} {
+	for _, relative := range []string{"NeoRead?Library", filepath.Join("parent?question", "NeoRead Library")} {
 		t.Run(relative, func(t *testing.T) {
 			target := filepath.Join(t.TempDir(), relative)
 			if err := os.MkdirAll(filepath.Dir(target), 0700); err != nil {
@@ -229,8 +229,8 @@ func TestCopyLibraryRecoversCommittedWAL(t *testing.T) {
 
 func TestLibraryDatabaseURI(t *testing.T) {
 	for path, want := range map[string]string{
-		"C:/Reader Library/reader.sqlite":   "file:///C:/Reader%20Library/reader.sqlite?mode=rw",
-		"/tmp/Reader Library/reader.sqlite": "file:///tmp/Reader%20Library/reader.sqlite?mode=rw",
+		"C:/NeoRead Library/reader.sqlite":   "file:///C:/NeoRead%20Library/reader.sqlite?mode=rw",
+		"/tmp/NeoRead Library/reader.sqlite": "file:///tmp/NeoRead%20Library/reader.sqlite?mode=rw",
 	} {
 		if got := libraryDatabaseURI(path); got != want {
 			t.Fatalf("%s: got %s, want %s", path, got, want)

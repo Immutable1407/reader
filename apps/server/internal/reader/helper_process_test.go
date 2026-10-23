@@ -13,8 +13,8 @@ import (
 // Dispatch before testing parses CLI arguments. A copy/link of this native test
 // executable acts as each provider on Windows as well as Unix, without a shell.
 func TestMain(m *testing.M) {
-	if os.Getenv("READER_AGENT_HELPER") != "" {
-		switch os.Getenv("READER_AGENT_MODE") {
+	if os.Getenv("NEOREAD_AGENT_HELPER") != "" {
+		switch os.Getenv("NEOREAD_AGENT_MODE") {
 		case "web-events":
 			runWebEventsProcess()
 		case "translation-session":

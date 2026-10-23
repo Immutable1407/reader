@@ -134,8 +134,8 @@ func TestDocumentToolsDeletionCancelsAndCleansFTS(t *testing.T) {
 	}
 }
 func TestDocumentCorpusPartialPDFAndLongPassage(t *testing.T) {
-	t.Setenv("READER_PROCESSOR", "")
-	t.Setenv("READER_CORPUS_PROCESSOR", "")
+	t.Setenv("NEOREAD_PROCESSOR", "")
+	t.Setenv("NEOREAD_CORPUS_PROCESSOR", "")
 	s, _, m := bookFixture(t)
 	m.ParsedPages = []int{1}
 	m.Blocks = m.Blocks[:1]
@@ -166,8 +166,8 @@ func TestDocumentCorpusPartialPDFAndLongPassage(t *testing.T) {
 
 func TestDocumentCorpusReusesCompletePDFLayoutWithoutAWorker(t *testing.T) {
 	s, _, layout := bookFixture(t)
-	t.Setenv("READER_NODE", "/nonexistent-node")
-	t.Setenv("READER_CORPUS_PROCESSOR", "/nonexistent-worker")
+	t.Setenv("NEOREAD_NODE", "/nonexistent-node")
+	t.Setenv("NEOREAD_CORPUS_PROCESSOR", "/nonexistent-worker")
 	corpus, err := s.documentCorpus(t.Context(), "doc", nil)
 	if err != nil || corpus.Coverage.SearchableUnits != layout.Pages {
 		t.Fatalf("existing PDF parse was not reused: %v", err)
@@ -212,7 +212,7 @@ func runMissingPageCorpusProcess() {
 	if os.WriteFile(output, data, 0600) != nil {
 		os.Exit(8)
 	}
-	_ = os.WriteFile(os.Getenv("READER_CORPUS_CAPTURE"), []byte(pages), 0600)
+	_ = os.WriteFile(os.Getenv("NEOREAD_CORPUS_CAPTURE"), []byte(pages), 0600)
 }
 func TestDocumentCorpusExtractsOnlyMissingPages(t *testing.T) {
 	s, _, layout := bookFixture(t)
@@ -228,9 +228,9 @@ func TestDocumentCorpusExtractsOnlyMissingPages(t *testing.T) {
 		t.Fatal(e)
 	}
 	capture := filepath.Join(t.TempDir(), "pages.txt")
-	t.Setenv("READER_NODE", node)
-	t.Setenv("READER_CORPUS_PROCESSOR", "missing-page-worker")
-	t.Setenv("READER_CORPUS_CAPTURE", capture)
+	t.Setenv("NEOREAD_NODE", node)
+	t.Setenv("NEOREAD_CORPUS_PROCESSOR", "missing-page-worker")
+	t.Setenv("NEOREAD_CORPUS_CAPTURE", capture)
 	corpus, e := s.documentCorpus(t.Context(), "doc", nil)
 	if e != nil {
 		t.Fatal(e)

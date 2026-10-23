@@ -171,7 +171,7 @@ func TestEPUBReaderPreservesNewAndLegacyAnnotations(t *testing.T) {
 			t.Fatal(response.Body.String())
 		}
 	}
-	// Reader endpoints are read-only, including legacy location handling.
+	// NeoRead endpoints are read-only, including legacy location handling.
 	request(t, s, "GET", "/api/documents/"+d.ID+"/epub-chapters", nil)
 	response = request(t, s, "GET", "/api/documents/"+d.ID+"/annotations", nil)
 	var notes []Annotation
@@ -193,9 +193,9 @@ func TestEPUBReaderPreservesNewAndLegacyAnnotations(t *testing.T) {
 }
 
 func TestEPUBReaderLargePublication(t *testing.T) {
-	filename := os.Getenv("READER_TEST_EPUB")
+	filename := os.Getenv("NEOREAD_TEST_EPUB")
 	if filename == "" {
-		t.Skip("set READER_TEST_EPUB for the local large-book fixture")
+		t.Skip("set NEOREAD_TEST_EPUB for the local large-book fixture")
 	}
 	cache := t.TempDir()
 	manifest, _, err := prepareEPUB(context.Background(), filename, cache)

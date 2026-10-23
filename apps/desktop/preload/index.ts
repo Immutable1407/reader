@@ -17,42 +17,42 @@ async function proxyRequest(channel: string, ...args: unknown[]) {
 }
 contextBridge.exposeInMainWorld("readerDesktop", {
   platform: process.platform,
-  exportDiagnostics: () => ipcRenderer.invoke("reader:export-diagnostics"),
+  exportDiagnostics: () => ipcRenderer.invoke("neoread:export-diagnostics"),
   recordDiagnostic: (event: unknown) =>
-    ipcRenderer.send("reader:diagnostic-event", event),
+    ipcRenderer.send("neoread:diagnostic-event", event),
   diagnosticSettings: (settings: unknown) =>
-    ipcRenderer.send("reader:diagnostic-settings", settings),
-  checkForUpdates: () => ipcRenderer.invoke("reader:check-updates"),
+    ipcRenderer.send("neoread:diagnostic-settings", settings),
+  checkForUpdates: () => ipcRenderer.invoke("neoread:check-updates"),
   onUpdateProgress: (callback: (progress: UpdateProgress | null) => void) => {
     const listener = (_event: unknown, progress: UpdateProgress | null) =>
       callback(progress);
-    ipcRenderer.on("reader:update-progress", listener);
-    return () => ipcRenderer.removeListener("reader:update-progress", listener);
+    ipcRenderer.on("neoread:update-progress", listener);
+    return () => ipcRenderer.removeListener("neoread:update-progress", listener);
   },
-  proxySettings: () => proxyRequest("reader:proxy-settings"),
+  proxySettings: () => proxyRequest("neoread:proxy-settings"),
   saveProxySettings: (settings: ProxySettings) =>
-    proxyRequest("reader:save-proxy-settings", settings),
+    proxyRequest("neoread:save-proxy-settings", settings),
   checkProxy: (settings: ProxySettings) =>
-    proxyRequest("reader:check-proxy", settings),
-  restart: () => proxyRequest("reader:restart"),
-  libraryLocation: () => proxyRequest("reader:library-location"),
-  moveLibrary: () => proxyRequest("reader:move-library"),
-  commandLine: () => proxyRequest("reader:command-line"),
+    proxyRequest("neoread:check-proxy", settings),
+  restart: () => proxyRequest("neoread:restart"),
+  libraryLocation: () => proxyRequest("neoread:library-location"),
+  moveLibrary: () => proxyRequest("neoread:move-library"),
+  commandLine: () => proxyRequest("neoread:command-line"),
   setCommandLine: (installed: boolean) =>
-    proxyRequest("reader:set-command-line", installed),
+    proxyRequest("neoread:set-command-line", installed),
   writeClipboardText: (text: string) =>
-    ipcRenderer.invoke("reader:clipboard-write", text),
+    ipcRenderer.invoke("neoread:clipboard-write", text),
   writeClipboardImage: (data: Uint8Array, text: string) =>
-    ipcRenderer.invoke("reader:clipboard-write-image", data, text),
+    ipcRenderer.invoke("neoread:clipboard-write-image", data, text),
   onBeforeClose: (callback: () => Promise<void>) => {
     const listener = () => {
       void callback().then(
-        () => ipcRenderer.send("reader:flushed", null),
-        (error) => ipcRenderer.send("reader:flushed", String(error)),
+        () => ipcRenderer.send("neoread:flushed", null),
+        (error) => ipcRenderer.send("neoread:flushed", String(error)),
       );
     };
-    ipcRenderer.on("reader:flush", listener);
-    return () => ipcRenderer.removeListener("reader:flush", listener);
+    ipcRenderer.on("neoread:flush", listener);
+    return () => ipcRenderer.removeListener("neoread:flush", listener);
   },
   setAppearance: (
     appearance: "light" | "sepia" | "dark" | "system",
@@ -61,42 +61,42 @@ contextBridge.exposeInMainWorld("readerDesktop", {
       systemLightMode?: "light" | "sepia";
       systemDarkContrast?: "high" | "soft";
     },
-  ) => ipcRenderer.invoke("reader:appearance", appearance, palettes),
+  ) => ipcRenderer.invoke("neoread:appearance", appearance, palettes),
   findEndNoteLibraries: (id: string) =>
-    ipcRenderer.invoke("reader:find-endnote", id),
+    ipcRenderer.invoke("neoread:find-endnote", id),
   cancelEndNoteSearch: (id: string) =>
-    ipcRenderer.invoke("reader:cancel-endnote-search", id),
+    ipcRenderer.invoke("neoread:cancel-endnote-search", id),
   chooseEndNoteLibrary: (directory = false) =>
-    ipcRenderer.invoke("reader:choose-endnote", directory),
+    ipcRenderer.invoke("neoread:choose-endnote", directory),
   chooseZoteroDirectory: () =>
-    ipcRenderer.invoke("reader:choose-zotero-directory"),
+    ipcRenderer.invoke("neoread:choose-zotero-directory"),
   importFiles: (library: "books" | "papers", folder = "") =>
-    ipcRenderer.invoke("reader:import", library, folder),
+    ipcRenderer.invoke("neoread:import", library, folder),
   importLargePapers: (
     ids: string[],
     library: "books" | "papers",
     folder = "",
-  ) => ipcRenderer.invoke("reader:import-large", ids, library, folder),
+  ) => ipcRenderer.invoke("neoread:import-large", ids, library, folder),
   showDocumentFile: (id: string, type: "pdf" | "epub") =>
-    ipcRenderer.invoke("reader:document-file", id, type, "show"),
+    ipcRenderer.invoke("neoread:document-file", id, type, "show"),
   openDocumentFile: (id: string, type: "pdf" | "epub") =>
-    ipcRenderer.invoke("reader:document-file", id, type, "open"),
+    ipcRenderer.invoke("neoread:document-file", id, type, "open"),
   openExternal: (url: string) =>
-    ipcRenderer.invoke("reader:open-external", url),
+    ipcRenderer.invoke("neoread:open-external", url),
   openCodexThread: (threadId: string) =>
-    ipcRenderer.invoke("reader:open-codex-thread", threadId),
+    ipcRenderer.invoke("neoread:open-codex-thread", threadId),
   onOpenLink: (callback: (target: unknown) => void) => {
     const listener = (_event: unknown, target: unknown) => callback(target);
-    ipcRenderer.on("reader:open-link", listener);
+    ipcRenderer.on("neoread:open-link", listener);
     // Links that arrived before this listener are delivered once.
     void ipcRenderer
-      .invoke("reader:take-links")
+      .invoke("neoread:take-links")
       .then((targets: unknown[]) => targets.forEach(callback));
-    return () => ipcRenderer.removeListener("reader:open-link", listener);
+    return () => ipcRenderer.removeListener("neoread:open-link", listener);
   },
   onLibraryChanged: (callback: () => void) => {
     const listener = () => callback();
-    ipcRenderer.on("reader:library-changed", listener);
-    return () => ipcRenderer.removeListener("reader:library-changed", listener);
+    ipcRenderer.on("neoread:library-changed", listener);
+    return () => ipcRenderer.removeListener("neoread:library-changed", listener);
   },
 });

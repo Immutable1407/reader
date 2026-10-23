@@ -2,7 +2,7 @@
 import { afterEach, beforeEach, expect, it, vi } from "vitest";
 import type { PDFPageProxy } from "pdfjs-dist";
 import type { PDFViewer } from "pdfjs-dist/web/pdf_viewer.mjs";
-import type { PDFBlock, TranslationBlock } from "@reader/core";
+import type { PDFBlock, TranslationBlock } from "@neoread/core";
 import { translatedSelection } from "../translation/selection";
 import oze from "./fixtures/oze-sentence-alignment.json";
 vi.mock("pdfjs-dist", () => ({

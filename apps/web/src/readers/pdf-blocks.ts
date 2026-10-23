@@ -6,7 +6,7 @@ import {
   type PDFBlock,
   type PDFBlockAction,
   type PDFLocation,
-} from "@reader/core";
+} from "@neoread/core";
 // Includes the toolbar's padding, which bridges the gap above the block.
 const blockActionTarget = "[data-block-action], .block-actions";
 export function hitBlock(

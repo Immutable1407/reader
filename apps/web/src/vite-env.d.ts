@@ -11,23 +11,23 @@ interface Window {
     checkForUpdates: () => Promise<void>;
     onUpdateProgress?: (
       callback: (
-        progress: import("@reader/core").UpdateProgress | null,
+        progress: import("@neoread/core").UpdateProgress | null,
       ) => void,
     ) => () => void;
-    proxySettings?: () => Promise<import("@reader/core").ProxySettingsState>;
+    proxySettings?: () => Promise<import("@neoread/core").ProxySettingsState>;
     saveProxySettings?: (
-      settings: import("@reader/core").ProxySettings,
-    ) => Promise<import("@reader/core").ProxySettingsState>;
+      settings: import("@neoread/core").ProxySettings,
+    ) => Promise<import("@neoread/core").ProxySettingsState>;
     checkProxy?: (
-      settings: import("@reader/core").ProxySettings,
-    ) => Promise<import("@reader/core").ProxyCheckResult>;
+      settings: import("@neoread/core").ProxySettings,
+    ) => Promise<import("@neoread/core").ProxyCheckResult>;
     restart?: () => Promise<void>;
     libraryLocation?: () => Promise<string>;
     moveLibrary?: () => Promise<boolean>;
-    commandLine?: () => Promise<import("@reader/core").CommandLineStatus>;
+    commandLine?: () => Promise<import("@neoread/core").CommandLineStatus>;
     setCommandLine?: (
       installed: boolean,
-    ) => Promise<import("@reader/core").CommandLineStatus>;
+    ) => Promise<import("@neoread/core").CommandLineStatus>;
     writeClipboardText: (text: string) => Promise<void>;
     writeClipboardImage: (data: Uint8Array, text: string) => Promise<void>;
     setAppearance: (
@@ -60,7 +60,7 @@ interface Window {
     openExternal: (url: string) => Promise<void>;
     openCodexThread?: (threadId: string) => Promise<void>;
     onOpenLink?: (
-      callback: (target: import("@reader/core").ReaderLinkTarget) => void,
+      callback: (target: import("@neoread/core").ReaderLinkTarget) => void,
     ) => () => void;
     onBeforeClose: (callback: () => Promise<void>) => () => void;
     onLibraryChanged: (callback: () => void) => () => void;

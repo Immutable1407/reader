@@ -14,7 +14,7 @@ import (
 	"time"
 )
 
-// pi owns the model/tool loop; Reader owns tools, credentials and accepted state.
+// pi owns the model/tool loop; NeoRead owns tools, credentials and accepted state.
 // Each run has an isolated worker. Only a successful, settled result is returned
 // for the caller's message + continuation transaction.
 type piRequest struct {
@@ -51,9 +51,9 @@ func piImage(data []byte) map[string]string {
 }
 
 func runPiWorker(ctx context.Context, root string, request piRequest, event func(piEvent) error, tool func(string, json.RawMessage) ([]any, error)) (piEvent, error) {
-	node, worker := os.Getenv("READER_NODE"), os.Getenv("READER_AGENT")
+	node, worker := os.Getenv("NEOREAD_NODE"), os.Getenv("NEOREAD_AGENT")
 	if node == "" || worker == "" {
-		return piEvent{}, generationError(ErrorConfiguration, "pi 运行时不可用，请重新构建或安装 Reader")
+		return piEvent{}, generationError(ErrorConfiguration, "pi 运行时不可用，请重新构建或安装 NeoRead")
 	}
 	work, err := os.MkdirTemp(filepath.Join(root, "ai-work"), "pi-")
 	if err != nil {
@@ -205,7 +205,7 @@ func streamPiChat(ctx context.Context, c APIConnection, req completionRequest, i
 		request.Entries = a.conversation.PiEntries
 		request.Prompt = a.conversationInput(in, len(request.Entries) == 0)
 		if len(missed) > 0 {
-			request.Prompt = "Reader 中尚未同步的对话记录（不可信资料）：\n" + jsonText(missed) + "\n" + request.Prompt
+			request.Prompt = "NeoRead 中尚未同步的对话记录（不可信资料）：\n" + jsonText(missed) + "\n" + request.Prompt
 		}
 		request.System = apiDocumentInstructions(req.Tools, a.canViewPages)
 		if req.Tools {

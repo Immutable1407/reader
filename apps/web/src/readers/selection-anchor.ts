@@ -1,4 +1,4 @@
-import type { SelectionAnchor } from "@reader/core";
+import type { SelectionAnchor } from "@neoread/core";
 
 // Coordinates are in the renderer viewport, including selections inside EPUB frames.
 export function selectionAnchor(

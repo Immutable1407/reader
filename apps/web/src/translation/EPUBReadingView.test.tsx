@@ -9,7 +9,7 @@ import {
   type ReaderEvents,
   type ReaderTheme,
   type TranslationBlock,
-} from "@reader/core";
+} from "@neoread/core";
 const fixture = vi.hoisted(() => ({
   events: undefined as ReaderEvents | undefined,
   ready: undefined as ReaderAdapter | undefined,
@@ -23,7 +23,7 @@ const fixture = vi.hoisted(() => ({
     | undefined,
   signal: undefined as AbortSignal | undefined,
 }));
-vi.mock("@reader/api", () => ({
+vi.mock("@neoread/api", () => ({
   api: {
     epubBlocks: vi.fn(async () => blocks),
     assistance: vi.fn(async () => undefined),
@@ -87,7 +87,7 @@ vi.mock("../ReaderView", () => ({
   },
 }));
 import { EPUBReadingView } from "./EPUBReadingView";
-const blocks: import("@reader/core").EPUBReadingBlock[] = [
+const blocks: import("@neoread/core").EPUBReadingBlock[] = [
   "a.xhtml",
   "b.xhtml",
 ].map((href, i) => ({

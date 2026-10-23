@@ -6,7 +6,7 @@ import { copyText } from "../chat/clipboard";
 import { useReaderStore } from "../store";
 import { CitationDialog } from "./CitationDialog";
 import { paper } from "./fixtures";
-vi.mock("@reader/api", () => ({
+vi.mock("@neoread/api", () => ({
   api: { saveLibraryPreferences: vi.fn(async (value) => value) },
 }));
 vi.mock("../chat/clipboard", () => ({ copyText: vi.fn(async () => true) }));

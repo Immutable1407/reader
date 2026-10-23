@@ -11,20 +11,20 @@ import (
 )
 
 func TestLiveContinuousDocumentConversation(t *testing.T) {
-	provider := os.Getenv("READER_TEST_CONVERSATION_PROVIDER")
+	provider := os.Getenv("NEOREAD_TEST_CONVERSATION_PROVIDER")
 	if provider != "codex" && provider != "api" {
-		t.Skip("set READER_TEST_CONVERSATION_PROVIDER=codex or api; original synthetic text only")
+		t.Skip("set NEOREAD_TEST_CONVERSATION_PROVIDER=codex or api; original synthetic text only")
 	}
 	s, a := prepareConversationFixture(t)
 	config := AIConfig{Primary: provider, Models: map[string]string{}, Capabilities: map[string]Capability{}}
 	if provider == "api" {
-		raw, err := os.ReadFile(os.Getenv("READER_TEST_DOCUMENT_API_CONFIG"))
+		raw, err := os.ReadFile(os.Getenv("NEOREAD_TEST_DOCUMENT_API_CONFIG"))
 		if err != nil {
-			t.Fatal("Reader API connection unavailable")
+			t.Fatal("NeoRead API connection unavailable")
 		}
 		var saved savedConfig
 		if json.Unmarshal(raw, &saved) != nil {
-			t.Fatal("invalid Reader API config")
+			t.Fatal("invalid NeoRead API config")
 		}
 		config.API = saved.Config.API
 		if config.API.URL != "https://api.deepseek.com" && config.API.URL != "https://api.deepseek.com/v1" {

@@ -11,12 +11,12 @@ import (
 )
 
 func TestLiveDeepSeekNaturalFigureQuestion(t *testing.T) {
-	if os.Getenv("READER_TEST_DEEPSEEK_FIGURE") != "1" {
+	if os.Getenv("NEOREAD_TEST_DEEPSEEK_FIGURE") != "1" {
 		t.Skip("opt-in DeepSeek natural figure question with configured API")
 	}
-	raw, err := os.ReadFile(os.Getenv("READER_TEST_DOCUMENT_API_CONFIG"))
+	raw, err := os.ReadFile(os.Getenv("NEOREAD_TEST_DOCUMENT_API_CONFIG"))
 	if err != nil {
-		t.Fatal("Reader API config unavailable")
+		t.Fatal("NeoRead API config unavailable")
 	}
 	var saved savedConfig
 	if json.Unmarshal(raw, &saved) != nil {
@@ -26,11 +26,11 @@ func TestLiveDeepSeekNaturalFigureQuestion(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	t.Setenv("READER_NODE", node)
-	t.Setenv("READER_PROCESSOR", os.Getenv("READER_TEST_PAGE_PROCESSOR"))
+	t.Setenv("NEOREAD_NODE", node)
+	t.Setenv("NEOREAD_PROCESSOR", os.Getenv("NEOREAD_TEST_PAGE_PROCESSOR"))
 	s, _ := pageImageFixture(t, false)
-	if library := os.Getenv("READER_TEST_PAPER_LIBRARY"); library != "" {
-		id := os.Getenv("READER_TEST_PAPER_ID")
+	if library := os.Getenv("NEOREAD_TEST_PAPER_LIBRARY"); library != "" {
+		id := os.Getenv("NEOREAD_TEST_PAPER_ID")
 		decoded, decodeErr := hex.DecodeString(id)
 		if decodeErr != nil || len(decoded) != 16 {
 			t.Fatal("invalid test paper id")

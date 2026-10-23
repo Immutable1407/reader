@@ -4,8 +4,8 @@ import type {
   PDFSentenceLink,
   ReaderSelection,
   TranslationBlock,
-} from "@reader/core";
-import { sentenceAnchor } from "@reader/core";
+} from "@neoread/core";
+import { sentenceAnchor } from "@neoread/core";
 
 export function sentenceLink(
   links: PDFSentenceLink[],

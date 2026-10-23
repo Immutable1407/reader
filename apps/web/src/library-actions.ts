@@ -1,4 +1,4 @@
-import { api } from "@reader/api";
+import { api } from "@neoread/api";
 import { toast } from "sonner";
 import { forgetLibraryDocuments, refreshLibrary, refreshTrash } from "./store";
 

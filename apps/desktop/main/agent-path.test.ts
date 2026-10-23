@@ -13,7 +13,7 @@ describe("agent process PATH", () => {
       "darwin",
       async (file, args, env) => {
         if (file === "/bin/zsh")
-          return "shell banner\n__READER_AGENT_PATH__/nvm/node/bin:/usr/bin\n";
+          return "shell banner\n__NEOREAD_AGENT_PATH__/nvm/node/bin:/usr/bin\n";
         expect(args).toEqual(["prefix", "-g"]);
         expect(env.PATH).toContain("/nvm/node/bin");
         return "/custom/npm\n";
@@ -75,7 +75,7 @@ describe("agent process PATH", () => {
         const env = { PATH: "/usr/bin:/bin", SHELL: "/bin/sh" };
         expect(() => execFileSync("codex", [], { env })).toThrow();
         const PATH = await agentPath(env, root, "linux", async (file) =>
-          file === "/bin/sh" ? `__READER_AGENT_PATH__${nodeDir}\n` : npmPrefix,
+          file === "/bin/sh" ? `__NEOREAD_AGENT_PATH__${nodeDir}\n` : npmPrefix,
         );
         expect(
           execFileSync("codex", [], { env: { PATH }, encoding: "utf8" }),

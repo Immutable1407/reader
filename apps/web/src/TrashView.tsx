@@ -1,9 +1,9 @@
 import { useState } from "react";
 import { BookOpen, FileText, RotateCcw, Trash2 } from "lucide-react";
-import type { Document } from "@reader/core";
-import { api } from "@reader/api";
+import type { Document } from "@neoread/core";
+import { api } from "@neoread/api";
 import { toast } from "sonner";
-import { Button } from "@reader/ui/components/button";
+import { Button } from "@neoread/ui/components/button";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -13,7 +13,7 @@ import {
   AlertDialogFooter,
   AlertDialogHeader,
   AlertDialogTitle,
-} from "@reader/ui/components/alert-dialog";
+} from "@neoread/ui/components/alert-dialog";
 import { refreshTrash, useReaderStore, libraryMode } from "./store";
 import { restoreLibraryDocuments } from "./library-actions";
 

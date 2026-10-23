@@ -114,10 +114,10 @@ func TestFallbackAndCancellation(t *testing.T) {
 }
 
 // Opt-in integration test. Uses the local CLI login; never reads credential files.
-// A real document image is sent only when READER_TEST_IMAGE is explicitly supplied.
+// A real document image is sent only when NEOREAD_TEST_IMAGE is explicitly supplied.
 func TestLiveCodex(t *testing.T) {
-	if os.Getenv("READER_TEST_CODEX") != "1" {
-		t.Skip("set READER_TEST_CODEX=1 to use local subscription")
+	if os.Getenv("NEOREAD_TEST_CODEX") != "1" {
+		t.Skip("set NEOREAD_TEST_CODEX=1 to use local subscription")
 	}
 	root := t.TempDir()
 	if e := os.MkdirAll(filepath.Join(root, "ai-work"), 0700); e != nil {
@@ -125,8 +125,8 @@ func TestLiveCodex(t *testing.T) {
 	}
 	ctx, cancel := context.WithTimeout(context.Background(), 4*time.Minute)
 	defer cancel()
-	answer, e := invokeCLI(ctx, root, "codex", "", AIInput{Prompt: "Reply with exactly READER_OK. Do not use tools."}, nil)
-	if e != nil || strings.TrimSpace(answer) != "READER_OK" {
+	answer, e := invokeCLI(ctx, root, "codex", "", AIInput{Prompt: "Reply with exactly NEOREAD_OK. Do not use tools."}, nil)
+	if e != nil || strings.TrimSpace(answer) != "NEOREAD_OK" {
 		t.Fatalf("text: %q %v", answer, e)
 	}
 	t.Log("text invocation passed")
@@ -139,7 +139,7 @@ func TestLiveCodex(t *testing.T) {
 		t.Fatalf("vision: got %q want %q error %v", answer, expected, e)
 	}
 	t.Log("random eight-tile vision challenge passed")
-	if path := os.Getenv("READER_TEST_IMAGE"); path != "" {
+	if path := os.Getenv("NEOREAD_TEST_IMAGE"); path != "" {
 		image, e = os.ReadFile(path)
 		if e != nil {
 			t.Fatal(e)
@@ -148,7 +148,7 @@ func TestLiveCodex(t *testing.T) {
 		if e != nil || len(answer) < 60 {
 			t.Fatalf("document image: %v", e)
 		}
-		if out := os.Getenv("READER_TEST_OUTPUT"); out != "" {
+		if out := os.Getenv("NEOREAD_TEST_OUTPUT"); out != "" {
 			if e = os.WriteFile(out, []byte(answer+"\n"), 0600); e != nil {
 				t.Fatal(e)
 			}

@@ -15,7 +15,7 @@ var documentNativeCitationPattern = regexp.MustCompile(`\[` + documentSourceList
 var documentCitationIDPattern = regexp.MustCompile(`S[1-9][0-9]*`)
 var documentSourceIDPattern = regexp.MustCompile(`^S[1-9][0-9]*$`)
 
-// Provider markers and Reader labels resolve through the same evidence check.
+// Provider markers and NeoRead labels resolve through the same evidence check.
 // Unknown IDs, malformed markers and unfinished citations never bypass it.
 func documentCitationSources(text string) ([]string, error) {
 	sources := []string{}

@@ -1,4 +1,4 @@
-import { Button } from "@reader/ui/components/button";
+import { Button } from "@neoread/ui/components/button";
 import { copyText } from "./clipboard";
 import { Copy } from "lucide-react";
 import { CachedMarkdown, Streamdown } from "@lobehub/streamdown";

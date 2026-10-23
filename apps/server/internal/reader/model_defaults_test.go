@@ -101,7 +101,7 @@ func TestUnsetModelsResolvePerTask(t *testing.T) {
 		t.Run(string(tt.task), func(t *testing.T) {
 			fakeAgent(t, "claude", "complete")
 			capture := filepath.Join(t.TempDir(), "request.json")
-			t.Setenv("READER_AGENT_CAPTURE", capture)
+			t.Setenv("NEOREAD_AGENT_CAPTURE", capture)
 			s, _ := imageFixture(t)
 			models := catalog("claude-opus-5-5", "claude-sonnet-5-5", "claude-fable-5-1")
 			for i := range models {
