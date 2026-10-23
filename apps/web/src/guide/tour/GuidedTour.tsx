@@ -1,5 +1,7 @@
 import { Fragment, useEffect, useId, useRef, useState } from "react";
 import { createPortal } from "react-dom";
+import { ExternalLink } from "lucide-react";
+import { toast } from "sonner";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -193,6 +195,22 @@ const round = (layout: Layout) =>
   JSON.stringify(layout, (_, v) => (typeof v === "number" ? Math.round(v) : v));
 
 const skipLabel = "跳过引导";
+
+async function openLink(url: string) {
+  try {
+    if (window.readerDesktop?.openExternal)
+      await window.readerDesktop.openExternal(url);
+    else {
+      const opened = window.open(url, "_blank");
+      if (!opened) throw new Error("无法打开浏览器，请允许弹出窗口后重试。");
+      opened.opener = null;
+    }
+  } catch (error) {
+    toast.error(
+      error instanceof Error ? error.message : "无法打开链接，请重试。",
+    );
+  }
+}
 
 /** Renders inline `code` spans written with backticks. */
 const rich = (text: string) =>
@@ -411,6 +429,17 @@ export function GuidedTour({
           </h2>
           <p className="tour-body">{rich(view.body)}</p>
         </div>
+        {view.link && (
+          <Button
+            variant="link"
+            size="sm"
+            className="mt-1 h-auto px-0"
+            onClick={() => void openLink(view.link!.url)}
+          >
+            {view.link.label}
+            <ExternalLink />
+          </Button>
+        )}
         {view.options && (
           <div className="tour-options" role="group" aria-label="连接方式">
             {view.options.map((option) => (

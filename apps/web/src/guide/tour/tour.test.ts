@@ -133,6 +133,14 @@ describe("tour steps", () => {
       target: '[data-tour="agent-card"][data-agent="api"]',
     });
   });
+  it("points at the key field and DeepSeek inside the API settings", () => {
+    const { view } = at(1, { ...inSettings, method: "api", apiDetails: true });
+    expect(view?.pointer).toEqual({
+      gesture: "click",
+      target: '[data-tour="api-form"] input[aria-label="API Key"]',
+    });
+    expect(view?.link?.url).toContain("platform.deepseek.com");
+  });
   it("tours the local agent cards while detecting", () => {
     const { id, view } = at(1, { ...local, detecting: true });
     expect(id).toBe("agent");
@@ -161,8 +169,6 @@ describe("tour steps", () => {
     }).view;
     expect(failed?.body).toContain("`codex login`");
     expect(failed?.click).toEqual(['[data-tour="agent-refresh"]']);
-    const none = at(1, { ...inSettings, apiDetails: true }).view;
-    expect(none?.title).toBe("填写 API");
   });
   it("moves on once the chosen agent works", () => {
     const ready = { ...inSettings, primaryReady: true, taskModels: true };

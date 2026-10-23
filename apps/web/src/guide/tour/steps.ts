@@ -59,6 +59,8 @@ export interface TourView {
   side?: Side;
   /** Choices shown on the card; picking one sets `TourState.method`. */
   options?: { value: string; label: string; disabled?: boolean }[];
+  /** A web page the card offers to open. */
+  link?: { label: string; url: string };
   chosen?: string;
 }
 
@@ -87,6 +89,8 @@ export const readingModes =
 const assistantToggle = '[aria-label="Agent 与批注"]';
 const closeImport = `${tour("import-dialog")} > [data-slot="dialog-close"]`;
 const card = (id: string) => `${tour("agent-card")}[data-agent="${id}"]`;
+const apiKey = `${tour("api-form")} input[aria-label="API Key"]`;
+const deepseek = "https://platform.deepseek.com/api_keys";
 const localAgents = ["codex", "claude", "kimi"];
 const connections = [
   { value: "local", label: "本地 Agent 订阅" },
@@ -114,14 +118,22 @@ function agentView(s: TourState): TourView {
       pointer: { gesture: "click", target: tour("settings-agent-tab") },
     };
   if (s.apiDetails)
-    return {
-      title: "填写 API",
-      body: "填入 OpenAI 兼容接口的地址和 Key 并保存，Reader 会拉取模型并逐个检测。有模型通过后，点左上角返回。",
-      click: [tour("settings")],
-      pointer: s.agents.some((a) => a.id === "api" && a.status === "ready")
-        ? { gesture: "click", target: tour("api-back") }
-        : { gesture: "hover", target: tour("api-form"), align: "start" },
-    };
+    return s.agents.some((a) => a.id === "api" && a.status === "ready")
+      ? {
+          title: "API 已可用",
+          body: "已有模型通过检测。点左上角返回，选择要使用的 Agent。",
+          click: [tour("settings")],
+          pointer: { gesture: "click", target: tour("api-back") },
+        }
+      : {
+          title: "填写 API Key",
+          body: "还没有 Key 的话，可以到 DeepSeek 开放平台注册，在「API keys」页创建一个。API 地址填 `https://api.deepseek.com`，把 Key 粘贴到这里并保存，Reader 会拉取模型并逐个检测。暂时没有 Key 也可以直接下一步。",
+          focus: [apiKey],
+          click: [tour("settings")],
+          pointer: { gesture: "click", target: apiKey },
+          anchor: apiKey,
+          link: { label: "打开 platform.deepseek.com", url: deepseek },
+        };
   const choice = { options: connections, chosen: s.method };
   if (!s.method)
     return {
@@ -170,10 +182,11 @@ function agentView(s: TourState): TourView {
           ...choice,
         }
       : {
-          title: "填写 API Key",
-          body: "点击 API 卡片，填入 OpenAI 兼容接口的地址和 Key。Key 只保存在本机。",
+          title: "配置 API Key",
+          body: "点击 API 卡片，进入 API 配置。Key 只保存在本机。",
           click: [card("api")],
           pointer: { gesture: "click", target: card("api") },
+          act: true,
           ...choice,
         };
   if (s.detecting || mine.some((a) => a.status === "pending"))
