@@ -58,7 +58,7 @@ const type = async (label: string, value: string) => {
 };
 const submit = async () =>
   act(async () =>
-    input("API 地址").form!.dispatchEvent(
+    input("Base URL").form!.dispatchEvent(
       new Event("submit", { bubbles: true, cancelable: true }),
     ),
   );
@@ -181,10 +181,10 @@ it("saves the API endpoint and key, then tests the new connection", async () => 
   await act(async () => root.render(<Settings open onOpenChange={() => {}} />));
   expect(host.textContent).toContain("未配置");
   expect(host.textContent).toContain("点击卡片配置你的apikey");
-  expect(input("API 地址")).toBeNull();
+  expect(input("Base URL")).toBeNull();
   expect(api.testAI).not.toHaveBeenCalled();
   await openAPI();
-  expect(input("API 地址").value).toBe("https://api.deepseek.com");
+  expect(input("Base URL").value).toBe("https://api.deepseek.com");
   await type("API Key", "sk-test");
   await submit();
   expect(api.saveAIConfig).toHaveBeenLastCalledWith(
@@ -214,7 +214,7 @@ it("saves the API endpoint and key, then tests the new connection", async () => 
       host.querySelector('[aria-label="返回 Agent 设置"]') as HTMLButtonElement
     ).click(),
   );
-  expect(input("API 地址")).toBeNull();
+  expect(input("Base URL")).toBeNull();
   expect(host.textContent).not.toContain("点击卡片查看 API 配置");
   const card = host.querySelector('[aria-label="配置 API Key"]')!;
   expect(card.querySelector('[aria-label="文本推理：已通过"]')).not.toBeNull();
@@ -232,7 +232,7 @@ it("keeps the saved key when changing only the API endpoint and rechecks models"
   expect(input("API Key").placeholder).toBe("已保存，留空保持不变");
   expect(api.testAI).not.toHaveBeenCalled();
   // Editing only the address keeps the saved key without resending it.
-  await type("API 地址", "https://api.deepseek.com/v1");
+  await type("Base URL", "https://api.deepseek.com/v1");
   await submit();
   expect(api.saveAIConfig).toHaveBeenLastCalledWith(
     expect.objectContaining({
@@ -264,7 +264,7 @@ it("warns when no listed model passes the vision check", async () => {
   listed = { "text-only": false };
   await act(async () => root.render(<Settings open onOpenChange={() => {}} />));
   await openAPI();
-  expect(input("API 地址").value).toBe("https://api.example.com");
+  expect(input("Base URL").value).toBe("https://api.example.com");
   expect(api.testAI).toHaveBeenCalledWith("api", "vision", "text-only");
   expect(toast.warning).toHaveBeenCalledOnce();
   await act(async () =>
