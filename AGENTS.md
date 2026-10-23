@@ -23,7 +23,7 @@ Keep the interface restrained, following Claude/Apple app simplicity and shadcn 
 
 ## Diagnostics
 
-Before adding features, changing behavior, or fixing bugs, read and follow the [logging development guidelines](docs/diagnostics.md#日志开发规范). Add or update structured events at the affected boundaries, and complete the logging checklist before committing. Purely visual changes that do not change behavior need no new events.
+For changes involving background tasks, external calls, parsing or protocols, persistence, retries, or recovery, follow the [logging development guidelines](docs/diagnostics.md#日志开发规范) and assess existing diagnostic coverage. Add structured events only where the affected flow has diagnostic gaps; reuse existing events and validation, and leave unrelated historical flows out of scope.
 
 ## Git workflow and commits
 - Start large tasks in a new Git worktree on a dedicated task branch before editing. This includes substantial features, cross-module changes, and refactors. Keep the main checkout available for small changes.
