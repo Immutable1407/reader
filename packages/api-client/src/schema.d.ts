@@ -278,11 +278,14 @@ export interface paths {
             };
             cookie?: never;
         };
-        /** Download the stored file with its original filename; never serve active content inline */
+        /** Download a stored attachment with authentication; supports byte ranges for PDF previews */
         get: {
             parameters: {
                 query?: never;
-                header?: never;
+                header?: {
+                    /** @example bytes=0-1048575 */
+                    Range?: string;
+                };
                 path: {
                     id: string;
                     attachment: string;
@@ -291,9 +294,21 @@ export interface paths {
             };
             requestBody?: never;
             responses: {
-                /** @description Attachment file */
+                /** @description Complete attachment file */
                 200: {
                     headers: {
+                        "Accept-Ranges"?: "bytes";
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/octet-stream": string;
+                    };
+                };
+                /** @description Requested attachment byte range */
+                206: {
+                    headers: {
+                        "Accept-Ranges"?: "bytes";
+                        "Content-Range"?: string;
                         [name: string]: unknown;
                     };
                     content: {
@@ -320,6 +335,15 @@ export interface paths {
                         [name: string]: unknown;
                     };
                     content?: never;
+                };
+                /** @description Requested range is outside the attachment file */
+                416: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "text/plain": string;
+                    };
                 };
                 /** @description Storage failure */
                 500: {

@@ -52,7 +52,13 @@ vi.mock("pdfjs-dist/web/pdf_viewer.mjs", () => {
     },
   };
 });
-vi.mock("@reader/api", () => ({ api: { downloadPaperAttachment: vi.fn() } }));
+vi.mock("@reader/api", () => ({
+  api: { downloadPaperAttachment: vi.fn() },
+  paperAttachmentSource: () => ({
+    url: "/api/documents/paper/attachments/attachment/file",
+    httpHeaders: { Authorization: "Bearer test-secret" },
+  }),
+}));
 vi.mock("./actions", () => ({ openLink: vi.fn() }));
 vi.mock("../store", () => ({ refreshLibrary: vi.fn() }));
 let root: Root, host: HTMLDivElement;
@@ -105,17 +111,19 @@ afterEach(async () => {
   document.body.innerHTML = "";
   vi.unstubAllGlobals();
 });
-it("renders PDFs with PDF.js and releases the document and request on close", async () => {
+it("renders PDFs with PDF.js and releases the document on close", async () => {
   await act(async () => root.render(<AttachmentPreview />));
   expect(mocks.getDocument).toHaveBeenCalledOnce();
   expect(document.body.textContent).toContain("1 / 3");
-  const signal = vi.mocked(api.downloadPaperAttachment).mock.calls[0][2]!;
+  expect(api.downloadPaperAttachment).not.toHaveBeenCalled();
   await act(async () => useAttachments.setState({ preview: null }));
-  expect(signal.aborted).toBe(true);
   expect(mocks.destroy).toHaveBeenCalledOnce();
   expect(mocks.setDocument).toHaveBeenLastCalledWith(null);
 });
-it("aborts a download when closing before its response arrives", async () => {
+it("aborts an image download when closing before its response arrives", async () => {
+  useAttachments.setState({
+    preview: { doc, item: { ...item, filename: "chart.png" } },
+  });
   let resolve!: (value: Blob) => void;
   vi.mocked(api.downloadPaperAttachment).mockImplementation(
     async () =>
@@ -140,4 +148,38 @@ it("revokes image previews when closed", async () => {
   await act(async () => useAttachments.setState({ preview: null }));
   expect(URL.revokeObjectURL).toHaveBeenCalledWith("blob:preview");
   expect(mocks.getDocument).not.toHaveBeenCalled();
+});
+
+it("loads a 512 MB PDF through authenticated ranges without a whole-file blob", async () => {
+  useAttachments.setState({
+    preview: { doc, item: { ...item, size: 512 * 1024 * 1024 } },
+  });
+  await act(async () => root.render(<AttachmentPreview />));
+  expect(api.downloadPaperAttachment).not.toHaveBeenCalled();
+  expect(mocks.getDocument).toHaveBeenCalledWith(
+    expect.objectContaining({
+      url: "/api/documents/paper/attachments/attachment/file",
+      httpHeaders: { Authorization: "Bearer test-secret" },
+      disableStream: true,
+      disableAutoFetch: true,
+    }),
+  );
+  expect(mocks.getDocument.mock.calls[0][0]).not.toHaveProperty("data");
+});
+
+it("destroys pending PDF range loading and ignores a late document after close", async () => {
+  let resolve!: (value: { numPages: number }) => void;
+  const pdfDocument = { numPages: 10 };
+  mocks.getDocument.mockReturnValue({
+    promise: new Promise((done) => {
+      resolve = done;
+    }),
+    destroy: mocks.destroy,
+  });
+  await act(async () => root.render(<AttachmentPreview />));
+  expect(mocks.getDocument).toHaveBeenCalledOnce();
+  await act(async () => useAttachments.setState({ preview: null }));
+  expect(mocks.destroy).toHaveBeenCalledOnce();
+  await act(async () => resolve(pdfDocument));
+  expect(mocks.setDocument).not.toHaveBeenCalledWith(pdfDocument);
 });

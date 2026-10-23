@@ -17,7 +17,7 @@ import {
 } from "pdfjs-dist/web/pdf_viewer.mjs";
 import workerURL from "pdfjs-dist/build/pdf.worker.min.mjs?url";
 import "pdfjs-dist/web/pdf_viewer.css";
-import { api } from "@reader/api";
+import { api, paperAttachmentSource } from "@reader/api";
 import { Button } from "@reader/ui/components/button";
 import { Input } from "@reader/ui/components/input";
 import {
@@ -85,13 +85,13 @@ function PreviewContent() {
     const controller = new AbortController();
     const load = async () => {
       try {
-        const blob = await api.downloadPaperAttachment(
-          preview.doc.id,
-          preview.item.id,
-          controller.signal,
-        );
-        if (disposed) return;
         if (kind === "image") {
+          const blob = await api.downloadPaperAttachment(
+            preview.doc.id,
+            preview.item.id,
+            controller.signal,
+          );
+          if (disposed) return;
           const type = /\.png$/i.test(preview.item.filename)
             ? "image/png"
             : /\.jpe?g$/i.test(preview.item.filename)
@@ -133,10 +133,13 @@ function PreviewContent() {
         });
         links.externalLinkEnabled = false;
         links.setViewer(viewer);
-        const bytes = await blob.arrayBuffer();
-        if (disposed) return;
         task = pdfjs.getDocument({
-          data: new Uint8Array(bytes),
+          ...paperAttachmentSource(preview.doc.id, preview.item.id),
+          // Request only needed ranges; disabling streaming is necessary for
+          // PDF.js to honor disableAutoFetch rather than consume the full file.
+          disableStream: true,
+          disableAutoFetch: true,
+          rangeChunkSize: 1 << 20,
           cMapUrl: "/pdf-assets/cmaps/",
           cMapPacked: true,
           standardFontDataUrl: "/pdf-assets/standard_fonts/",

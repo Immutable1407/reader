@@ -49,6 +49,16 @@ let sessionToken = "";
 export function configureAPI(token: string) {
   sessionToken = token;
 }
+/** PDF.js reuses these credentials for both the initial request and byte ranges. */
+export function paperAttachmentSource(
+  documentId: string,
+  attachmentId: string,
+) {
+  return {
+    url: `/api/documents/${encodeURIComponent(documentId)}/attachments/${encodeURIComponent(attachmentId)}/file`,
+    httpHeaders: { Authorization: `Bearer ${sessionToken}` },
+  };
+}
 export function publicationURL(documentId: string, resource: string) {
   return `/pub/${encodeURIComponent(sessionToken)}/${encodeURIComponent(documentId)}/${resource}`;
 }
@@ -188,13 +198,11 @@ export const api = {
     attachment: string,
     signal?: AbortSignal,
   ): Promise<Blob> => {
-    const response = await diagnosticFetch(
-      `/api/documents/${encodeURIComponent(id)}/attachments/${encodeURIComponent(attachment)}/file`,
-      {
-        headers: { Authorization: `Bearer ${sessionToken}` },
-        signal,
-      },
-    );
+    const source = paperAttachmentSource(id, attachment);
+    const response = await diagnosticFetch(source.url, {
+      headers: source.httpHeaders,
+      signal,
+    });
     if (!response.ok) {
       const data = await response.json().catch(() => ({}));
       throw new RequestError(data.error || `附件下载失败 (${response.status})`);

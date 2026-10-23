@@ -235,12 +235,49 @@
             ],
           "get":
             {
-              "summary": "Download the stored file with its original filename; never serve active content inline",
+              "summary": "Download a stored attachment with authentication; supports byte ranges for PDF previews",
+              "parameters":
+                [
+                  {
+                    "name": "Range",
+                    "in": "header",
+                    "required": false,
+                    "schema": { "type": "string" },
+                    "example": "bytes=0-1048575",
+                  },
+                ],
               "responses":
                 {
                   "200":
                     {
-                      "description": "Attachment file",
+                      "description": "Complete attachment file",
+                      "headers":
+                        {
+                          "Accept-Ranges":
+                            {
+                              "schema": { "type": "string", "enum": ["bytes"] },
+                            },
+                        },
+                      "content":
+                        {
+                          "application/octet-stream":
+                            {
+                              "schema":
+                                { "type": "string", "format": "binary" },
+                            },
+                        },
+                    },
+                  "206":
+                    {
+                      "description": "Requested attachment byte range",
+                      "headers":
+                        {
+                          "Accept-Ranges":
+                            {
+                              "schema": { "type": "string", "enum": ["bytes"] },
+                            },
+                          "Content-Range": { "schema": { "type": "string" } },
+                        },
                       "content":
                         {
                           "application/octet-stream":
@@ -255,6 +292,12 @@
                   "404":
                     {
                       "description": "Paper or attachment is missing or trashed",
+                    },
+                  "416":
+                    {
+                      "description": "Requested range is outside the attachment file",
+                      "content":
+                        { "text/plain": { "schema": { "type": "string" } } },
                     },
                   "500": { "description": "Storage failure" },
                 },
