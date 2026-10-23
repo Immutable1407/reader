@@ -100,11 +100,6 @@ const connections = [
   // Not available yet.
   { value: "neoread", label: "NeoRead 官方订阅", disabled: true },
 ];
-const loginHints: Record<string, string> = {
-  codex: "`codex login`",
-  claude: "`claude auth login`",
-  kimi: "`kimi`",
-};
 
 export const join = (names: string[]) =>
   names.length < 2
@@ -205,7 +200,7 @@ function agentView(s: TourState): TourView {
   return failed.length
     ? {
         title: "Agent 还不能使用",
-        body: `${join(failed.map((a) => agentNames[a.id]))} 未通过检测，通常是 CLI 还没有登录。在 Codex App 里登录不算，[[请在${s.shell}中运行 ${join(failed.map((a) => loginHints[a.id]))}]]，然后点右上角重新检测，或者改用 API Key。`,
+        body: "没有可用的 agent，通常是 CLI 还没有登录。[[请在 mac 终端 / windows powershell 中运行 `codex login` / `claude auth login` / `kimi`]]，然后点右上角重新检测，或者改用 API Key / NeoRead 订阅。",
         focus: failed.map((a) => card(a.id)),
         click: [tour("agent-refresh")],
         pointer: { gesture: "click", target: tour("agent-refresh") },
