@@ -41,3 +41,26 @@ Codex 原生搜索请求由 App Server/服务端执行，Reader 收到的是执�
 开发预览：启动 Web 开发服务，打开 `/__web-search`。这是合成示例；可切换明暗、执行状态并调整面板宽度，检查展开/收起、链接、长文本换行和减少动态效果。项目不使用浏览器自动化进行视觉验收。
 
 实际使用时，分别用 Codex 和 DeepSeek 官方 API 开启联网，搜索一个公开主题、读取链接，再关闭联网发送问题。检查查询/网页步骤、成功与失败、取消、重新打开聊天、引用原文与网页的区别。真实服务可用性和原生桌面视觉效果需单独验收；受控测试不代表两者已经完成。
+
+## 真实服务回归
+
+2026-10-23 在 `5115bfa` 上用真实 Codex `0.163.0-alpha.11.1` 和 DeepSeek 官方 `deepseek-flash` 完成了搜索、读取公开文档、保存与重新打开，以及执行中取消测试。两边的取消回合均保存为 cancelled，没有助手答案或 done 事件。真实 SSE 数据另外经过 `ChatSession` 和 `ToolActivities` DOM 回放，验证步骤更新、取消标签、来源链接和保存后的状态核对；这不替代原生桌面的像素与交互人工验收。
+
+本次单轮观察（不是性能基准）：
+
+| 后端     | 搜索与读取回合                               | 保存步骤/来源                                    | 执行中取消                     |
+| -------- | -------------------------------------------- | ------------------------------------------------ | ------------------------------ |
+| Codex    | 约 32.1 秒，返回两个正确 endpoint 和网页链接 | 2 步 / 12 个搜索来源；原生协议未提供完整正文快照 | cancelled，无助手答案、无 done |
+| DeepSeek | 约 5.3 秒，返回两个正确 endpoint 和网页链接  | 2 步 / 4 个来源，包含读取的正文快照              | cancelled，无助手答案、无 done |
+
+按需运行下面的测试会调用真实模型与搜索服务。只使用合成文档及公开查询，聊天与运行状态只写入测试临时书库，另将脱敏报告写入显式指定的路径；不修改提供连接配置的原书库，也不读取 Codex/Claude 凭据文件。测试默认跳过：
+
+```sh
+cd apps/server
+READER_TEST_WEB_PROVIDERS=codex,api \
+READER_TEST_DOCUMENT_API_CONFIG="<已有 Reader DeepSeek 连接配置文件>" \
+READER_TEST_WEB_REPORT="<书库以外的报告 JSON 路径>" \
+go test ./internal/reader -run '^TestLiveWebSearchLifecycle$' -count=1 -v -timeout=15m
+```
+
+随后在仓库根目录使用同一个 `READER_TEST_WEB_REPORT` 运行 `pnpm exec vitest run apps/web/src/chat/web-search-live.test.tsx`。报告排除模型思考内容和认证数据，网页文本仅保留前 400 字节供检查，并通过 `reportTextLimitBytes` 标明报告自身的摘录限制；产品中原始保存的快照不受报告摘录影响。
