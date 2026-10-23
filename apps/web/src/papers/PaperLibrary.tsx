@@ -370,6 +370,11 @@ export function PaperLibrary({
     (sum, c) => sum + (columnWidths[c] ?? 160),
     32 + (picking ? 32 : 0),
   );
+  // Once the title has an explicit width, spare space belongs to a blank
+  // column so resizing any boundary (including the last) stays under the pointer.
+  const fillTableSpace =
+    columnWidths.title !== undefined ||
+    !columnControls.visible.includes("title");
   const detailWidth = draftDetail ?? prefs.detailWidth;
   const saveColumnWidths = (next: Partial<Record<TableColumn, number>>) =>
     void savePaperPreferences((p) => ({
@@ -549,6 +554,7 @@ export function PaperLibrary({
   const renderRow = (doc: Document, tableColumns?: TableColumn[]) => (
     <PaperRow
       columns={tableColumns}
+      fillTableSpace={fillTableSpace}
       key={doc.id}
       doc={doc}
       job={jobs.get(doc.id)}
@@ -956,13 +962,7 @@ export function PaperLibrary({
                   <Table
                     {...columnControls.target()}
                     style={{
-                      // Keep the title flexible until first resized; afterwards
-                      // the table follows saved widths rather than redistributing them.
-                      width:
-                        columnWidths.title !== undefined ||
-                        !columnControls.visible.includes("title")
-                          ? tableWidth
-                          : undefined,
+                      width: "100%",
                       minWidth: tableWidth,
                     }}
                   >
@@ -1022,6 +1022,9 @@ export function PaperLibrary({
                             </TableHead>
                           );
                         })}
+                        {fillTableSpace && (
+                          <TableHead aria-hidden="true" style={{ padding: 0 }} />
+                        )}
                         <TableHead className="w-8" />
                       </TableRow>
                     </TableHeader>
@@ -1035,6 +1038,7 @@ export function PaperLibrary({
                             colSpan={
                               columnControls.visible.length +
                               1 +
+                              (fillTableSpace ? 1 : 0) +
                               (picking ? 1 : 0)
                             }
                           >
@@ -1247,6 +1251,7 @@ function PaperRow({
   journalRankConfig,
   journalRankRefresh,
   columns,
+  fillTableSpace,
   dragIds,
   onActivate,
   onOpen,
@@ -1264,6 +1269,7 @@ function PaperRow({
   journalRankRefresh: number;
   /** Table columns; the row renders as a list card without them. */
   columns?: TableColumn[];
+  fillTableSpace: boolean;
   dragIds: () => string[];
   onActivate: (e: React.MouseEvent | React.KeyboardEvent) => void;
   onOpen: () => void;
@@ -1504,6 +1510,9 @@ function PaperRow({
                   {cell(column)}
                 </TableCell>
               ),
+            )}
+            {fillTableSpace && (
+              <TableCell aria-hidden="true" style={{ padding: 0 }} />
             )}
             <TableCell className="w-8">{more}</TableCell>
           </>

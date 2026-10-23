@@ -1445,6 +1445,10 @@ it.each([
       ).toBe("416px");
       expect(
         host.querySelector<HTMLTableElement>(".paper-table table")!.style.width,
+      ).toBe("100%");
+      expect(
+        host.querySelector<HTMLTableElement>(".paper-table table")!.style
+          .minWidth,
       ).toBe(columnOrder[2] === "title" ? "672px" : "656px");
       expect(api.saveLibraryPreferences).not.toHaveBeenCalled();
       await press(edge!, "pointerup", 416);
@@ -1533,6 +1537,10 @@ it("moves the final metadata boundary even before the title has a saved width", 
     await press(edge, "pointermove", 664);
     expect(
       host.querySelector<HTMLTableElement>(".paper-table table")!.style.width,
+    ).toBe("100%");
+    expect(
+      host.querySelector<HTMLTableElement>(".paper-table table")!.style
+        .minWidth,
     ).toBe("696px");
     expect(
       host.querySelector<HTMLElement>('th[data-column="title"]')!.style.width,
@@ -1543,3 +1551,113 @@ it("moves the final metadata boundary even before the title has a saved width", 
     rects.mockRestore();
   }
 });
+
+it.each([true, false])(
+  "fills the paper pane after saving widths (showTitle=%s)",
+  async (showTitle) => {
+    await act(async () =>
+      useReaderStore.setState({
+        libraryPreferences: {
+          mode: "papers",
+          papers: {
+            layout: "table",
+            showTitle,
+            columns: ["authors", "year"],
+            columnOrder: ["authors", "title", "year"],
+            columnWidths: { title: 360 },
+          },
+        },
+      }),
+    );
+    const table = host.querySelector<HTMLTableElement>(".paper-table table")!;
+    expect(table.style.width).toBe("100%");
+    expect(table.style.minWidth).toBe(showTitle ? "616px" : "256px");
+    expect(headerColumns()).toEqual(
+      showTitle ? ["authors", "title", "year"] : ["authors", "year"],
+    );
+    expect(prefs().columnWidths).toEqual({ title: 360 });
+    const filler = table.querySelector<HTMLElement>(
+      "thead [aria-hidden=true]",
+    )!;
+    expect(filler.style.padding).toBe("0px");
+    expect(filler.nextElementSibling).toBe(
+      table.querySelector("thead th:last-child"),
+    );
+    for (const row of table.querySelectorAll("tbody tr")) {
+      expect(row.querySelector("td[aria-hidden=true]")).not.toBeNull();
+      expect(row.children.length).toBe(showTitle ? 5 : 4);
+    }
+  },
+);
+
+it("keeps the default title flexible until a final-column shrink saves its width", async () => {
+  await act(async () =>
+    useReaderStore.setState({
+      libraryPreferences: {
+        mode: "papers",
+        papers: { layout: "table", columns: ["year"] },
+      },
+    }),
+  );
+  const table = host.querySelector<HTMLTableElement>(".paper-table table")!;
+  expect(table.querySelector("th[aria-hidden=true]")).toBeNull();
+  expect(
+    table.querySelector<HTMLElement>('th[data-column="title"]')!.style.width,
+  ).toBe("");
+  const rects = fakeWidths({ title: 400, year: 64 });
+  try {
+    const edge = host.querySelector<HTMLElement>(
+      '[aria-label="调整年份列宽度"]',
+    )!;
+    await press(edge, "pointerdown", 464);
+    await press(edge, "pointermove", 448);
+    expect(table.querySelector("th[aria-hidden=true]")).not.toBeNull();
+    expect(
+      table.querySelector<HTMLElement>('th[data-column="title"]')!.style.width,
+    ).toBe("400px");
+    expect(
+      table.querySelector<HTMLElement>('th[data-column="year"]')!.style.width,
+    ).toBe("48px");
+    expect(api.saveLibraryPreferences).not.toHaveBeenCalled();
+    await press(edge, "pointerup", 448);
+    expect(prefs().columnWidths).toEqual({ title: 400, year: 48 });
+    expect(table.querySelector("th[aria-hidden=true]")).not.toBeNull();
+  } finally {
+    rects.mockRestore();
+  }
+});
+
+it.each([false, true])(
+  "fills space without stretching narrow columns (picking=%s)",
+  async (picking) => {
+    await act(async () => {
+      useReaderStore.setState({
+        libraryPreferences: {
+          mode: "papers",
+          papers: {
+            layout: "table",
+            showTitle: false,
+            columns: ["year", "status"],
+          },
+        },
+      });
+      usePaperUI.setState({ picking });
+    });
+    const table = host.querySelector<HTMLTableElement>(".paper-table table")!;
+    expect(table.style.minWidth).toBe(picking ? "200px" : "168px");
+    expect(
+      table.querySelector<HTMLElement>('th[data-column="year"]')!.style.width,
+    ).toBe("64px");
+    expect(
+      table.querySelector<HTMLElement>('th[data-column="status"]')!.style.width,
+    ).toBe("72px");
+    expect(table.querySelector("th[aria-hidden=true]")).not.toBeNull();
+    expect(table.querySelector("tbody tr")!.children.length).toBe(
+      picking ? 5 : 4,
+    );
+    await act(async () => usePaperUI.getState().setQuery("no-such-paper"));
+    expect(table.querySelector("tbody td")!.getAttribute("colspan")).toBe(
+      picking ? "5" : "4",
+    );
+  },
+);
