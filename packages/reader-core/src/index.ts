@@ -274,6 +274,7 @@ export interface NavigationEdit {
   /** Missing means automatic placement; null explicitly moves to the root. */
   parentId?: string | null;
   collapsed?: boolean;
+  deleted?: boolean;
 }
 export interface DocumentNavigation {
   revision: number;

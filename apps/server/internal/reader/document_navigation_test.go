@@ -29,7 +29,7 @@ func TestDocumentNavigationPersistenceAndConflicts(t *testing.T) {
 		t.Fatal("stale write accepted", conflict.Code)
 	}
 	for revision := 1; revision <= 2; revision++ {
-		next := request(t, s, "PUT", path, strings.NewReader(fmt.Sprintf(`{"revision":%d,"entries":{"outline:0":{"label":"保留"}}}`, revision)))
+		next := request(t, s, "PUT", path, strings.NewReader(fmt.Sprintf(`{"revision":%d,"entries":{"outline:0":{"label":"保留","deleted":true}}}`, revision)))
 		if next.Code != 200 {
 			t.Fatal(next.Code, next.Body.String())
 		}
@@ -37,6 +37,9 @@ func TestDocumentNavigationPersistenceAndConflicts(t *testing.T) {
 	get = request(t, s, "GET", path, nil)
 	if !strings.Contains(get.Body.String(), `"revision":3`) || !strings.Contains(get.Body.String(), "保留") {
 		t.Fatal(get.Body.String())
+	}
+	if !strings.Contains(get.Body.String(), `"deleted":true`) {
+		t.Fatal("deleted state lost", get.Body.String())
 	}
 	// A fresh database connection sees the same saved edits.
 	reopened, err := OpenStore(s.Store.Root)

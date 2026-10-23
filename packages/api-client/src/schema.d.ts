@@ -38,6 +38,7 @@ export interface paths {
                                     kind?: "heading" | "bookmark";
                                     parentId?: string | null;
                                     collapsed?: boolean;
+                                    deleted?: boolean;
                                 };
                             };
                         };
@@ -73,6 +74,7 @@ export interface paths {
                                 kind?: "heading" | "bookmark";
                                 parentId?: string | null;
                                 collapsed?: boolean;
+                                deleted?: boolean;
                             };
                         };
                     };
@@ -94,6 +96,7 @@ export interface paths {
                                     kind?: "heading" | "bookmark";
                                     parentId?: string | null;
                                     collapsed?: boolean;
+                                    deleted?: boolean;
                                 };
                             };
                         };

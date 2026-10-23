@@ -36,6 +36,11 @@ beforeEach(() => {
     },
   );
   vi.clearAllMocks();
+  vi.stubGlobal("PointerEvent", MouseEvent);
+  Object.defineProperty(Element.prototype, "getAnimations", {
+    configurable: true,
+    value: () => [],
+  });
   mocks.load.mockResolvedValue({ revision: 0, entries: {} });
   mocks.save.mockImplementation(async (_id: string, n: DocumentNavigation) => ({
     ...n,
@@ -150,5 +155,114 @@ it("keeps inline rename open after choosing the context menu command", async () 
   await act(async () => menu.click());
   const input = host.querySelector('input[aria-label="目录名称"]');
   expect(input).not.toBeNull();
-  expect(document.activeElement).toBe(input);
+  await act(async () => {
+    await vi.waitFor(() => expect(document.activeElement).toBe(input));
+  });
+});
+it("selects a range with Shift and deletes it in one persisted operation", async () => {
+  await render();
+  const links = host.querySelectorAll<HTMLButtonElement>(".navigation-link");
+  await act(async () => links[0].click());
+  go.mockClear();
+  await act(async () =>
+    links[1].dispatchEvent(
+      new MouseEvent("click", { bubbles: true, shiftKey: true }),
+    ),
+  );
+  expect(host.textContent).toContain("已选 2 项");
+  expect(go).not.toHaveBeenCalled();
+  await act(async () =>
+    host
+      .querySelector<HTMLButtonElement>('[aria-label="删除所选目录"]')!
+      .click(),
+  );
+  expect(mocks.save).toHaveBeenCalledTimes(1);
+  expect(mocks.save.mock.calls[0][1].entries).toEqual({
+    a: { deleted: true },
+    b: { deleted: true },
+  });
+  expect(host.querySelectorAll(".navigation-row")).toHaveLength(0);
+  expect(host.textContent).toContain("暂无目录");
+});
+it("enters selection from the floating button and toggles with Command", async () => {
+  await render();
+  await act(async () =>
+    host.querySelector<HTMLButtonElement>('[aria-label="多选目录"]')!.click(),
+  );
+  const links = host.querySelectorAll<HTMLButtonElement>(".navigation-link");
+  await act(async () => links[0].click());
+  await act(async () =>
+    links[1].dispatchEvent(
+      new MouseEvent("click", { bubbles: true, metaKey: true }),
+    ),
+  );
+  expect(host.textContent).toContain("已选 2 项");
+  await act(async () =>
+    links[0].dispatchEvent(
+      new MouseEvent("click", { bubbles: true, metaKey: true }),
+    ),
+  );
+  expect(host.textContent).toContain("已选 1 项");
+  expect(go).not.toHaveBeenCalled();
+});
+it("keeps selection and entries when deletion fails", async () => {
+  mocks.save.mockRejectedValue(new Error("保存失败"));
+  await render();
+  await act(async () =>
+    host
+      .querySelector<HTMLButtonElement>(".navigation-link")!
+      .dispatchEvent(new MouseEvent("click", { bubbles: true, metaKey: true })),
+  );
+  await act(async () =>
+    host
+      .querySelector<HTMLButtonElement>('[aria-label="删除所选目录"]')!
+      .click(),
+  );
+  expect(host.querySelectorAll(".navigation-row")).toHaveLength(2);
+  expect(host.textContent).toContain("已选 1 项");
+});
+it("toggles using the checkbox and clears selection with Escape", async () => {
+  await render();
+  await act(async () =>
+    host.querySelector<HTMLButtonElement>('[aria-label="多选目录"]')!.click(),
+  );
+  await act(async () =>
+    host.querySelector<HTMLElement>('[aria-label="选择 Parent"]')!.click(),
+  );
+  expect(host.textContent).toContain("已选 1 项");
+  expect(
+    host
+      .querySelector('[aria-label="选择 Parent"]')
+      ?.getAttribute("aria-checked"),
+  ).toBe("true");
+  await act(async () =>
+    host
+      .querySelector("nav")!
+      .dispatchEvent(
+        new KeyboardEvent("keydown", { bubbles: true, key: "Escape" }),
+      ),
+  );
+  expect(host.querySelector('[aria-label="删除所选目录"]')).toBeNull();
+});
+it("selects collapsed descendants with select all and can deselect all", async () => {
+  mocks.load.mockResolvedValue({
+    revision: 1,
+    entries: { a: { collapsed: true } },
+  });
+  await render();
+  await act(async () =>
+    host.querySelector<HTMLButtonElement>('[aria-label="多选目录"]')!.click(),
+  );
+  const button = (text: string) =>
+    Array.from(host.querySelectorAll("button")).find(
+      (b) => b.textContent === text,
+    )!;
+  await act(async () => button("全选").click());
+  expect(host.textContent).toContain("已选 2 项");
+  await act(async () => button("取消全选").click());
+  expect(host.textContent).toContain("已选 0 项");
+  expect(
+    host.querySelector<HTMLButtonElement>('[aria-label="删除所选目录"]')!
+      .disabled,
+  ).toBe(true);
 });

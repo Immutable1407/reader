@@ -10,6 +10,7 @@ import (
 )
 
 type navigationEdit struct {
+	Deleted   *bool           `json:"deleted,omitempty"`
 	Label     *string         `json:"label,omitempty"`
 	Kind      string          `json:"kind,omitempty"`
 	ParentID  json.RawMessage `json:"parentId,omitempty"`

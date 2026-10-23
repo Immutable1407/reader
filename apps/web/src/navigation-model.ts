@@ -259,7 +259,20 @@ export function buildNavigation(
   // New parser evidence can invalidate an old relationship. Preserve the stored
   // override, but render only contiguous source-order subtrees.
   normalizeParents(nodes);
-  return treeFrom(sorted(nodes));
+  const retained = nodes.filter((n) => !state.entries[n.id]?.deleted);
+  for (const n of retained) {
+    const seen = new Set<string>();
+    while (
+      n.parentId &&
+      state.entries[n.parentId]?.deleted &&
+      !seen.has(n.parentId)
+    ) {
+      seen.add(n.parentId);
+      n.parentId = byId.get(n.parentId)?.parentId ?? null;
+    }
+  }
+  normalizeParents(retained);
+  return treeFrom(sorted(retained));
 }
 export function moveNavigation(
   tree: NavigationItem[],

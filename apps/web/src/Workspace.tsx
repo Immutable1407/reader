@@ -1293,18 +1293,16 @@ export function Workspace({
                 </TabsTrigger>
               </TabsList>
               <TabsContent value="toc" className="min-h-0 flex-1">
-                <ScrollArea className="h-full">
-                  <NavigationTree
-                    key={doc.id}
-                    documentId={doc.id}
-                    type={doc.type}
-                    outline={toc}
-                    blocks={blocks}
-                    annotations={annotations}
-                    location={location}
-                    go={move}
-                  />
-                </ScrollArea>
+                <NavigationTree
+                  key={doc.id}
+                  documentId={doc.id}
+                  type={doc.type}
+                  outline={toc}
+                  blocks={blocks}
+                  annotations={annotations}
+                  location={location}
+                  go={move}
+                />
               </TabsContent>
               <TabsContent value="search" className="min-h-0 flex-1 p-3">
                 <form

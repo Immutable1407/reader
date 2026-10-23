@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from "react";
-import { Bookmark, ChevronRight } from "lucide-react";
+import { Bookmark, ChevronRight, SquareCheck, Trash2, X } from "lucide-react";
 import { api } from "@reader/api";
 import type {
   Annotation,
@@ -10,6 +10,8 @@ import type {
   TOCItem,
 } from "@reader/core";
 import { Button } from "@reader/ui/components/button";
+import { Checkbox } from "@reader/ui/components/checkbox";
+import { ScrollArea } from "@reader/ui/components/scroll-area";
 import { Input } from "@reader/ui/components/input";
 import {
   Collapsible,
@@ -66,6 +68,9 @@ export function NavigationTree({
   const [label, setLabel] = useState("");
   const [dragging, setDragging] = useState<string>();
   const [dropTarget, setDropTarget] = useState<string>();
+  const [selecting, setSelecting] = useState(false);
+  const [checked, setChecked] = useState<Set<string>>(new Set());
+  const anchor = useRef<string | undefined>(undefined);
   const [selected, setSelected] = useState<string>();
   useEffect(() => {
     alive.current = true;
@@ -138,13 +143,16 @@ export function NavigationTree({
         : flat.find(sameSection)?.id;
   const disabled = !loaded || saving;
   async function change(id: string, patch: NavigationEdit) {
+    return save(editNavigation(state, id, patch));
+  }
+  async function save(next: DocumentNavigation) {
     if (lock.current || !loaded) return;
     lock.current = true;
     setSaving(true);
-    const next = editNavigation(state, id, patch);
     try {
       const saved = await api.saveNavigation(documentId, next);
       if (alive.current) setState(saved);
+      return true;
     } catch (e) {
       if (alive.current) {
         toast.error((e as Error).message);
@@ -154,6 +162,53 @@ export function NavigationTree({
       lock.current = false;
       if (alive.current) setSaving(false);
     }
+  }
+  const visible: NavigationItem[] = [];
+  function collect(items: NavigationItem[]) {
+    for (const item of items) {
+      if (!item.id.startsWith("page-")) visible.push(item);
+      if (!item.collapsed) collect(item.children);
+    }
+  }
+  collect(tree);
+  const selectable = flat.filter((item) => !item.id.startsWith("page-"));
+  const allSelected =
+    selectable.length > 0 && selectable.every((item) => checked.has(item.id));
+  const chosen = flat.filter((item) => checked.has(item.id));
+  function selectItem(
+    id: string,
+    event: { shiftKey?: boolean; metaKey?: boolean; ctrlKey?: boolean },
+  ) {
+    if (disabled || id.startsWith("page-")) return;
+    setSelecting(true);
+    const start = visible.findIndex((item) => item.id === anchor.current);
+    const end = visible.findIndex((item) => item.id === id);
+    setChecked((old) => {
+      if (event.shiftKey && start >= 0 && end >= 0) {
+        const next = new Set<string>(event.metaKey || event.ctrlKey ? old : []);
+        visible
+          .slice(Math.min(start, end), Math.max(start, end) + 1)
+          .forEach((item) => next.add(item.id));
+        return next;
+      }
+      const next = new Set(old);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+    if (!event.shiftKey || start < 0) anchor.current = id;
+  }
+  function exitSelection() {
+    setSelecting(false);
+    setChecked(new Set());
+    anchor.current = undefined;
+  }
+  async function deleteSelected() {
+    if (!chosen.length) return;
+    const entries = { ...state.entries };
+    for (const item of chosen)
+      entries[item.id] = { ...entries[item.id], deleted: true };
+    if (await save({ ...state, entries })) exitSelection();
   }
   function move(id: string, parentId: string | null) {
     if (!ordered) {
@@ -186,7 +241,7 @@ export function NavigationTree({
           <ContextMenu>
             <ContextMenuTrigger
               render={<div />}
-              className={`navigation-row ${active === item.id ? "selected" : ""} ${dropTarget === item.id ? (moveError ? "drop-invalid" : "drop-valid") : ""}`}
+              className={`navigation-row ${(selecting ? checked.has(item.id) : active === item.id) ? "selected" : ""} ${dropTarget === item.id ? (moveError ? "drop-invalid" : "drop-valid") : ""}`}
               style={{ paddingLeft: 8 + Math.min(depth, 12) * 14 }}
               tabIndex={0}
               aria-label={`${item.kind === "bookmark" ? "书签" : "目录"}：${item.label}`}
@@ -197,7 +252,9 @@ export function NavigationTree({
                   setRenaming(item.id);
                 }
               }}
-              draggable={!readOnly && ordered && renaming !== item.id}
+              draggable={
+                !selecting && !readOnly && ordered && renaming !== item.id
+              }
               onDragStart={(event) => {
                 setDragging(item.id);
                 event.dataTransfer.effectAllowed = "move";
@@ -231,6 +288,15 @@ export function NavigationTree({
                 setDropTarget(undefined);
               }}
             >
+              {selecting && !item.id.startsWith("page-") && (
+                <Checkbox
+                  className="navigation-checkbox"
+                  aria-label={`选择 ${item.label}`}
+                  checked={checked.has(item.id)}
+                  disabled={disabled}
+                  onClick={(event) => selectItem(item.id, event)}
+                />
+              )}
               {hasChildren ? (
                 <CollapsibleTrigger
                   disabled={disabled}
@@ -269,7 +335,18 @@ export function NavigationTree({
                   variant="ghost"
                   className="navigation-link"
                   title={item.label}
-                  onClick={() => {
+                  aria-pressed={selecting ? checked.has(item.id) : undefined}
+                  onClick={(event) => {
+                    if (
+                      selecting ||
+                      event.shiftKey ||
+                      event.metaKey ||
+                      event.ctrlKey
+                    ) {
+                      selectItem(item.id, event);
+                      return;
+                    }
+                    anchor.current = item.id;
                     setSelected(item.id);
                     go(item.location);
                   }}
@@ -347,26 +424,99 @@ export function NavigationTree({
     });
   }
   return (
-    <nav className="navigation-tree" aria-label="目录与书签" aria-busy={saving}>
-      {error && (
-        <div role="alert" className="p-2 text-xs">
-          {error}
-          <Button
-            variant="ghost"
-            size="sm"
-            onClick={() => {
-              load();
-              setRetry((v) => v + 1);
-            }}
-          >
-            重新加载
-          </Button>
+    <nav
+      className="navigation-tree"
+      aria-label="目录与书签"
+      aria-busy={saving}
+      onKeyDown={(event) => {
+        if (event.key === "Escape" && selecting) {
+          event.preventDefault();
+          exitSelection();
+        }
+      }}
+    >
+      <ScrollArea className="h-full">
+        <div className="navigation-rows">
+          {error && (
+            <div role="alert" className="p-2 text-xs">
+              {error}
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => {
+                  load();
+                  setRetry((v) => v + 1);
+                }}
+              >
+                重新加载
+              </Button>
+            </div>
+          )}
+          {rows(tree)}
+          {!tree.length && (
+            <p className="p-3 text-xs text-muted-foreground">
+              {loaded ? "暂无目录" : "正在读取目录…"}
+            </p>
+          )}
         </div>
-      )}
-      {rows(tree)}
-      {!tree.length && (
-        <p className="p-3 text-xs text-muted-foreground">正在读取目录…</p>
-      )}
+      </ScrollArea>
+      <div
+        className={`navigation-selection-toolbar ${selecting ? "is-selecting" : ""}`}
+        role="group"
+        aria-label="目录多选"
+      >
+        <Button
+          variant="ghost"
+          size="icon-sm"
+          aria-label={selecting ? "退出多选" : "多选目录"}
+          title={selecting ? "退出多选" : "多选目录"}
+          aria-pressed={selecting}
+          disabled={disabled}
+          onClick={() => (selecting ? exitSelection() : setSelecting(true))}
+        >
+          <SquareCheck className="size-4" />
+        </Button>
+        {selecting && (
+          <>
+            <Button
+              variant="ghost"
+              size="sm"
+              disabled={disabled || !selectable.length}
+              onClick={() =>
+                setChecked(
+                  allSelected
+                    ? new Set()
+                    : new Set(selectable.map((item) => item.id)),
+                )
+              }
+            >
+              {allSelected ? "取消全选" : "全选"}
+            </Button>
+            <span className="text-xs" aria-live="polite">
+              已选 {chosen.length} 项
+            </span>
+            <Button
+              variant="ghost"
+              size="icon-sm"
+              aria-label="删除所选目录"
+              title="删除所选目录"
+              disabled={disabled || !chosen.length}
+              onClick={() => void deleteSelected()}
+            >
+              <Trash2 className="size-4" />
+            </Button>
+            <Button
+              variant="ghost"
+              size="icon-sm"
+              aria-label="取消多选"
+              disabled={saving}
+              onClick={exitSelection}
+            >
+              <X className="size-4" />
+            </Button>
+          </>
+        )}
+      </div>
     </nav>
   );
 }

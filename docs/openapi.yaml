@@ -64,6 +64,8 @@
                                                     },
                                                   "collapsed":
                                                     { "type": "boolean" },
+                                                  "deleted":
+                                                    { "type": "boolean" },
                                                 },
                                             },
                                         },
@@ -128,6 +130,7 @@
                                                 { "type": ["string", "null"] },
                                               "collapsed":
                                                 { "type": "boolean" },
+                                              "deleted": { "type": "boolean" },
                                             },
                                         },
                                     },
@@ -181,6 +184,8 @@
                                                         ["string", "null"],
                                                     },
                                                   "collapsed":
+                                                    { "type": "boolean" },
+                                                  "deleted":
                                                     { "type": "boolean" },
                                                 },
                                             },

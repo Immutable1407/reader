@@ -140,3 +140,30 @@ it("preserves original order for headings with the exact same destination", () =
   expect(moveNavigation(tree, "c", "a")).toBeTruthy();
   expect(moveNavigation(tree, "b", "a")).toBeNull();
 });
+it("deletes only selected entries and promotes surviving descendants in source order", () => {
+  const a = heading("a", 1),
+    b = heading("b", 2),
+    c = heading("c", 3);
+  a.children = [b];
+  b.children = [c];
+  const state = { revision: 1, entries: { b: { deleted: true } } };
+  const tree = buildNavigation([a, heading("d", 4)], [], [], state);
+  expect(flattenTOC(tree).map((n) => n.id)).toEqual(["a", "c", "d"]);
+  expect(tree[0].children[0].parentId).toBe("a");
+  expect(
+    buildNavigation([a], [], [], {
+      revision: 2,
+      entries: {
+        a: { deleted: true },
+        b: { deleted: true },
+        c: { deleted: true },
+      },
+    }),
+  ).toEqual([]);
+  expect(
+    buildNavigation([], [], [mark(1, 0.5)], {
+      revision: 1,
+      entries: { "bookmark:b": { deleted: true } },
+    }),
+  ).toEqual([]);
+});
