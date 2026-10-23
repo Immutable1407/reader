@@ -80,6 +80,7 @@ import { usePaperUI } from "./state";
 import { PaperMenuItems, type PaperMenuActions } from "./PaperMenu";
 import { CitationMenuItems } from "./CitationMenu";
 import { RelatedPapers } from "./RelatedPapers";
+import { PaperAttachments } from "./PaperAttachments";
 
 const fieldLabels: Partial<Record<PaperMetadataField, string>> = {
   date: "日期",
@@ -428,6 +429,7 @@ export function PaperDetail({
             </>
           ) : null}
         </section>
+        <PaperAttachments key={doc.id} doc={doc} />
         <RelatedPapers doc={doc} />
       </div>
     </aside>

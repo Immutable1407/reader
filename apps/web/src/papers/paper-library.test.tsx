@@ -8,6 +8,8 @@ import { useReaderStore } from "../store";
 import { PaperLibrary } from "./PaperLibrary";
 import { PaperSidebar } from "./PaperSidebar";
 import { usePaperUI } from "./state";
+import { useAttachments } from "./attachments";
+import * as attachments from "./attachments";
 import { paper } from "./fixtures";
 import { exportAnnotatedPDFWithToast } from "../annotated-pdf-export";
 vi.mock("../annotated-pdf-export", () => ({
@@ -15,6 +17,7 @@ vi.mock("../annotated-pdf-export", () => ({
 }));
 vi.mock("@reader/api", () => ({
   api: {
+    paperAttachments: vi.fn(async () => []),
     snapshotStatus: vi.fn(async () => ({ available: false })),
     journalRankConfig: vi.fn(async () => ({
       enabled: true,
@@ -36,6 +39,9 @@ vi.mock("@reader/api", () => ({
     process: vi.fn(async () => ({})),
     setAssistance: vi.fn(async () => ({})),
   },
+}));
+vi.mock("./AttachmentPreview", () => ({
+  default: () => <div role="dialog">Attachment preview</div>,
 }));
 vi.mock("sonner", () => ({
   toast: { success: vi.fn(), error: vi.fn(), info: vi.fn() },
@@ -95,7 +101,17 @@ beforeEach(async () => {
     },
   );
   vi.clearAllMocks();
+  vi.mocked(api.paperAttachments).mockResolvedValue([]);
   jobs = new Map();
+  useAttachments.setState({
+    items: {},
+    errors: {},
+    uploads: {},
+    expanded: new Set(),
+    selected: null,
+    preview: null,
+    adding: null,
+  });
   vi.mocked(api.documents).mockImplementation(
     async () => useReaderStore.getState().documents,
   );
@@ -132,7 +148,8 @@ const navButton = (label: string) =>
   )!;
 const button = (label: string) =>
   [...host.querySelectorAll<HTMLButtonElement>("button")].find(
-    (b) => b.textContent?.trim() === label || b.getAttribute("aria-label") === label,
+    (b) =>
+      b.textContent?.trim() === label || b.getAttribute("aria-label") === label,
   )!;
 
 const menuItem = (label: string) =>
@@ -1541,5 +1558,186 @@ it("moves the final metadata boundary even before the title has a saved width", 
     expect(prefs().columnWidths).toEqual({ title: 400, year: 104 });
   } finally {
     rects.mockRestore();
+  }
+});
+
+const supplement = {
+  id: "supp",
+  documentId: "a",
+  kind: "file" as const,
+  title: "Supplementary material",
+  filename: "supplement.pdf",
+  mediaType: "application/pdf",
+  size: 2000,
+  url: "",
+  createdAt: "2026-10-23T00:00:00Z",
+};
+it("expands child attachments in both list and table without adding paper selections", async () => {
+  vi.mocked(api.paperAttachments).mockResolvedValue([supplement]);
+  await act(async () =>
+    useReaderStore.setState({
+      documents: [{ ...docs[0], attachmentCount: 1 }, docs[1]],
+    }),
+  );
+  await act(async () =>
+    button("展开 Attention Is All You Need 的附件").click(),
+  );
+  expect(host.querySelectorAll("[data-paper-id]")).toHaveLength(2);
+  expect(host.querySelectorAll("[data-attachment-row]")).toHaveLength(2);
+  const child = host.querySelector<HTMLElement>(
+    '[data-attachment-row="supp"]',
+  )!;
+  await act(async () => child.click());
+  expect(host.querySelector('[aria-label="附件详情"]')?.textContent).toContain(
+    "supplement.pdf",
+  );
+  expect(usePaperUI.getState().picked.size).toBe(0);
+  await act(async () =>
+    child.dispatchEvent(new MouseEvent("dblclick", { bubbles: true })),
+  );
+  expect(useAttachments.getState().preview?.item.id).toBe("supp");
+  await act(async () => useAttachments.setState({ preview: null }));
+  await act(async () =>
+    useReaderStore.setState({
+      libraryPreferences: {
+        mode: "papers",
+        papers: { sort: "title", layout: "table" },
+      },
+    }),
+  );
+  expect(
+    host.querySelector('tr[data-attachment-row="supp"] td[colspan]'),
+  ).not.toBeNull();
+});
+it("expands and collapses attachment children with the keyboard", async () => {
+  vi.mocked(api.paperAttachments).mockResolvedValue([supplement]);
+  await act(async () =>
+    useReaderStore.setState({
+      documents: [{ ...docs[0], attachmentCount: 1 }, docs[1]],
+    }),
+  );
+  await act(async () =>
+    row(docs[0].title).dispatchEvent(
+      new KeyboardEvent("keydown", { key: "ArrowRight", bubbles: true }),
+    ),
+  );
+  const child = host.querySelector<HTMLElement>(
+    '[data-attachment-row="supp"]',
+  )!;
+  expect(child).not.toBeNull();
+  await act(async () => {
+    child.focus();
+    child.dispatchEvent(
+      new KeyboardEvent("keydown", { key: "ArrowLeft", bubbles: true }),
+    );
+  });
+  expect(host.querySelector("[data-attachment-row]")).toBeNull();
+  expect(document.activeElement).toBe(row(docs[0].title));
+});
+
+it("opens attachment rename and removal from the child context menu", async () => {
+  vi.mocked(api.paperAttachments).mockResolvedValue([supplement]);
+  await act(async () =>
+    useReaderStore.setState({
+      documents: [{ ...docs[0], attachmentCount: 1 }, docs[1]],
+    }),
+  );
+  await act(async () =>
+    button("展开 Attention Is All You Need 的附件").click(),
+  );
+  const child = host.querySelector<HTMLElement>(
+    '[data-attachment-row="supp"]',
+  )!;
+  const context = async () =>
+    act(async () =>
+      child.dispatchEvent(
+        new MouseEvent("contextmenu", {
+          bubbles: true,
+          cancelable: true,
+          clientX: 10,
+          clientY: 10,
+        }),
+      ),
+    );
+  await context();
+  await act(async () => menuItem("重命名").click());
+  expect(document.querySelector('[role="dialog"]')?.textContent).toContain(
+    "重命名附件",
+  );
+  await act(async () =>
+    [...document.querySelectorAll<HTMLButtonElement>('[role="dialog"] button')]
+      .find((b) => b.textContent === "取消")!
+      .click(),
+  );
+  await context();
+  await act(async () => menuItem("移除附件…").click());
+  expect(document.querySelector('[role="alertdialog"]')?.textContent).toContain(
+    "Supplementary material",
+  );
+});
+
+it.each(["list", "table"] as const)(
+  "accepts direct file drops on expanded parent and child rows in %s layout",
+  async (layout) => {
+    const upload = vi
+      .spyOn(attachments, "uploadAttachments")
+      .mockResolvedValue();
+    const file = new File(["supplement"], "new-supplement.pdf");
+    vi.mocked(api.paperAttachments).mockResolvedValue([supplement]);
+    try {
+      await act(async () =>
+        useReaderStore.setState({
+          documents: [{ ...docs[0], attachmentCount: 1 }, docs[1]],
+          libraryPreferences: {
+            mode: "papers",
+            papers: { layout, sort: "title" },
+          },
+        }),
+      );
+      await act(async () =>
+        button("展开 Attention Is All You Need 的附件").click(),
+      );
+      const targets = [
+        row(docs[0].title),
+        host.querySelector<HTMLElement>('[data-attachment-row="primary"]')!,
+        host.querySelector<HTMLElement>('[data-attachment-row="supp"]')!,
+      ];
+      const bubbled = vi.fn();
+      document.body.addEventListener("drop", bubbled);
+      for (const target of targets) {
+        const event = new Event("drop", { bubbles: true, cancelable: true });
+        Object.defineProperty(event, "dataTransfer", {
+          value: { types: ["Files"], files: [file] },
+        });
+        await act(async () => target.dispatchEvent(event));
+      }
+      expect(upload).toHaveBeenCalledTimes(3);
+      expect(upload).toHaveBeenLastCalledWith(
+        expect.objectContaining({ id: "a" }),
+        [file],
+      );
+      expect(bubbled).not.toHaveBeenCalled();
+      document.body.removeEventListener("drop", bubbled);
+    } finally {
+      upload.mockRestore();
+    }
+  },
+);
+
+it("requires dwell after the final attachment and visible expansion disappear", async () => {
+  const upload = vi.spyOn(attachments, "uploadAttachments").mockResolvedValue();
+  try {
+    await act(async () =>
+      useAttachments.setState({ expanded: new Set(["a"]), items: { a: [] } }),
+    );
+    expect(host.querySelector("[data-attachment-row]")).toBeNull();
+    const event = new Event("drop", { bubbles: true, cancelable: true });
+    Object.defineProperty(event, "dataTransfer", {
+      value: { types: ["Files"], files: [new File(["a"], "file.pdf")] },
+    });
+    await act(async () => row(docs[0].title).dispatchEvent(event));
+    expect(upload).not.toHaveBeenCalled();
+  } finally {
+    upload.mockRestore();
   }
 });
