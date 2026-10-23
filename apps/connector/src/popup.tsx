@@ -3,6 +3,7 @@ import { useEffect, useState } from "react";
 import { createRoot } from "react-dom/client";
 import { detectPage, type Candidate, type Detection } from "./detect";
 import { prepareCandidate } from "./prepare";
+import { TagPicker } from "./TagPicker";
 const bridge = "http://127.0.0.1:17841";
 const outdatedReaderMessage = "请重启 pnpm desktop，更新本机分类和标签接口";
 function App() {
@@ -10,7 +11,7 @@ function App() {
   const [items, setItems] = useState<Candidate[]>([]);
   const [selected, setSelected] = useState<number[]>([]);
   const [folder, setFolder] = useState("");
-  const [tags, setTags] = useState("");
+  const [tags, setTags] = useState<string[]>([]);
   const [folders, setFolders] = useState<string[]>([]);
   const [existingTags, setExistingTags] = useState<string[]>([]);
   const [message, setMessage] = useState("");
@@ -157,10 +158,7 @@ function App() {
             type: "save",
             candidate: prepared,
             folders: folder ? [folder] : [],
-            tags: tags
-              .split(/[,，]/)
-              .map((x) => x.trim())
-              .filter(Boolean),
+            tags,
           };
           let result = (await chrome.runtime.sendMessage(request)) as {
             ok: boolean;
@@ -212,7 +210,6 @@ function App() {
       setBusy(false);
     }
   }
-  const tagPrefix = tags.match(/^.*[,，]\s*/)?.[0] || "";
   if (largeConfirmation)
     return (
       <main>
@@ -279,20 +276,12 @@ function App() {
                 <option value={f} key={f} />
               ))}
             </datalist>
-            <label htmlFor="tags">标签</label>
-            <input
-              id="tags"
-              list="reader-tags"
-              type="text"
+            <TagPicker
+              options={existingTags}
               value={tags}
-              onChange={(e) => setTags(e.target.value)}
-              placeholder="用逗号分隔，可选"
+              onChange={setTags}
+              disabled={busy}
             />
-            <datalist id="reader-tags">
-              {existingTags.map((tag) => (
-                <option value={`${tagPrefix}${tag}`} key={tag} />
-              ))}
-            </datalist>
             <p className="muted">
               首次收录时，Chrome 会请求网站访问权限，用于读取所选页面、PDF
               和快照图片。
