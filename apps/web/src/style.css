@@ -675,7 +675,7 @@ kbd {
   align-items: center;
   min-width: 0;
   border-radius: 8px;
-  margin: 3px 0;
+  margin: 1px 0;
   color: var(--muted-foreground);
 }
 .navigation-row:hover,
@@ -712,8 +712,8 @@ kbd {
   flex: 1;
   min-width: 0;
   height: auto;
-  min-height: 37px;
-  padding: 8px 10px 8px 4px;
+  min-height: 28px;
+  padding: 4px 10px 4px 4px;
   gap: 6px;
   font-size: 11px;
   line-height: 1.6;
