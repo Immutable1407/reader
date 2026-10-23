@@ -1,6 +1,7 @@
 // The first-run tour: each step reads a snapshot of the app and says what to
 // highlight, which areas accept clicks and where the pointer goes. Steps
 // advance by themselves when the app reaches the state they ask for.
+import type { Side } from "./geometry";
 
 export type AgentStatus = "ready" | "failed" | "pending" | "missing";
 
@@ -31,7 +32,12 @@ export interface TourState {
 }
 
 export type Pointer =
-  | { gesture: "click" | "double" | "hover"; target: string }
+  | {
+      gesture: "click" | "double" | "hover";
+      target: string;
+      /** Point near the start of a wide target such as a form. */
+      align?: "start";
+    }
   | { gesture: "wander"; targets: string[] };
 
 export interface TourView {
@@ -42,21 +48,23 @@ export interface TourView {
   /** Framed, lit and clickable; the rest of the window ignores the pointer. */
   click?: string[];
   pointer?: Pointer;
-  /** A button on the card that confirms the step. */
+  /** Label of the card's button that moves on; defaults to 下一步. */
   next?: string;
+  /** The button performs the pointer's click instead of skipping the step. */
+  act?: boolean;
+  /** What the card sits beside, if not the first lit area. */
+  anchor?: string;
+  side?: Side;
 }
 
 export interface TourStep {
   id: string;
-  phase: number;
   skip?: (s: TourState) => boolean;
   done?: (s: TourState) => boolean;
   /** Return to an earlier step after the app left the state this one needs. */
   back?: (s: TourState) => string | undefined;
   view: (s: TourState) => TourView;
 }
-
-export const tourPhases = ["连接 Agent", "导入论文", "开始阅读"];
 
 export const agentNames: Record<string, string> = {
   codex: "Codex",
@@ -72,6 +80,7 @@ export const libraryItem = ":is([data-paper-id], .book-card)";
 export const readingModes =
   '[data-tour="reading-modes"] [data-slot="tabs-list"]';
 const assistantToggle = '[aria-label="Agent 与批注"]';
+const closeImport = `${tour("import-dialog")} > [data-slot="dialog-close"]`;
 const card = (id: string) => `${tour("agent-card")}[data-agent="${id}"]`;
 const loginHints: Record<string, string> = {
   codex: "`codex login`",
@@ -99,7 +108,7 @@ function agentView(s: TourState): TourView {
       click: [tour("settings")],
       pointer: s.agents.some((a) => a.id === "api" && a.status === "ready")
         ? { gesture: "click", target: tour("api-back") }
-        : { gesture: "hover", target: tour("api-form") },
+        : { gesture: "hover", target: tour("api-form"), align: "start" },
     };
   if (s.detecting)
     return {
@@ -156,7 +165,6 @@ function agentView(s: TourState): TourView {
 export const tourSteps: TourStep[] = [
   {
     id: "welcome",
-    phase: 0,
     view: () => ({
       title: "欢迎使用 Reader",
       body: "跟着光标完成三件事：连接 Agent、导入论文、开始阅读。大约一分钟。",
@@ -165,7 +173,6 @@ export const tourSteps: TourStep[] = [
   },
   {
     id: "settings",
-    phase: 0,
     done: (s) => s.settings,
     view: (s) =>
       s.sidebar
@@ -174,27 +181,28 @@ export const tourSteps: TourStep[] = [
             body: "问答和翻译都由 Agent 完成。点击「设置」。",
             click: [tour("open-settings")],
             pointer: { gesture: "click", target: tour("open-settings") },
+            act: true,
           }
         : {
             title: "打开侧栏",
             body: "设置在侧栏底部，先展开侧栏。",
             click: ['[aria-label="切换侧栏"]'],
             pointer: { gesture: "click", target: '[aria-label="切换侧栏"]' },
+            act: true,
           },
   },
   {
     id: "agent",
-    phase: 0,
     // Closing the settings once an agent works moves the tour on as well.
     done: (s) =>
       s.primaryReady &&
       (!s.settings || (s.agentPanel && !s.detecting && !s.apiDetails)),
+    skip: (s) => !s.settings && s.acknowledged.has("settings"),
     back: (s) => (s.settings || s.primaryReady ? undefined : "settings"),
     view: agentView,
   },
   {
     id: "models",
-    phase: 0,
     skip: (s) => !s.settings || !s.taskModels || s.apiDetails,
     view: () => ({
       title: "为任务选择模型",
@@ -206,7 +214,6 @@ export const tourSteps: TourStep[] = [
   },
   {
     id: "close-settings",
-    phase: 0,
     done: (s) => !s.settings,
     view: () => ({
       title: "Agent 已就绪",
@@ -216,11 +223,11 @@ export const tourSteps: TourStep[] = [
         gesture: "click",
         target: `${tour("settings")} > [data-slot="dialog-close"]`,
       },
+      act: true,
     }),
   },
   {
     id: "import",
-    phase: 1,
     skip: (s) => s.reading,
     done: (s) => s.importDialog || s.imported > 0,
     view: (s) =>
@@ -230,28 +237,30 @@ export const tourSteps: TourStep[] = [
             body: "点击「导入论文」。也可以随时把 PDF 拖进窗口。",
             click: [tour("import")],
             pointer: { gesture: "click", target: tour("import") },
+            act: true,
           }
         : {
             title: "打开侧栏",
             body: "导入按钮在侧栏底部，先展开侧栏。",
             click: ['[aria-label="切换侧栏"]'],
             pointer: { gesture: "click", target: '[aria-label="切换侧栏"]' },
+            act: true,
           },
   },
   {
     id: "import-dialog",
-    phase: 1,
     done: (s) => !s.importDialog,
     view: () => ({
       title: "粘贴链接或选择 PDF",
-      body: "可以粘贴论文页面或 PDF 链接、arXiv 编号、DOI 或标题，Reader 会下载 PDF 并补全论文信息。导入后在本地解析，不超过 50 页时自动翻译。",
-      click: [tour("import-dialog")],
-      pointer: { gesture: "hover", target: `${tour("import-dialog")} input` },
+      body: "以后可以在这里粘贴论文链接、arXiv 编号、DOI 或标题，也可以选择 PDF。这次先用示例论文，点右上角关闭。",
+      focus: [tour("import-dialog")],
+      click: [closeImport],
+      pointer: { gesture: "click", target: closeImport },
+      act: true,
     }),
   },
   {
     id: "open",
-    phase: 2,
     skip: (s) => !s.reading && !s.library,
     done: (s) => s.reading,
     view: (s) => ({
@@ -265,11 +274,11 @@ export const tourSteps: TourStep[] = [
         gesture: s.library === "book" ? "click" : "double",
         target: libraryItem,
       },
+      act: true,
     }),
   },
   {
     id: "modes",
-    phase: 2,
     skip: (s) => !s.readingModes,
     back: (s) => (!s.reading && s.library ? "open" : undefined),
     view: () => ({
@@ -282,7 +291,6 @@ export const tourSteps: TourStep[] = [
   },
   {
     id: "assistant",
-    phase: 2,
     skip: (s) => !s.reading,
     back: (s) => (!s.reading && s.library ? "open" : undefined),
     view: (s) =>
@@ -293,18 +301,19 @@ export const tourSteps: TourStep[] = [
             focus: [tour("assistant")],
             click: [tour("compose")],
             pointer: { gesture: "hover", target: tour("compose") },
-            next: "下一步",
+            anchor: tour("assistant"),
+            side: "left",
           }
         : {
             title: "打开 Agent 栏",
             body: "点击右上角的 Agent 按钮。",
             click: [assistantToggle],
             pointer: { gesture: "click", target: assistantToggle },
+            act: true,
           },
   },
   {
     id: "finish",
-    phase: 2,
     view: (s) => ({
       title: "准备就绪",
       body: "更多功能在侧栏的「指南」里，可以随时重新开始这段引导。",

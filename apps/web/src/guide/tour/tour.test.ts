@@ -59,6 +59,11 @@ describe("tour card placement", () => {
       box.y + box.height > r.y;
     expect(hit(anchor) || hit(cards)).toBe(false);
   });
+  it("sits on the preferred side, such as left of the agent panel", () => {
+    const panel = { x: 860, y: 52, width: 340, height: 748 };
+    const at = placeCard(panel, card, viewport, [panel], "left");
+    expect(at.x + card.width).toBeLessThanOrEqual(panel.x);
+  });
   it("centres without an anchor", () => {
     expect(placeCard(null, card, viewport)).toEqual({ x: 450, y: 320 });
   });
@@ -170,6 +175,13 @@ describe("tour steps", () => {
       "modes",
     );
     expect(at(index("modes"), { library: "paper" }).id).toBe("open");
+  });
+  it("only lets the import dialog be closed", () => {
+    const view = at(index("import-dialog"), { importDialog: true }).view;
+    expect(view?.click).toEqual([
+      '[data-tour="import-dialog"] > [data-slot="dialog-close"]',
+    ]);
+    expect(view?.act).toBe(true);
   });
   it("finishes after the last confirmation", () => {
     expect(

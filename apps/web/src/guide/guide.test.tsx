@@ -188,7 +188,7 @@ describe("guide host", () => {
       "欢迎使用 Reader",
     );
     expect(api.saveGuidePreferences).not.toHaveBeenCalled();
-    await act(async () => button("跳过引导").click());
+    await act(async () => button("跳过引导（不建议）").click());
     expect(document.querySelector(".tour")).toBeNull();
     expect(api.saveGuidePreferences).toHaveBeenCalledWith({
       onboarded: true,

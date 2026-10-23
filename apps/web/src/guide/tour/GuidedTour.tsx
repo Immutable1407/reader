@@ -14,7 +14,6 @@ import {
   libraryItem,
   readingModes,
   resolveStep,
-  tourPhases,
   tourSteps,
   type AgentStatus,
   type TourState,
@@ -134,8 +133,10 @@ function measure(
     const r = rectOf(document.querySelector(target));
     if (r) {
       const c = center(r);
-      // Wide targets such as a form are pointed at, not covered.
-      const x = r.width > 240 ? r.x + Math.min(48, r.width / 3) : c.x;
+      const x =
+        "align" in p && p.align === "start"
+          ? r.x + Math.min(48, r.width / 3)
+          : c.x;
       pointer = {
         x: Math.round(x),
         y: Math.round(c.y),
@@ -145,7 +146,11 @@ function measure(
     }
   }
   const lit = [...focus, ...click];
-  const anchor = click[0] ?? focus[0] ?? null;
+  const anchor =
+    (view.anchor && rectOf(document.querySelector(view.anchor))) ||
+    click[0] ||
+    focus[0] ||
+    null;
   return {
     step,
     view,
@@ -162,6 +167,7 @@ function measure(
       card,
       viewport,
       lit.map((r) => inflate(r, 8)),
+      view.side,
     ),
   };
 }
@@ -283,6 +289,19 @@ export function GuidedTour({
   const { view, viewport } = layout;
   const confirm = () =>
     setAcknowledged((current) => new Set(current).add(step.id));
+  // Do what the pointer shows when the step allows it, otherwise move past.
+  const next = () => {
+    const p = view.pointer;
+    const target =
+      view.act && p && p.gesture !== "wander"
+        ? document.querySelector<HTMLElement>(p.target)
+        : null;
+    if (!target) return confirm();
+    if (p?.gesture === "double")
+      target.dispatchEvent(new MouseEvent("dblclick", { bubbles: true }));
+    else target.click();
+  };
+  const progress = (layout.step + 1) / steps.length;
   return createPortal(
     <>
       <svg
@@ -352,23 +371,16 @@ export function GuidedTour({
           transform: `translate(${layout.card.x}px, ${layout.card.y}px)`,
         }}
       >
-        <ol className="tour-phases" aria-label="引导进度">
-          {tourPhases.map((label, i) => (
-            <li
-              key={label}
-              data-state={
-                i < step.phase
-                  ? "done"
-                  : i === step.phase
-                    ? "current"
-                    : undefined
-              }
-              aria-current={i === step.phase ? "step" : undefined}
-            >
-              {label}
-            </li>
-          ))}
-        </ol>
+        <div
+          className="tour-progress"
+          role="progressbar"
+          aria-label="引导进度"
+          aria-valuemin={0}
+          aria-valuemax={steps.length}
+          aria-valuenow={layout.step + 1}
+        >
+          <span style={{ transform: `scaleX(${progress})` }} />
+        </div>
         <div aria-live="polite">
           <h2 id={`${mask}-title`} className="tour-title">
             {view.title}
@@ -376,14 +388,17 @@ export function GuidedTour({
           <p className="tour-body">{rich(view.body)}</p>
         </div>
         <div className="tour-actions">
-          <Button variant="ghost" size="sm" onClick={() => finish.current()}>
-            跳过引导
+          <Button
+            variant="ghost"
+            size="sm"
+            className="text-destructive hover:text-destructive"
+            onClick={() => finish.current()}
+          >
+            跳过引导（不建议）
           </Button>
-          {view.next && (
-            <Button size="sm" onClick={confirm}>
-              {view.next}
-            </Button>
-          )}
+          <Button size="sm" onClick={next}>
+            {view.next ?? "下一步"}
+          </Button>
         </div>
       </div>
     </>,

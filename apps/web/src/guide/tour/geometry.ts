@@ -1,3 +1,5 @@
+export type Side = "right" | "bottom" | "left" | "top";
+
 export interface Rect {
   x: number;
   y: number;
@@ -87,8 +89,9 @@ const overlap = (a: Rect, b: Rect) =>
   Math.max(0, Math.min(a.y + a.height, b.y + b.height) - Math.max(a.y, b.y));
 
 /**
- * Places the coach card beside the anchor (right, below, left, above) or in a
- * viewport corner, preferring the first spot that covers none of `clear`.
+ * Places the coach card beside the anchor (`prefer` first, then right, below,
+ * left, above) or in a viewport corner, preferring the first spot that covers
+ * none of `clear`.
  * Without an anchor the card is centred.
  */
 export function placeCard(
@@ -96,9 +99,10 @@ export function placeCard(
   card: { width: number; height: number },
   viewport: { width: number; height: number },
   clear: Rect[] = [],
-  margin = 16,
-  top = 52,
+  prefer?: Side,
 ): { x: number; y: number } {
+  const margin = 16;
+  const top = 52;
   const maxX = viewport.width - card.width - margin;
   const maxY = viewport.height - card.height - margin;
   const fit = (p: { x: number; y: number }) => ({
@@ -111,24 +115,28 @@ export function placeCard(
       y: (viewport.height - card.height) / 2,
     });
   const gap = 18;
-  const beside = [
-    {
+  const sides: Record<Side, { x: number; y: number }> = {
+    right: {
       x: anchor.x + anchor.width + gap,
       y: anchor.y + anchor.height / 2 - card.height / 2,
     },
-    {
+    bottom: {
       x: anchor.x + anchor.width / 2 - card.width / 2,
       y: anchor.y + anchor.height + gap,
     },
-    {
+    left: {
       x: anchor.x - gap - card.width,
       y: anchor.y + anchor.height / 2 - card.height / 2,
     },
-    {
+    top: {
       x: anchor.x + anchor.width / 2 - card.width / 2,
       y: anchor.y - gap - card.height,
     },
-  ];
+  };
+  const order: Side[] = ["right", "bottom", "left", "top"];
+  const beside = (
+    prefer ? [prefer, ...order.filter((s) => s !== prefer)] : order
+  ).map((side) => sides[side]);
   const corners = [
     { x: maxX, y: maxY },
     { x: maxX, y: top },
