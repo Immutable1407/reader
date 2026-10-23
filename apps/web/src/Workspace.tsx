@@ -1039,7 +1039,7 @@ export function Workspace({
           <IconButton label="文档概要" onClick={() => setOverviewOpen(true)}>
             <BookOpen />
           </IconButton>
-          <div ref={setReadingToolbar} />
+          <div ref={setReadingToolbar} data-tour="reading-modes" />
           <span className="toolbar-divider" />
           <div ref={setSourceAutoCenterToolbar} />
           <IconButton
@@ -1507,7 +1507,12 @@ export function Workspace({
           minSize="250px"
           maxSize="45%"
         >
-          <aside className="assistant-sidebar" data-open={right} inert={!right}>
+          <aside
+            className="assistant-sidebar"
+            data-tour="assistant"
+            data-open={right}
+            inert={!right}
+          >
             <Tabs
               value={rightTab}
               onValueChange={(value) => setRightTab(String(value))}
@@ -1670,7 +1675,7 @@ export function Workspace({
                     </>
                   )}
                 />
-                <div className="chat-compose">
+                <div className="chat-compose" data-tour="compose">
                   {quotes.length > 0 && (
                     <div className="quote-chips">
                       {quotes.map((q, i) => (

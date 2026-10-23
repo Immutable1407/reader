@@ -1,6 +1,4 @@
-// Guide content shared by the first-run onboarding and the in-app guide.
-// Add a topic here to show it in the guide; mark it `onboarding` to also
-// include it in the first-run walkthrough, in this order.
+// Guide content: add a topic here to show it in the in-app guide.
 import {
   Award,
   BookOpenText,
@@ -31,7 +29,6 @@ export interface GuideTopic {
   title: string;
   icon: LucideIcon;
   steps: GuideStep[];
-  onboarding?: boolean;
   action?: { kind: GuideAction; label: string };
 }
 
@@ -40,7 +37,6 @@ export const guideTopics: GuideTopic[] = [
     id: "agent",
     title: "设置 Agent",
     icon: Bot,
-    onboarding: true,
     action: { kind: "settings", label: "打开设置" },
     steps: [
       {
@@ -67,7 +63,6 @@ export const guideTopics: GuideTopic[] = [
     id: "models",
     title: "为任务选择模型",
     icon: SlidersHorizontal,
-    onboarding: true,
     action: { kind: "settings", label: "打开设置" },
     steps: [
       {
@@ -82,7 +77,6 @@ export const guideTopics: GuideTopic[] = [
     id: "import",
     title: "导入论文",
     icon: FileUp,
-    onboarding: true,
     action: { kind: "import", label: "导入论文" },
     steps: [
       {
@@ -103,7 +97,6 @@ export const guideTopics: GuideTopic[] = [
     id: "reading",
     title: "阅读界面",
     icon: BookOpenText,
-    onboarding: true,
     steps: [
       {
         id: "modes",
@@ -238,6 +231,3 @@ export const guidePages = (topics: GuideTopic[]) =>
   topics.flatMap((topic) =>
     topic.steps.map((step, index): GuidePage => ({ topic, step, index })),
   );
-
-export const onboardingPages = () =>
-  guidePages(guideTopics.filter((topic) => topic.onboarding));

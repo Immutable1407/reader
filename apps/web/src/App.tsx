@@ -528,6 +528,7 @@ export function App() {
               )}
               <div className="sidebar-bottom">
                 <Button
+                  data-tour="import"
                   className="mb-2 h-10 w-full gap-2 rounded-full"
                   onClick={
                     papers ? () => setImportingPaper(true) : () => chooseFiles()
@@ -544,6 +545,7 @@ export function App() {
                   </span>
                 </Button>
                 <Button
+                  data-tour="open-settings"
                   variant="ghost"
                   className="nav-item"
                   onClick={() => setSettings(true)}
@@ -552,6 +554,7 @@ export function App() {
                   设置
                 </Button>
                 <Button
+                  data-tour="guide"
                   variant="ghost"
                   className="nav-item"
                   onClick={() => setGuide(true)}

@@ -92,6 +92,8 @@ export function Settings({
   const refreshing = useRef(false);
   const [saving, setSaving] = useState(false);
   const [loading, setLoading] = useState(false);
+  // Whether a detection has finished since the dialog opened.
+  const [probed, setProbed] = useState(false);
   const [apiModels, setAPIModels] = useState<AgentModel[]>([]);
   const [apiModelsError, setAPIModelsError] = useState("");
   const [apiDetails, setAPIDetails] = useState(false);
@@ -305,10 +307,12 @@ export function Settings({
     } finally {
       refreshing.current = false;
       setLoading(false);
+      setProbed(true);
     }
   };
   useEffect(() => {
     if (open) void refresh();
+    else setProbed(false);
   }, [open]);
   const checkModel = async (model: AgentModel) => {
     const snapshot = useReaderStore.getState().aiConfig;
@@ -437,23 +441,38 @@ export function Settings({
       })}
     </div>
   );
+  const apiReady = (kind: "text" | "vision") =>
+    // The API agent uses a separate model for each task. One passing model
+    // is enough for the corresponding capability on this summary card.
+    apiModels.some((model) => {
+      const id = `api:${model.id}`;
+      return (
+        !errors[`${id}:text`] &&
+        !errors[`${id}:${kind}`] &&
+        !!config?.capabilities[id]?.[kind]
+      );
+    });
+  const apiPending = () =>
+    loading || [...testing.keys()].some((id) => id.startsWith("api:"));
+  // Read by the first-run tour to point at an agent that works.
+  const agentStatus = (name: string) => {
+    const installed = providers.find((p) => p.id === name)?.installed;
+    if (name === "api") {
+      if (!installed) return "missing";
+      return apiReady("text") ? "ready" : apiPending() ? "pending" : "failed";
+    }
+    if (loading || testing.has(name)) return "pending";
+    if (!installed) return "missing";
+    return config?.capabilities[name]?.text && !errors[`${name}:text`]
+      ? "ready"
+      : "failed";
+  };
   const apiCardStatus = () => (
     <span className="flex flex-wrap gap-x-5">
       {(["text", "vision"] as const).map((kind) => {
         const label = kind === "text" ? "文本推理" : "图片理解";
-        // The API agent uses a separate model for each task. One passing model
-        // is enough for the corresponding capability on this summary card.
-        const ready = apiModels.some((model) => {
-          const id = `api:${model.id}`;
-          return (
-            !errors[`${id}:text`] &&
-            !errors[`${id}:${kind}`] &&
-            config?.capabilities[id]?.[kind]
-          );
-        });
-        const pending =
-          !ready &&
-          (loading || [...testing.keys()].some((id) => id.startsWith("api:")));
+        const ready = apiReady(kind);
+        const pending = !ready && apiPending();
         const state = pending ? "pending" : ready ? "passed" : "failed";
         return (
           <span
@@ -480,7 +499,10 @@ export function Settings({
   );
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="settings-dialog p-6 sm:max-w-3xl">
+      <DialogContent
+        data-tour="settings"
+        className="settings-dialog p-6 sm:max-w-3xl"
+      >
         <DialogHeader>
           <DialogTitle>
             {apiDetails ? (
@@ -489,6 +511,7 @@ export function Settings({
                 className="-ml-2 gap-1 px-2 text-base"
                 onClick={() => setAPIDetails(false)}
                 aria-label="返回 Agent 设置"
+                data-tour="api-back"
               >
                 <ChevronLeft />
                 API 配置
@@ -502,8 +525,8 @@ export function Settings({
           </DialogDescription>
         </DialogHeader>
         {apiDetails && (
-          <div className="settings-panel">
-            <section>
+          <div className="settings-panel" data-tour="api-details">
+            <section data-tour="api-form">
               {config && (
                 <APIAgentForm
                   connection={config.api}
@@ -655,7 +678,7 @@ export function Settings({
           style={{ display: apiDetails ? "none" : undefined }}
         >
           <TabsList aria-label="设置分类" className="settings-nav">
-            <TabsTrigger value="agent">
+            <TabsTrigger value="agent" data-tour="settings-agent-tab">
               <Bot />
               Agent
             </TabsTrigger>
@@ -1057,7 +1080,10 @@ export function Settings({
             </section>
           </TabsContent>
           <TabsContent value="agent" className="settings-panel" keepMounted>
-            <section>
+            <section
+              data-tour="agent-section"
+              data-detecting={!probed || loading || testing.size > 0}
+            >
               <div className="mb-4 flex items-center justify-between">
                 <h3 className="text-sm font-medium">Agent 连接</h3>
                 <Button
@@ -1065,6 +1091,7 @@ export function Settings({
                   size="icon-sm"
                   aria-label="重新检测 Agent"
                   title="重新检测 Agent"
+                  data-tour="agent-refresh"
                   disabled={loading || testing.size > 0}
                   onClick={() => void refresh(true)}
                 >
@@ -1097,6 +1124,7 @@ export function Settings({
                     }}
                   >
                     <SelectTrigger
+                      data-tour="agent-select"
                       aria-labelledby="primary-agent-label"
                       className="w-full"
                     >
@@ -1107,21 +1135,23 @@ export function Settings({
                       </SelectValue>
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="codex">
+                      <SelectItem value="codex" data-agent="codex">
                         <ProviderIdentity provider="codex" />
                       </SelectItem>
-                      <SelectItem value="claude">
+                      <SelectItem value="claude" data-agent="claude">
                         <ProviderIdentity provider="claude" />
                       </SelectItem>
-                      <SelectItem value="kimi">
+                      <SelectItem value="kimi" data-agent="kimi">
                         <ProviderIdentity provider="kimi" />
                       </SelectItem>
-                      <SelectItem value="api">
+                      <SelectItem value="api" data-agent="api">
                         <ProviderIdentity provider="api" />
                       </SelectItem>
                     </SelectContent>
                   </Select>
-                  <TaskModels disabled={saving || testing.size > 0} />
+                  <div data-tour="task-models">
+                    <TaskModels disabled={saving || testing.size > 0} />
+                  </div>
                   <p className="text-xs leading-5 text-muted-foreground">
                     {config.primary === "api"
                       ? "只列出通过检测的模型：问答与翻译需通过文本推理，图片需通过图片理解。公式转换与主动图片提问使用图片模型。"
@@ -1136,7 +1166,10 @@ export function Settings({
                   />
                 </div>
               )}
-              <div className="grid grid-cols-1 items-start gap-3 sm:grid-cols-2">
+              <div
+                data-tour="agent-cards"
+                className="grid grid-cols-1 items-start gap-3 sm:grid-cols-2"
+              >
                 {(["codex", "claude", "kimi", "api"] as const).map((name) => {
                   const p = providers.find((p) => p.id === name);
                   const capability = config?.capabilities[name];
@@ -1150,6 +1183,9 @@ export function Settings({
                         className="h-auto min-h-28 min-w-0 flex-col items-stretch justify-start gap-0 rounded-xl border-border bg-transparent p-4 text-left font-normal whitespace-normal hover:bg-muted/50 dark:border-border dark:bg-transparent"
                         onClick={() => setAPIDetails(true)}
                         aria-label="配置 API Key"
+                        data-tour="agent-card"
+                        data-agent={name}
+                        data-status={agentStatus(name)}
                       >
                         <span className="flex w-full items-center gap-3">
                           <span className="flex-1 text-base font-medium">
@@ -1173,6 +1209,9 @@ export function Settings({
                     <div
                       key={name}
                       className="min-h-28 min-w-0 rounded-xl border p-4"
+                      data-tour="agent-card"
+                      data-agent={name}
+                      data-status={agentStatus(name)}
                     >
                       <div className="flex items-center gap-3">
                         <span className="flex-1 text-base font-medium">

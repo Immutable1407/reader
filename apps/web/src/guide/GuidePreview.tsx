@@ -1,26 +1,24 @@
 import { useEffect, useState } from "react";
 import { Button } from "@reader/ui/components/button";
 import { TooltipProvider } from "@reader/ui/components/tooltip";
-import {
-  GuideDialog,
-  OnboardingDialog,
-  ReleaseNotesDialog,
-} from "./GuideDialog";
+import { GuideDialog, ReleaseNotesDialog } from "./GuideDialog";
 import { releaseNotes } from "./releases";
 import { guideTopics } from "./topics";
 
 const themes = ["light", "sepia", "dark"] as const;
 
-/** Development preview of the onboarding, guide and release notes. */
+/**
+ * Development preview of the guide and release notes. The guided tour needs
+ * the real app; start it from the guide there.
+ */
 export default function GuidePreview() {
   const [theme, setTheme] = useState<(typeof themes)[number]>("light");
-  const [view, setView] = useState<"onboarding" | "guide" | "release" | null>(
+  const [view, setView] = useState<"guide" | "release" | null>(
     new URLSearchParams(location.search).get("view") === "release"
       ? "release"
-      : "onboarding",
+      : "guide",
   );
   const [topic, setTopic] = useState(guideTopics[0].id);
-  const [run, setRun] = useState(0);
   useEffect(() => {
     const root = document.documentElement;
     root.classList.toggle("dark", theme === "dark");
@@ -43,15 +41,6 @@ export default function GuidePreview() {
           ))}
         </div>
         <div className="flex flex-wrap gap-2">
-          <Button
-            variant="outline"
-            onClick={() => {
-              setRun((n) => n + 1);
-              setView("onboarding");
-            }}
-          >
-            新手引导
-          </Button>
           <Button variant="outline" onClick={() => setView("guide")}>
             指南
           </Button>
@@ -60,11 +49,6 @@ export default function GuidePreview() {
           </Button>
         </div>
       </div>
-      <OnboardingDialog
-        key={run}
-        open={view === "onboarding"}
-        onFinish={() => setView(null)}
-      />
       <GuideDialog
         open={view === "guide"}
         onOpenChange={(open) => setView(open ? "guide" : null)}

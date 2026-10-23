@@ -1,0 +1,182 @@
+import { describe, expect, it } from "vitest";
+import { blockedRects, placeCard, type Rect } from "./geometry";
+import { resolveStep, tourSteps, type TourState } from "./steps";
+
+const area = (rects: Rect[]) =>
+  rects.reduce((sum, r) => sum + r.width * r.height, 0);
+const covers = (rects: Rect[], x: number, y: number) =>
+  rects.some(
+    (r) => x >= r.x && x < r.x + r.width && y >= r.y && y < r.y + r.height,
+  );
+
+describe("tour pointer blocking", () => {
+  const viewport = { width: 100, height: 100 };
+  it("blocks everything but the hole", () => {
+    const blocked = blockedRects(viewport, [
+      { x: 10, y: 10, width: 20, height: 20 },
+    ]);
+    expect(area(blocked)).toBe(100 * 100 - 20 * 20);
+    expect(covers(blocked, 20, 20)).toBe(false);
+    expect(covers(blocked, 5, 20)).toBe(true);
+  });
+  it("keeps overlapping holes open", () => {
+    // A select popup drawn over its trigger.
+    const blocked = blockedRects(viewport, [
+      { x: 10, y: 10, width: 40, height: 10 },
+      { x: 20, y: 5, width: 20, height: 40 },
+    ]);
+    expect(covers(blocked, 30, 15)).toBe(false);
+    expect(covers(blocked, 12, 15)).toBe(false);
+    expect(covers(blocked, 30, 40)).toBe(false);
+    expect(covers(blocked, 12, 40)).toBe(true);
+    expect(area(blocked)).toBe(100 * 100 - (400 + 800 - 200));
+  });
+  it("ignores holes outside the viewport", () => {
+    const blocked = blockedRects(viewport, [
+      { x: -50, y: 0, width: 20, height: 20 },
+    ]);
+    expect(area(blocked)).toBe(100 * 100);
+  });
+});
+
+describe("tour card placement", () => {
+  const viewport = { width: 1200, height: 800 };
+  const card = { width: 300, height: 160 };
+  it("sits beside the anchor", () => {
+    const anchor = { x: 16, y: 700, width: 200, height: 36 };
+    const at = placeCard(anchor, card, viewport, [anchor]);
+    expect(at.x).toBeGreaterThanOrEqual(anchor.x + anchor.width);
+  });
+  it("avoids the areas the step lights", () => {
+    const anchor = { x: 300, y: 200, width: 600, height: 36 };
+    const cards = { x: 300, y: 250, width: 600, height: 300 };
+    const at = placeCard(anchor, card, viewport, [anchor, cards]);
+    const box = { ...at, ...card };
+    const hit = (r: Rect) =>
+      box.x < r.x + r.width &&
+      box.x + box.width > r.x &&
+      box.y < r.y + r.height &&
+      box.y + box.height > r.y;
+    expect(hit(anchor) || hit(cards)).toBe(false);
+  });
+  it("centres without an anchor", () => {
+    expect(placeCard(null, card, viewport)).toEqual({ x: 450, y: 320 });
+  });
+});
+
+const base: TourState = {
+  settings: false,
+  agentPanel: false,
+  detecting: false,
+  apiDetails: false,
+  agents: [],
+  selectOpen: false,
+  primaryReady: false,
+  taskModels: false,
+  sidebar: true,
+  importDialog: false,
+  imported: 0,
+  reading: false,
+  readingModes: false,
+  assistant: false,
+  acknowledged: new Set(),
+};
+const at = (index: number, patch: Partial<TourState>) => {
+  const state = { ...base, ...patch };
+  const step = tourSteps[resolveStep(tourSteps, index, state)];
+  return { id: step?.id, view: step?.view(state) };
+};
+const index = (id: string) => tourSteps.findIndex((s) => s.id === id);
+const inSettings = {
+  acknowledged: new Set(["welcome"]),
+  settings: true,
+  agentPanel: true,
+};
+
+describe("tour steps", () => {
+  it("waits for the welcome to be confirmed", () => {
+    expect(at(0, {}).id).toBe("welcome");
+    expect(at(0, { acknowledged: new Set(["welcome"]) }).view?.click).toEqual([
+      '[data-tour="open-settings"]',
+    ]);
+  });
+  it("opens the sidebar first when the settings button is hidden", () => {
+    const { view } = at(1, {
+      acknowledged: new Set(["welcome"]),
+      sidebar: false,
+    });
+    expect(view?.click).toEqual(['[aria-label="切换侧栏"]']);
+  });
+  it("tours the agent cards while detecting", () => {
+    const { id, view } = at(1, { ...inSettings, detecting: true });
+    expect(id).toBe("agent");
+    expect(view?.pointer?.gesture).toBe("wander");
+  });
+  it("points at a detected agent in the selector", () => {
+    const agents = [
+      { id: "codex", status: "missing" as const },
+      { id: "claude", status: "ready" as const },
+    ];
+    const closed = at(1, { ...inSettings, agents }).view;
+    expect(closed?.title).toBe("检测到 Claude Code 可用");
+    expect(closed?.pointer).toEqual({
+      gesture: "click",
+      target: '[data-tour="agent-select"]',
+    });
+    const open = at(1, { ...inSettings, agents, selectOpen: true }).view;
+    expect(open?.pointer).toMatchObject({
+      target: '[data-slot="select-item"][data-agent="claude"]',
+    });
+  });
+  it("suggests logging in or an API key when nothing works", () => {
+    const failed = at(1, {
+      ...inSettings,
+      agents: [{ id: "codex", status: "failed" }],
+    }).view;
+    expect(failed?.body).toContain("`codex login`");
+    expect(failed?.click).toContain(
+      '[data-tour="agent-card"][data-agent="api"]',
+    );
+    const none = at(1, { ...inSettings, apiDetails: true }).view;
+    expect(none?.title).toBe("填写 API");
+  });
+  it("moves on once the chosen agent works", () => {
+    const ready = { ...inSettings, primaryReady: true, taskModels: true };
+    expect(at(index("agent"), ready).id).toBe("models");
+    expect(
+      at(index("agent"), {
+        ...ready,
+        acknowledged: new Set(["welcome", "models"]),
+      }).id,
+    ).toBe("close-settings");
+    // Closing the settings early also continues.
+    expect(
+      at(index("agent"), { ...ready, settings: false, agentPanel: false }).id,
+    ).toBe("import");
+  });
+  it("returns to the settings button if they close before an agent works", () => {
+    expect(at(index("agent"), { ...inSettings, settings: false }).id).toBe(
+      "settings",
+    );
+  });
+  it("follows the import into reading", () => {
+    const i = index("import");
+    expect(at(i, {}).id).toBe("import");
+    expect(at(i, { importDialog: true }).id).toBe("import-dialog");
+    expect(
+      at(index("import-dialog"), { library: "paper" }).view?.pointer,
+    ).toMatchObject({ gesture: "double" });
+    expect(at(index("open"), { reading: true, readingModes: true }).id).toBe(
+      "modes",
+    );
+    expect(at(index("modes"), { library: "paper" }).id).toBe("open");
+  });
+  it("finishes after the last confirmation", () => {
+    expect(
+      resolveStep(tourSteps, index("finish"), {
+        ...base,
+        acknowledged: new Set(["finish"]),
+      }),
+    ).toBe(tourSteps.length);
+  });
+});
