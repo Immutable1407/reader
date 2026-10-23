@@ -1,67 +1,88 @@
-import { afterEach, beforeEach, expect, it } from "vitest";
-import { existsSync } from "node:fs";
-import { mkdir, mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
-import { join } from "node:path";
-import { tmpdir } from "node:os";
-import { adoptLegacyData } from "./legacy-data";
-
-let appData: string;
-const legacy = () => join(appData, "Reader");
-const current = () => join(appData, "NeoRead");
-beforeEach(async () => {
-  appData = await mkdtemp(join(tmpdir(), "neoread-legacy-"));
-});
-afterEach(() => rm(appData, { recursive: true, force: true }));
-
-it("moves the Reader library and settings into the NeoRead directory", async () => {
-  await mkdir(join(legacy(), "library"), { recursive: true });
-  await writeFile(join(legacy(), "library", "reader.sqlite"), "db");
-  await writeFile(join(legacy(), "proxy-settings.json"), "{}");
-  // Chromium may create the new directory before the app's code runs.
-  await mkdir(join(current(), "Crashpad"), { recursive: true });
-
-  expect(adoptLegacyData(appData, current())).toBe(true);
-  expect(await readFile(join(current(), "library", "reader.sqlite"), "utf8")).toBe("db");
-  expect(existsSync(join(current(), "proxy-settings.json"))).toBe(true);
-  expect(existsSync(join(current(), "Crashpad"))).toBe(true);
-  expect(existsSync(legacy())).toBe(false);
-});
-
-it("rewrites a library pointer that lived inside the old directory", async () => {
-  await mkdir(join(legacy(), "custom"), { recursive: true });
-  await writeFile(
-    join(legacy(), "library-location.json"),
-    JSON.stringify({ directory: join(legacy(), "custom") }),
+import { beforeEach, expect, it, vi } from "vitest";
+const mocks = vi.hoisted(() => ({ exec: vi.fn(), dialog: vi.fn() }));
+vi.mock("node:child_process", () => ({
+  execFile: (...args: unknown[]) => mocks.exec(...args),
+}));
+vi.mock("electron", () => ({
+  dialog: { showMessageBox: (...args: unknown[]) => mocks.dialog(...args) },
+}));
+import {
+  migrateReaderData,
+  promptLegacyCleanup,
+  type ReaderMigration,
+} from "./legacy-data";
+const completed: ReaderMigration = {
+  status: "completed",
+  external: true,
+  legacyCleanup: { status: "pending" },
+};
+beforeEach(() => {
+  vi.clearAllMocks();
+  mocks.exec.mockImplementation((_binary, _args, _options, callback) =>
+    callback(null, { stdout: JSON.stringify(completed) }),
   );
-  adoptLegacyData(appData, current());
-  const pointer = JSON.parse(
-    await readFile(join(current(), "library-location.json"), "utf8"),
-  );
-  expect(pointer.directory).toBe(join(current(), "custom"));
+  // Match the object returned by the real promisify(execFile) boundary.
+  mocks.dialog.mockResolvedValue({ response: 0 });
 });
-
-it("keeps a pointer to a library elsewhere", async () => {
-  await mkdir(legacy(), { recursive: true });
-  const elsewhere = join(appData, "Documents", "Reader Library");
-  await writeFile(
-    join(legacy(), "library-location.json"),
-    JSON.stringify({ directory: elsewhere }),
-  );
-  adoptLegacyData(appData, current());
-  const pointer = JSON.parse(
-    await readFile(join(current(), "library-location.json"), "utf8"),
-  );
-  expect(pointer.directory).toBe(elsewhere);
+it("skips cleanup UI for fresh installs and completed choices", async () => {
+  for (const state of [
+    { status: "not-needed" },
+    { ...completed, legacyCleanup: { status: "kept" } },
+    { ...completed, legacyCleanup: { status: "failed" } },
+  ] as ReaderMigration[])
+    await promptLegacyCleanup(
+      {} as never,
+      "/bin/server",
+      "/data",
+      "/data/NeoRead",
+      state,
+    );
+  expect(mocks.dialog).not.toHaveBeenCalled();
+  expect(mocks.exec).not.toHaveBeenCalled();
 });
-
-it("leaves both directories alone once NeoRead has its own library", async () => {
-  await mkdir(join(legacy(), "library"), { recursive: true });
-  await mkdir(join(current(), "library"), { recursive: true });
-  expect(adoptLegacyData(appData, current())).toBe(false);
-  expect(existsSync(join(legacy(), "library"))).toBe(true);
+it("uses the fixed source directory and propagates migration errors", async () => {
+  mocks.exec.mockImplementation((_b, _a, _o, cb) =>
+    cb(Object.assign(new Error("failed"), { stderr: "旧书库仍在使用中" })),
+  );
+  await expect(
+    migrateReaderData("/bin/server", "/data", "/data/NeoRead"),
+  ).rejects.toThrow("旧书库仍在使用中");
+  expect(mocks.exec.mock.calls[0][1]).toEqual([
+    "--migrate-reader-data",
+    "/data/Reader",
+    "--data",
+    "/data/NeoRead",
+  ]);
 });
-
-it("does nothing without old data", () => {
-  expect(adoptLegacyData(appData, current())).toBe(false);
-  expect(existsSync(current())).toBe(false);
+it("recommends cleanup, but records keeping data when postponed", async () => {
+  await promptLegacyCleanup(
+    {} as never,
+    "/bin/server",
+    "/data",
+    "/data/NeoRead",
+    completed,
+  );
+  expect(mocks.dialog.mock.calls[0][1]).toMatchObject({
+    buttons: ["稍后手动删除", "立即删除"],
+    defaultId: 1,
+    cancelId: 0,
+  });
+  expect(mocks.dialog.mock.calls[0][1].detail).toContain("不会卸载 App");
+  expect(mocks.dialog.mock.calls[0][1].detail).toContain("外置自定义书库");
+  expect(mocks.exec.mock.calls[0][1]).toContain("keep");
+});
+it("deletes only after the user chooses it and reports failures", async () => {
+  mocks.dialog.mockResolvedValueOnce({ response: 1 });
+  mocks.exec.mockImplementation((_b, _a, _o, cb) =>
+    cb(new Error("旧数据发生变化")),
+  );
+  await promptLegacyCleanup(
+    {} as never,
+    "/bin/server",
+    "/data",
+    "/data/NeoRead",
+    completed,
+  );
+  expect(mocks.exec.mock.calls[0][1]).toContain("delete");
+  expect(mocks.dialog.mock.calls[1][1].detail).toContain("旧数据发生变化");
 });

@@ -9,7 +9,7 @@
 - macOS：在 `/usr/local/bin/neoread` 建立指向 `NeoRead.app/Contents/Resources/bin/neoread` 的软链接，登录 shell 默认包含这个目录。目录不可写时弹出系统密码框。该位置已有其他程序的 `neoread` 时不改动，并在设置中提示。NeoRead.app 移动位置后链接失效，设置里重新安装即可。
 - Windows：把安装目录下的 `resources\bin` 加入当前用户的 PATH（保留原有条目和 `%变量%` 原样），并通知系统环境已变化。新打开的终端生效。
 - 应用更新会一并更新命令，因为两者都指向安装目录。
-- 开发版不安装，直接运行 `apps/desktop/bin/neoread`（`pnpm build:server` 生成）。`pnpm dev` 的书库在仓库的 `.reader`，用 `--data .reader` 或 `NEOREAD_DATA` 指定；Electron 开发版的书库在系统应用数据目录的 `NeoRead Dev/library`。
+- 开发版不安装，直接运行 `apps/desktop/bin/neoread`（`pnpm build:server` 生成）。`pnpm dev` 的书库在仓库的 `.neoread`，用 `--data .neoread` 或 `NEOREAD_DATA` 指定；Electron 开发版的书库在系统应用数据目录的 `NeoRead Dev/library`。
 
 ## 命令
 

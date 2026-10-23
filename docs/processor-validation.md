@@ -22,7 +22,7 @@ Sources: [mirror model card](https://huggingface.co/bu44er/PP-DocLayoutV3-FP16-O
 pnpm --filter @neoread/processor build
 node apps/processor/dist/main.mjs \
   --input 'docs/66_VLDB25- Oze_ Decentralized Graph-based Concurrency Control for Long-running Update Transactions.pdf' \
-  --output .reader/layout-check/oze \
+  --output .neoread/layout-check/oze \
   --debug
 ```
 

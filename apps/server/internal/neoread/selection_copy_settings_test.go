@@ -16,7 +16,7 @@ func TestSelectionAutoCopySettingPersistsBothStates(t *testing.T) {
 		}
 		// Verify persisted storage, as well as the settings response used on startup.
 		var stored string
-		if err := s.Store.DB.QueryRow("SELECT value FROM settings WHERE key='reader'").Scan(&stored); err != nil {
+		if err := s.Store.DB.QueryRow("SELECT value FROM settings WHERE key='neoread'").Scan(&stored); err != nil {
 			t.Fatal(err)
 		}
 		response := request(t, s, "GET", "/api/settings", nil)

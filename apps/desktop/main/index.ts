@@ -34,7 +34,11 @@ import {
 } from "./proxy-settings";
 import { startUpdateService } from "./update-service";
 import { devIsolation } from "./dev-isolation";
-import { adoptLegacyData } from "./legacy-data";
+import {
+  migrateReaderData,
+  promptLegacyCleanup,
+  type ReaderMigration,
+} from "./legacy-data";
 import { startDiagnosticService } from "./diagnostic-service";
 import { serverSpawnDiagnostics } from "./server-spawn-diagnostics";
 import { discoverEndNote } from "./endnote-discovery";
@@ -48,12 +52,6 @@ if (isolation.userDataDirectory)
     "userData",
     join(app.getPath("appData"), isolation.userDataDirectory),
   );
-else
-  try {
-    adoptLegacyData(app.getPath("appData"), app.getPath("userData"));
-  } catch (error) {
-    console.warn("Could not move data from Reader:", error);
-  }
 let updateService: Awaited<ReturnType<typeof startUpdateService>> | undefined;
 let diagnostics: ReturnType<typeof startDiagnosticService> | undefined;
 let child: ChildProcess | undefined;
@@ -296,6 +294,13 @@ app
   .whenReady()
   .then(async () => {
     if (!primary) return;
+    let migration: ReaderMigration | undefined;
+    if (app.isPackaged)
+      migration = await migrateReaderData(
+        serverBinary(),
+        app.getPath("appData"),
+        app.getPath("userData"),
+      );
     diagnostics = startDiagnosticService(
       () => window,
       () => activeLibrary,
@@ -797,6 +802,14 @@ app
       },
     );
     await window.loadURL(`${url}/#token=${serverToken}`);
+    if (migration)
+      await promptLegacyCleanup(
+        window,
+        serverBinary(),
+        app.getPath("appData"),
+        app.getPath("userData"),
+        migration,
+      );
     if (pendingFiles.length) await importPaths(pendingFiles.splice(0));
     updateService = await startUpdateService(window);
     ipcMain.handle("neoread:check-updates", (event) => {

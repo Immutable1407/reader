@@ -390,7 +390,7 @@ func TestStoreReopen(t *testing.T) {
 	if e != nil {
 		t.Fatal(e)
 	}
-	_, e = s.DB.Exec("INSERT INTO settings VALUES('reader','{\"mode\":\"dark\"}')")
+	_, e = s.DB.Exec("INSERT INTO settings VALUES('neoread','{\"mode\":\"dark\"}')")
 	if e != nil {
 		t.Fatal(e)
 	}

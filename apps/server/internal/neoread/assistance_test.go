@@ -230,7 +230,7 @@ func TestImportDefaultsToAutomaticTranslation(t *testing.T) {
 		t.Run(settings, func(t *testing.T) {
 			s := testServer(t)
 			if settings != "" {
-				if _, err := s.Store.DB.Exec("INSERT INTO settings(key,value) VALUES('reader',?)", settings); err != nil {
+				if _, err := s.Store.DB.Exec("INSERT INTO settings(key,value) VALUES('neoread',?)", settings); err != nil {
 					t.Fatal(err)
 				}
 			}

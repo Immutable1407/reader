@@ -27,6 +27,6 @@ png = b'\x89PNG\r\n\x1a\n' + chunk(b'IHDR', struct.pack('>IIBBBBB', width, heigh
 shutil.copyfile(Path(__file__).resolve().parents[1] / 'public/samples/reading-notes.pdf', root / 'papers' / (identifier + '.pdf'))
 (analysis / 'manifest.json').write_text(json.dumps({'pages': 2, 'blocks': [{'id': 'p1-b1', 'page': 1, 'label': 'synthetic colors', 'bounds': {'x': .1, 'y': .1, 'width': .3, 'height': .4}, 'text': '', 'image': 'assets/p1-b1.png'}], 'warnings': []}))
 now = datetime.datetime.now(datetime.timezone.utc).isoformat()
-with sqlite3.connect(root / 'reader.sqlite') as connection:
+with sqlite3.connect(root / 'neoread.sqlite') as connection:
     connection.execute("INSERT INTO documents(id,type,title,author,size,created_at,last_opened_at) VALUES(?,?,?,?,?,?,?)", (identifier, 'pdf', 'Synthetic image streaming test', '', len(png), now, now))
 print(json.dumps({'documentId': identifier, 'blockId': 'p1-b1', 'source': 'synthetic red-left blue-right; seeded layout, no extraction test'}))

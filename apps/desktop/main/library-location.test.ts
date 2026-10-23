@@ -27,7 +27,7 @@ it("uses the old location only when no configuration exists", async () => {
   expect(await libraryDirectory(directory)).toBe(join(directory, "library"));
   const moved = join(directory, "moved");
   await mkdir(moved);
-  await writeFile(join(moved, "reader.sqlite"), "db");
+  await writeFile(join(moved, "neoread.sqlite"), "db");
   await writeFile(
     join(directory, "library-location.json"),
     JSON.stringify({ directory: moved }),
@@ -50,7 +50,7 @@ it("waits for shutdown and copies before switching the saved path", async () => 
     order.push("copy");
     expect(await libraryDirectory(directory)).toBe(join(directory, "library"));
     await mkdir(target);
-    await writeFile(join(target, "reader.sqlite"), "db");
+    await writeFile(join(target, "neoread.sqlite"), "db");
   });
   await migrateLibrary(
     directory,

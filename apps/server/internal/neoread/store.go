@@ -82,7 +82,10 @@ func OpenStore(root string) (*Store, error) {
 			return nil, err
 		}
 	}
-	db, err := sql.Open("sqlite", filepath.Join(root, "reader.sqlite"))
+	if err := normalizeLibraryFilename(root); err != nil {
+		return nil, err
+	}
+	db, err := sql.Open("sqlite", filepath.Join(root, "neoread.sqlite"))
 	if err != nil {
 		return nil, err
 	}

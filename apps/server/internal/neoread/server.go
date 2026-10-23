@@ -208,7 +208,7 @@ func (s *Server) Handler() http.Handler {
 	mux.HandleFunc("PUT /api/preferences/{key}", s.savePreferences)
 	mux.HandleFunc("GET /api/settings", func(w http.ResponseWriter, r *http.Request) {
 		var value string
-		err := s.Store.DB.QueryRow("SELECT value FROM settings WHERE key='reader'").Scan(&value)
+		err := s.Store.DB.QueryRow("SELECT value FROM settings WHERE key='neoread'").Scan(&value)
 		if err != nil {
 			respond(w, 200, map[string]any{})
 			return
@@ -247,7 +247,7 @@ func (s *Server) Handler() http.Handler {
 			}
 		}
 		b, _ := json.Marshal(v)
-		_, err := s.Store.DB.Exec("INSERT INTO settings VALUES('reader',?) ON CONFLICT(key) DO UPDATE SET value=excluded.value", string(b))
+		_, err := s.Store.DB.Exec("INSERT INTO settings VALUES('neoread',?) ON CONFLICT(key) DO UPDATE SET value=excluded.value", string(b))
 		if err != nil {
 			fail(w, 500, "设置保存失败")
 			return
@@ -528,7 +528,7 @@ func (s *Server) importFileToCategory(ctx context.Context, temp, filename, libra
 	}
 	if err == nil {
 		var settings string
-		_ = tx.QueryRow("SELECT value FROM settings WHERE key='reader'").Scan(&settings)
+		_ = tx.QueryRow("SELECT value FROM settings WHERE key='neoread'").Scan(&settings)
 		p := initialDocumentProcessing(d, settings)
 		b, _ := json.Marshal(p)
 		_, err = tx.Exec("INSERT INTO document_processing(document_id,phase,status,body) VALUES(?,?,?,?)", d.ID, p.Phase, p.Status, b)

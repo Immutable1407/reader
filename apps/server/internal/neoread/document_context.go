@@ -29,7 +29,7 @@ func (s *Server) documentContextOverride() int {
 	var settings struct {
 		DocumentContextTokens int `json:"documentContextTokens"`
 	}
-	if s.Store.DB.QueryRow("SELECT value FROM settings WHERE key='reader'").Scan(&body) == nil {
+	if s.Store.DB.QueryRow("SELECT value FROM settings WHERE key='neoread'").Scan(&body) == nil {
 		_ = json.Unmarshal([]byte(body), &settings)
 	}
 	if settings.DocumentContextTokens < 8192 || settings.DocumentContextTokens > 1048576 {

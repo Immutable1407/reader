@@ -123,7 +123,7 @@ CLI 在临时空目录中运行。Claude 配置为禁用工具与 MCP；Codex �
 | ------------------------------ | ------------------------------------------------------------------------------------------ |
 | 已安装桌面版                   | Electron `userData/library/`；macOS 通常为 `~/Library/Application Support/NeoRead/library/` |
 | 未打包桌面版（`pnpm desktop`） | macOS 为 `~/Library/Application Support/NeoRead Dev/library/`                               |
-| 浏览器开发模式（`pnpm dev`）   | 项目根目录的 `.reader/`                                                                    |
+| 浏览器开发模式（`pnpm dev`）   | 项目根目录的 `.neoread/`                                                                    |
 
 桌面版可在 **设置 → 论文库 → 书库位置** 中选择新的保存文件夹。NeoRead 会在其中新建 `NeoRead Library`，保存当前阅读状态后，复制 PDF、EPUB、笔记、批注、阅读记录及其他书库数据，校验成功后重启。已有的 `NeoRead Library` 不会被覆盖，原书库保留为迁移时的备份，之后的修改只写入新位置。笔记仍保存在书库数据库中，不单独导出文件；这不是 Zotero 持续同步。
 
@@ -133,7 +133,7 @@ CLI 在临时空目录中运行。Claude 配置为禁用工具与 MCP；Codex �
 
 ```text
 library/
-├── reader.sqlite       # 文档信息、阅读记录、对话、设置与全文索引
+├── neoread.sqlite       # 文档信息、阅读记录、对话、设置与全文索引
 ├── books/              # EPUB 原文件
 ├── papers/             # PDF 原文件
 ├── cache/              # EPUB 资源；PDF analysis 下的 Markdown、图片与解析稿

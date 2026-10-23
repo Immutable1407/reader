@@ -35,7 +35,7 @@ func writeConversationReply(w http.ResponseWriter, text, continuation string) {
 }
 func TestAPIConversationPersistsCompactsAndRestarts(t *testing.T) {
 	s, _ := prepareConversationFixture(t)
-	_, _ = s.Store.DB.Exec(`INSERT INTO settings VALUES('reader','{"documentContextTokens":8192}')`)
+	_, _ = s.Store.DB.Exec(`INSERT INTO settings VALUES('neoread','{"documentContextTokens":8192}')`)
 	compactCalls, answerCalls := 0, 0
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		if r.Method == "GET" {

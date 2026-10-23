@@ -144,7 +144,7 @@ func TestMoveDocumentBetweenLibraries(t *testing.T) {
 }
 func TestLibraryMigrationKeepsPapersTogether(t *testing.T) {
 	root := t.TempDir()
-	db, err := sql.Open("sqlite", filepath.Join(root, "reader.sqlite"))
+	db, err := sql.Open("sqlite", filepath.Join(root, "neoread.sqlite"))
 	if err != nil {
 		t.Fatal(err)
 	}

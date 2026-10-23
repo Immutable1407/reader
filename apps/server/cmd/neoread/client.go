@@ -35,7 +35,7 @@ type discovery struct {
 }
 
 // libraryDir is the desktop app's library unless --data or NEOREAD_DATA names
-// another one, such as the `.reader` directory used by `pnpm dev`.
+// another one, such as the `.neoread` directory used by `pnpm dev`.
 func libraryDir(flagValue string) (string, error) {
 	if flagValue != "" {
 		return filepath.Abs(flagValue)

@@ -92,7 +92,7 @@ func organizationDoc(t *testing.T, s *Server) Document {
 }
 func TestOrganizationMigrationPreservesLibrary(t *testing.T) {
 	root := t.TempDir()
-	db, err := sql.Open("sqlite", filepath.Join(root, "reader.sqlite"))
+	db, err := sql.Open("sqlite", filepath.Join(root, "neoread.sqlite"))
 	if err != nil {
 		t.Fatal(err)
 	}

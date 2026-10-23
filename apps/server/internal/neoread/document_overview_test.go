@@ -80,7 +80,7 @@ func TestOverviewGeneratePersistAndReuse(t *testing.T) {
 }
 func TestOverviewResumeChaptersAndSourceBoundaries(t *testing.T) {
 	s, a := originalDocumentFixture(t)
-	_, _ = s.Store.DB.Exec(`INSERT INTO settings VALUES('reader','{"documentContextTokens":8192}')`)
+	_, _ = s.Store.DB.Exec(`INSERT INTO settings VALUES('neoread','{"documentContextTokens":8192}')`)
 	c := a.corpus
 	c.Passages = nil
 	for i := 0; i < 6; i++ {
@@ -174,7 +174,7 @@ func TestOverviewRegenerationPreservesPublishedUntilSuccess(t *testing.T) {
 	for _, stop := range []string{"failure", "cancel"} {
 		t.Run(stop, func(t *testing.T) {
 			s, a := originalDocumentFixture(t)
-			_, _ = s.Store.DB.Exec(`INSERT INTO settings VALUES('reader','{"documentContextTokens":8192}')`)
+			_, _ = s.Store.DB.Exec(`INSERT INTO settings VALUES('neoread','{"documentContextTokens":8192}')`)
 			c := a.corpus
 			c.Passages = nil
 			for i := 0; i < 6; i++ {

@@ -166,7 +166,7 @@ func TestCopyLibraryRejectsMissingOrInvalidDatabase(t *testing.T) {
 		source := t.TempDir()
 		target := filepath.Join(t.TempDir(), "target")
 		if data != "" {
-			if err := os.WriteFile(filepath.Join(source, "reader.sqlite"), []byte(data), 0600); err != nil {
+			if err := os.WriteFile(filepath.Join(source, "neoread.sqlite"), []byte(data), 0600); err != nil {
 				t.Fatal(err)
 			}
 		}
@@ -182,7 +182,7 @@ func TestCopyLibraryRejectsMissingOrInvalidDatabase(t *testing.T) {
 func TestCopyLibraryRejectsEmptySQLiteFile(t *testing.T) {
 	source := t.TempDir()
 	target := filepath.Join(t.TempDir(), "target")
-	if err := os.WriteFile(filepath.Join(source, "reader.sqlite"), nil, 0600); err != nil {
+	if err := os.WriteFile(filepath.Join(source, "neoread.sqlite"), nil, 0600); err != nil {
 		t.Fatal(err)
 	}
 	if err := CopyLibrary(source, target); err == nil {
@@ -199,7 +199,7 @@ func TestCopyLibraryRecoversCommittedWAL(t *testing.T) {
 		t.Fatal(err)
 	}
 	source := t.TempDir()
-	for _, name := range []string{"reader.sqlite", "reader.sqlite-wal"} {
+	for _, name := range []string{"neoread.sqlite", "neoread.sqlite-wal"} {
 		data, err := os.ReadFile(filepath.Join(live, name))
 		if err != nil {
 			t.Fatal(err)
@@ -229,8 +229,8 @@ func TestCopyLibraryRecoversCommittedWAL(t *testing.T) {
 
 func TestLibraryDatabaseURI(t *testing.T) {
 	for path, want := range map[string]string{
-		"C:/NeoRead Library/reader.sqlite":   "file:///C:/NeoRead%20Library/reader.sqlite?mode=rw",
-		"/tmp/NeoRead Library/reader.sqlite": "file:///tmp/NeoRead%20Library/reader.sqlite?mode=rw",
+		"C:/NeoRead Library/neoread.sqlite":   "file:///C:/NeoRead%20Library/neoread.sqlite?mode=rw",
+		"/tmp/NeoRead Library/neoread.sqlite": "file:///tmp/NeoRead%20Library/neoread.sqlite?mode=rw",
 	} {
 		if got := libraryDatabaseURI(path); got != want {
 			t.Fatalf("%s: got %s, want %s", path, got, want)

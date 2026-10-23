@@ -125,13 +125,13 @@ Original files are stored on the filesystem. Document metadata, progress, annota
 | ----------------------------------- | ------------------------------------------------------------------------------------------------ |
 | Installed desktop app               | Electron `userData/library/`; typically `~/Library/Application Support/NeoRead/library/` on macOS |
 | Unpackaged desktop (`pnpm desktop`) | `~/Library/Application Support/NeoRead Dev/library/` on macOS                                     |
-| Browser development (`pnpm dev`)    | `.reader/` in the project root                                                                   |
+| Browser development (`pnpm dev`)    | `.neoread/` in the project root                                                                   |
 
 Legacy Reader libraries usually live at `~/Library/Application Support/Reader/library/` on macOS. See the [migration design](docs/neoread-migration.md) (Chinese); the safe migration flow still needs implementation and upgrade validation.
 
 ```text
 library/
-├── reader.sqlite       # Metadata, reading records, conversations, settings, and full-text index
+├── neoread.sqlite       # Metadata, reading records, conversations, settings, and full-text index
 ├── books/              # Original EPUB files
 ├── papers/             # Original PDF files
 ├── cache/              # EPUB resources; Markdown, images, and drafts under PDF analysis

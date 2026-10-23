@@ -10,14 +10,14 @@ import (
 	"io"
 	"log"
 	"log/slog"
+	"neoread.local/server/internal/diagnostics"
+	"neoread.local/server/internal/neoread"
+	"neoread.local/server/internal/networkprobe"
 	"net"
 	"net/http"
 	"os"
 	"os/signal"
 	"path/filepath"
-	"neoread.local/server/internal/diagnostics"
-	"neoread.local/server/internal/networkprobe"
-	"neoread.local/server/internal/neoread"
 	"runtime"
 	"syscall"
 	"time"
@@ -27,7 +27,7 @@ var neoreadVersion = "dev"
 var buildCommit = "unknown"
 
 func main() {
-	data := flag.String("data", ".reader", "local library directory")
+	data := flag.String("data", ".neoread", "local library directory")
 	port := flag.String("port", "17840", "loopback port, 0 for automatic")
 	web := flag.String("web", "", "built web directory")
 	connector := flag.Bool("connector", true, "enable NeoRead Connector listener")
@@ -35,8 +35,27 @@ func main() {
 	logs := flag.String("logs", "", "diagnostic log directory")
 	session := flag.String("session", "", "diagnostic session ID")
 	migrateLibrary := flag.String("migrate-library", "", "copy a stopped library to a new directory and exit")
+	legacySource := flag.String("migrate-reader-data", "", "migrate Reader application data once and exit")
+	legacyCleanup := flag.String("cleanup-reader-data", "", "keep or delete the migrated Reader application data")
+	legacyDirectory := flag.String("reader-data", "", "legacy application data directory for cleanup")
 	shutdownOnStdin := flag.Bool("shutdown-on-stdin", false, "shut down when the desktop closes stdin")
 	flag.Parse()
+	if *legacySource != "" || *legacyCleanup != "" {
+		var state *neoread.ReaderMigration
+		var err error
+		if *legacySource != "" {
+			state, err = neoread.MigrateReaderData(*legacySource, *data)
+		} else {
+			state, err = neoread.CleanupReaderData(*legacyDirectory, *data, *legacyCleanup)
+		}
+		if err != nil {
+			log.Fatal(err)
+		}
+		if err = json.NewEncoder(os.Stdout).Encode(state); err != nil {
+			log.Fatal(err)
+		}
+		return
+	}
 	if *migrateLibrary != "" {
 		if err := neoread.CopyLibrary(*data, *migrateLibrary); err != nil {
 			log.Fatal(err)

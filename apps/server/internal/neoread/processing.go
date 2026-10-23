@@ -191,7 +191,7 @@ func initialDocumentProcessing(d Document, settings string) Processing {
 }
 func (s *Store) enqueueDocument(d Document) error {
 	var value string
-	_ = s.DB.QueryRow("SELECT value FROM settings WHERE key='reader'").Scan(&value)
+	_ = s.DB.QueryRow("SELECT value FROM settings WHERE key='neoread'").Scan(&value)
 	p := initialDocumentProcessing(d, value)
 	b, _ := json.Marshal(p)
 	_, e := s.DB.Exec("INSERT OR IGNORE INTO document_processing(document_id,phase,status,body) VALUES(?,?,?,?)", d.ID, p.Phase, p.Status, b)

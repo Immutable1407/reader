@@ -30,7 +30,7 @@ EPUB 导入后只提取正文，不自动全文翻译。工具栏的“翻译本
 
 ```sh
 pnpm build
-./apps/desktop/bin/neoread-server --data .reader/epub-web-preview --port 0 --web apps/web/dist
+./apps/desktop/bin/neoread-server --data .neoread/epub-web-preview --port 0 --web apps/web/dist
 ```
 
 在浏览器打开启动日志中的 `<url>/#token=<token>`。预览使用独立书库，不要使用正式书库验证导入和删除。2026-10-09 已在本机启动该预览，导入 `MAKE.epub` 和原创批注验收样本。重启后使用新启动日志中的地址和 token。
@@ -122,7 +122,7 @@ EPUB 固定使用 Readium 滚动模式，包括已有 `scroll: false` 的偏好�
 
 ## 人工验收
 
-运行 `python3 scripts/create-epub-check.py` 生成 `.reader/epub-check.epub`。文件完全使用项目原创测试文字，包含重复句子、跨节点内容、中文/emoji/ruby、长段落与脚注。
+运行 `python3 scripts/create-epub-check.py` 生成 `.neoread/epub-check.epub`。文件完全使用项目原创测试文字，包含重复句子、跨节点内容、中文/emoji/ruby、长段落与脚注。
 
 1. 打开「EPUB 批注验收样本」，给第一章第二处重复句添加高亮、下划线或笔记。
 2. 调整字号、行距及窗口宽度，上下滚动跨章，再关闭并重新打开。
@@ -133,7 +133,7 @@ EPUB 固定使用 Readium 滚动模式，包括已有 `scroll: false` 的偏好�
 可在独立测试书库启动已构建的预览，端口 `0` 会自动选择空闲本机端口：
 
 ```sh
-./apps/desktop/bin/neoread-server --data .reader/epub-preview --port 0 --web apps/web/dist
+./apps/desktop/bin/neoread-server --data .neoread/epub-preview --port 0 --web apps/web/dist
 ```
 
 启动行返回 `url` 与当前会话 `token`，使用 `<url>/#token=<token>` 打开。此命令使用隔离书库。正式 Electron 的字体、原生窗口与缩放仍需人工检查。

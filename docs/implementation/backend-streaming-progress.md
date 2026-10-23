@@ -82,11 +82,11 @@ apps/desktop/bin/neoread-server --data "$(mktemp -d /tmp/neoread-streaming-previ
 
 可运行后端候选为 `backend/unified-streaming@47aab55`（实现提交 `2f7f820`，含完整联调启动文档）；本节只补启动文档，不改变 Go 或冻结 wire。B2/B3 当前没有已知未完成的实现项，模拟/HTTP 生命周期测试已通过；尚未验证的是商业备用 API 厂商端兼容性、Claude 未登录情况下无法执行的真实文字/图片/取消，以及双 worktree 的人工交互和视觉效果。这些未验证项不阻塞启动。
 
-本轮已实际启动后端 `http://127.0.0.1:17840` 和前端 `http://127.0.0.1:15174`。启动前两端口均通过 loopback bind 检查；前端会话既有 `15173` 监听保持不动。当前独立运行目录为 `/tmp/neoread-streaming-backend-integration.zo5NBG`，书库仅在其 `data/` 下；未读取用户已有 `.reader`。运行目录指针保存在 `/tmp/neoread-streaming-backend-integration.current`。以下命令可复现；若本轮进程仍在运行，直接执行初始化步骤，无需再次启动。
+本轮已实际启动后端 `http://127.0.0.1:17840` 和前端 `http://127.0.0.1:15174`。启动前两端口均通过 loopback bind 检查；前端会话既有 `15173` 监听保持不动。当前独立运行目录为 `/tmp/neoread-streaming-backend-integration.zo5NBG`，书库仅在其 `data/` 下；未读取用户已有 `.neoread`。运行目录指针保存在 `/tmp/neoread-streaming-backend-integration.current`。以下命令可复现；若本轮进程仍在运行，直接执行初始化步骤，无需再次启动。
 
 ### 终端 A：后端与独立数据目录
 
-在后端 worktree 执行。依赖已安装；新 checkout 若缺依赖，先 `pnpm install --frozen-lockfile`。不要运行顶层 `pnpm dev`：它会自行启动另一份 Go 并使用 worktree 的 `.reader`，不适用于本次隔离联调。
+在后端 worktree 执行。依赖已安装；新 checkout 若缺依赖，先 `pnpm install --frozen-lockfile`。不要运行顶层 `pnpm dev`：它会自行启动另一份 Go 并使用 worktree 的 `.neoread`，不适用于本次隔离联调。
 
 ```sh
 set -e

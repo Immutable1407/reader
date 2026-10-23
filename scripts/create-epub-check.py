@@ -3,7 +3,7 @@ from pathlib import Path
 from zipfile import ZipFile, ZipInfo, ZIP_STORED, ZIP_DEFLATED
 import sys
 
-output = Path(sys.argv[1] if len(sys.argv) > 1 else ".reader/epub-check.epub")
+output = Path(sys.argv[1] if len(sys.argv) > 1 else ".neoread/epub-check.epub")
 output.parent.mkdir(parents=True, exist_ok=True)
 chapters = [
     ("重复文字与跨节点选择", '''

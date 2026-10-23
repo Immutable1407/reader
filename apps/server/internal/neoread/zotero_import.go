@@ -355,7 +355,7 @@ func (s *Server) importZoteroEntryTo(ctx context.Context, e *zoteroEntry, librar
 	if fresh {
 		// Use the same import-time translation threshold as file and reference imports.
 		var settings string
-		_ = tx.QueryRowContext(ctx, "SELECT value FROM settings WHERE key='reader'").Scan(&settings)
+		_ = tx.QueryRowContext(ctx, "SELECT value FROM settings WHERE key='neoread'").Scan(&settings)
 		p := initialDocumentProcessing(d, settings)
 		data, _ := json.Marshal(p)
 		if _, err = tx.ExecContext(ctx, `INSERT INTO document_processing(document_id,phase,status,body) VALUES(?,?,?,?)`, docID, p.Phase, p.Status, data); err != nil {

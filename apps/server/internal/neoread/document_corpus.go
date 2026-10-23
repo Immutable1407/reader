@@ -44,6 +44,10 @@ type documentCorpus struct {
 }
 
 func (s *Server) corpusFingerprint(d Document) (string, error) {
+	return s.corpusFingerprintAt(d, s.Store.Root)
+}
+
+func (s *Server) corpusFingerprintAt(d Document, logicalRoot string) (string, error) {
 	paths := []string{s.Store.File(d)}
 	if d.Type == "epub" {
 		root := filepath.Join(s.Store.Root, "cache", d.ID)
@@ -74,7 +78,11 @@ func (s *Server) corpusFingerprint(d Document) (string, error) {
 	for _, p := range paths {
 		info, e := os.Stat(p)
 		if e == nil {
-			parts = append(parts, fmt.Sprintf("%s:%d:%d", p, info.Size(), info.ModTime().UnixNano()))
+			rel, err := filepath.Rel(s.Store.Root, p)
+			if err != nil {
+				return "", err
+			}
+			parts = append(parts, fmt.Sprintf("%s:%d:%d", filepath.Join(logicalRoot, rel), info.Size(), info.ModTime().UnixNano()))
 		} else if !os.IsNotExist(e) {
 			return "", e
 		}
@@ -154,7 +162,7 @@ func (s *Server) documentCorpus(ctx context.Context, documentID string, preparin
 	// Only refresh existing overviews automatically. Opening an old library
 	// must not enqueue first-time paid generation for every historical document.
 	var settings string
-	_ = tx.QueryRowContext(ctx, "SELECT value FROM settings WHERE key='reader'").Scan(&settings)
+	_ = tx.QueryRowContext(ctx, "SELECT value FROM settings WHERE key='neoread'").Scan(&settings)
 	var prefs struct {
 		Enabled bool `json:"autoGenerateOverview"`
 	}

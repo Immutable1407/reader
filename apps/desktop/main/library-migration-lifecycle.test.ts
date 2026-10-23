@@ -127,6 +127,10 @@ beforeEach(async () => {
     migrateLibrary: migrate,
     stopLibraryServer: stop,
   }));
+  vi.doMock("./legacy-data", () => ({
+    migrateReaderData: async () => ({ status: "not-needed" }),
+    promptLegacyCleanup: async () => {},
+  }));
   vi.doMock("./agent-path", () => ({ agentPath: async () => "/bin" }));
   vi.doMock("./proxy-settings", () => ({
     ProxySettingsService: {

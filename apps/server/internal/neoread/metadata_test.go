@@ -126,7 +126,7 @@ func TestDocumentAnnotationCounts(t *testing.T) {
 }
 func TestReadingStatusMigration(t *testing.T) {
 	root := t.TempDir()
-	db, err := sql.Open("sqlite", filepath.Join(root, "reader.sqlite"))
+	db, err := sql.Open("sqlite", filepath.Join(root, "neoread.sqlite"))
 	if err != nil {
 		t.Fatal(err)
 	}

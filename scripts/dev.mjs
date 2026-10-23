@@ -26,7 +26,7 @@ const server = spawn(
   `../desktop/bin/${binary}`,
   [
     "--data",
-    "../../.reader",
+    "../../.neoread",
     "--port",
     "17840",
     ...(process.env.NEOREAD_DEV_CONNECTOR === "1" ? [] : ["--connector=false"]),

@@ -52,7 +52,7 @@ func CopyLibrary(source, destination string) (err error) {
 	if contains(source, destination) || contains(destination, source) {
 		return fmt.Errorf("新书库不能与当前书库重叠")
 	}
-	info, err := os.Lstat(filepath.Join(source, "reader.sqlite"))
+	info, err := os.Lstat(filepath.Join(source, "neoread.sqlite"))
 	if err != nil {
 		return err
 	}
@@ -90,7 +90,7 @@ func CopyLibrary(source, destination string) (err error) {
 		if relative == "ai-work" {
 			return filepath.SkipDir
 		}
-		if relative == "reader.lock" || relative == "server.json" {
+		if relative == "neoread.lock" || relative == "server.json" {
 			return nil
 		}
 		target := filepath.Join(destination, relative)
@@ -143,7 +143,7 @@ func libraryDatabaseURI(path string) string {
 	return u.String()
 }
 func checkLibraryDatabase(source, destination string) error {
-	db, err := sql.Open("sqlite", libraryDatabaseURI(filepath.Join(destination, "reader.sqlite")))
+	db, err := sql.Open("sqlite", libraryDatabaseURI(filepath.Join(destination, "neoread.sqlite")))
 	if err != nil {
 		return err
 	}
@@ -165,6 +165,17 @@ func checkLibraryDatabase(source, destination string) error {
 // Only rebind indexes that matched the source before relocation. Already stale
 // indexes remain stale; content revisions, passages and citations never change.
 func relocateCorpusFingerprints(db *sql.DB, source, destination string) error {
+	return relocateCorpusFingerprintsAt(db, source, destination, destination)
+}
+
+func relocateCorpusFingerprintsAt(db *sql.DB, source, physical, destination string) error {
+	var tables int
+	if err := db.QueryRow("SELECT count(*) FROM sqlite_schema WHERE type='table' AND name='document_corpora'").Scan(&tables); err != nil {
+		return err
+	}
+	if tables == 0 {
+		return nil
+	} // Earlier Reader releases did not have corpus indexes.
 	rows, err := db.Query(`SELECT c.document_id,d.type,c.fingerprint FROM document_corpora c JOIN documents d ON d.id=c.document_id`)
 	if err != nil {
 		return err
@@ -188,7 +199,7 @@ func relocateCorpusFingerprints(db *sql.DB, source, destination string) error {
 		return err
 	}
 	original := &Server{Store: &Store{Root: source}}
-	moved := &Server{Store: &Store{Root: destination}}
+	moved := &Server{Store: &Store{Root: physical}}
 	tx, err := db.Begin()
 	if err != nil {
 		return err
@@ -199,7 +210,7 @@ func relocateCorpusFingerprints(db *sql.DB, source, destination string) error {
 		if err != nil || before != c.fingerprint {
 			continue
 		}
-		after, err := moved.corpusFingerprint(c.document)
+		after, err := moved.corpusFingerprintAt(c.document, destination)
 		if err != nil {
 			return err
 		}
