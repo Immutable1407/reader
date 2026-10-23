@@ -109,6 +109,7 @@ func OpenStore(root string) (*Store, error) {
  CREATE UNIQUE INDEX IF NOT EXISTS paper_attachment_file ON paper_attachments(document_id,sha256) WHERE kind='file';
  CREATE UNIQUE INDEX IF NOT EXISTS paper_attachment_link ON paper_attachments(document_id,url) WHERE kind='link';
  CREATE INDEX IF NOT EXISTS paper_attachment_hash ON paper_attachments(sha256) WHERE kind='file';
+ CREATE INDEX IF NOT EXISTS paper_attachment_owner ON paper_attachments(document_id);
  CREATE TABLE IF NOT EXISTS connector_snapshots(document_id TEXT PRIMARY KEY REFERENCES documents(id) ON DELETE CASCADE,source_url TEXT NOT NULL,body TEXT NOT NULL,created_at TEXT NOT NULL);
  CREATE INDEX IF NOT EXISTS document_relations_b ON document_relations(b);
  CREATE VIRTUAL TABLE IF NOT EXISTS search_index USING fts5(document_id UNINDEXED,href UNINDEXED,content,tokenize='unicode61');
