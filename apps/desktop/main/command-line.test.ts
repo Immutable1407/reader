@@ -4,13 +4,13 @@ import { join } from "node:path";
 import { afterEach, describe, expect, it } from "vitest";
 import {
   commandLineStatus,
-  isReaderLink,
+  isNeoReadLink,
   macInstall,
   macStatus,
   macUninstall,
   pathWith,
   pathWithout,
-  readerBundleId,
+  neoreadBundleId,
   setCommandLine,
   windowsEnvironment,
 } from "./command-line";
@@ -22,7 +22,7 @@ afterEach(async () => {
   directory = "";
 });
 async function link() {
-  directory = await mkdtemp(join(tmpdir(), "reader-cli-"));
+  directory = await mkdtemp(join(tmpdir(), "neoread-cli-"));
   return join(directory, "bin", "neoread");
 }
 /** An app bundle on disk whose Info.plist names `id`; returns its command path. */
@@ -86,23 +86,23 @@ describe.skipIf(process.platform === "win32")("macOS link", () => {
   it("recognises NeoRead links by bundle ID, or by name once deleted", async () => {
     await link();
     expect(
-      await isReaderLink(await bundle("Renamed.app", readerBundleId)),
+      await isNeoReadLink(await bundle("Renamed.app", neoreadBundleId)),
     ).toBe(true);
-    expect(await isReaderLink(await bundle("NeoRead.app", "com.example"))).toBe(
-      false,
-    );
-    expect(await isReaderLink(await bundle("NoPlist.app"))).toBe(false);
     expect(
-      await isReaderLink(
+      await isNeoReadLink(await bundle("NeoRead.app", "com.example")),
+    ).toBe(false);
+    expect(await isNeoReadLink(await bundle("NoPlist.app"))).toBe(false);
+    expect(
+      await isNeoReadLink(
         "/Volumes/gone/NeoRead 2.app/Contents/Resources/bin/neoread",
       ),
     ).toBe(true);
     expect(
-      await isReaderLink(
+      await isNeoReadLink(
         "/Volumes/gone/Other.app/Contents/Resources/bin/neoread",
       ),
     ).toBe(false);
-    expect(await isReaderLink("/usr/local/Cellar/reader/1/bin/neoread")).toBe(
+    expect(await isNeoReadLink("/usr/local/Cellar/reader/1/bin/neoread")).toBe(
       false,
     );
   });

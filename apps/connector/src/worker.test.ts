@@ -27,7 +27,7 @@ beforeEach(async () => {
   vi.stubGlobal("fetch", fetchMock);
   vi.stubGlobal("chrome", {
     runtime: {
-      id: "reader-extension",
+      id: "neoread-extension",
       getPlatformInfo: vi.fn().mockResolvedValue({}),
       onMessage: {
         addListener: (fn: typeof listener) => {

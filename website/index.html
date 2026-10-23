@@ -12,8 +12,8 @@
     <meta name="theme-color" content="#151514" media="(prefers-color-scheme: dark)" />
     <meta property="og:title" content="NeoRead — 本地优先的 EPUB / PDF 阅读器" />
     <meta property="og:description" content="读论文与读书，译文、批注与 AI 助读都回到原文。" />
-    <meta property="og:url" content="https://cynicalight.github.io/reader/" />
-    <meta property="og:image" content="https://cynicalight.github.io/reader/assets/screenshots/pdf-bilingual-ai.webp" />
+    <meta property="og:url" content="https://cynicalight.github.io/NeoRead/" />
+    <meta property="og:image" content="https://cynicalight.github.io/NeoRead/assets/screenshots/pdf-bilingual-ai.webp" />
     <link rel="icon" href="assets/favicon.ico" sizes="32x32" />
     <link rel="icon" href="assets/favicon.svg" type="image/svg+xml" />
     <link rel="apple-touch-icon" href="assets/apple-touch-icon.png" />
@@ -26,7 +26,7 @@
     <link rel="stylesheet" href="styles.css" />
     <script>
       try {
-        const t = localStorage.getItem("reader-site-theme");
+        const t = localStorage.getItem("neoread-site-theme");
         if (t === "light" || t === "dark") document.documentElement.dataset.theme = t;
       } catch {}
     </script>
@@ -99,10 +99,10 @@
             <svg class="icon theme-sun"><use href="#i-sun" /></svg>
             <svg class="icon theme-moon" style="display: none"><use href="#i-moon" /></svg>
           </button>
-          <a class="icon-btn" href="https://github.com/cynicalight/reader" aria-label="GitHub" target="_blank" rel="noopener">
+          <a class="icon-btn" href="https://github.com/cynicalight/NeoRead" aria-label="GitHub" target="_blank" rel="noopener">
             <svg class="icon"><use href="#i-github" /></svg>
           </a>
-          <a class="btn btn-primary btn-sm nav-download" href="https://github.com/cynicalight/reader/releases/latest" target="_blank" rel="noopener" data-en="Download">下载</a>
+          <a class="btn btn-primary btn-sm nav-download" href="https://github.com/cynicalight/NeoRead/releases/latest" target="_blank" rel="noopener" data-en="Download">下载</a>
         </div>
       </div>
     </header>
@@ -124,10 +124,10 @@
             本地优先的 PDF / EPUB 阅读器，分论文库与图书库。论文可以原文译文逐段对照，批注、搜索与 AI 助读都锚定在原文——文档留在本机，AI 通过你已登录的 Claude Code、Codex 或 Kimi CLI 调用。
           </p>
           <div class="hero-cta reveal">
-            <a class="btn btn-primary" href="https://github.com/cynicalight/reader/releases/latest" target="_blank" rel="noopener">
+            <a class="btn btn-primary" href="https://github.com/cynicalight/NeoRead/releases/latest" target="_blank" rel="noopener">
               <svg class="icon"><use href="#i-download" /></svg><span data-en="Download">下载</span>
             </a>
-            <a class="btn btn-ghost" href="https://github.com/cynicalight/reader" target="_blank" rel="noopener">
+            <a class="btn btn-ghost" href="https://github.com/cynicalight/NeoRead" target="_blank" rel="noopener">
               <svg class="icon"><use href="#i-github" /></svg><span data-en="Github">Github</span>
             </a>
           </div>
@@ -496,8 +496,8 @@
           <p class="shot-caption" data-en="Screenshots with a dark version follow the page's appearance.">有深色版本的截图会跟随本页外观切换。</p>
           <figure class="video reveal">
             <video controls playsinline preload="metadata" width="1920" height="1080" aria-labelledby="demo-video-caption">
-              <source src="assets/reader-explainer-zh.mp4" type="video/mp4" />
-              <a href="assets/reader-explainer-zh.mp4" download data-en="Download video">下载视频</a>
+              <source src="assets/neoread-explainer-zh.mp4" type="video/mp4" />
+              <a href="assets/neoread-explainer-zh.mp4" download data-en="Download video">下载视频</a>
             </video>
             <figcaption id="demo-video-caption" data-en="Demo video">演示视频</figcaption>
           </figure>
@@ -543,8 +543,8 @@
               <h3 data-en="Install">安装</h3>
               <p data-en="Download the DMG for Apple Silicon or the EXE for Windows x64. Neither has a developer certificate, so allow the system security prompt the first time. Updates are checked in the app.">macOS（Apple Silicon）下载 DMG，Windows x64 下载 EXE。安装包没有开发者证书，首次打开需允许系统安全提示；之后可在应用内检查更新。</p>
               <div class="code"><button class="icon-btn copy" type="button" aria-label="复制"><svg class="icon"><use href="#i-copy" /></svg></button><span class="c"># or from source</span>
-git clone https://github.com/cynicalight/reader.git
-cd reader && pnpm install
+git clone https://github.com/cynicalight/NeoRead.git
+cd NeoRead && pnpm install
 pnpm desktop</div>
             </div>
             <div class="qs-card reveal">
@@ -605,8 +605,8 @@ codex login</div>
         <div class="wrap reveal">
           <h2 data-en="Open a paper.<br />Keep the thread.">打开一篇论文，<br />把思路留在原文旁边。</h2>
           <div class="hero-cta">
-            <a class="btn btn-primary" href="https://github.com/cynicalight/reader/releases/latest" target="_blank" rel="noopener"><svg class="icon"><use href="#i-download" /></svg><span data-en="Download">下载</span></a>
-            <a class="btn btn-ghost" href="https://github.com/cynicalight/reader" target="_blank" rel="noopener"><svg class="icon"><use href="#i-github" /></svg>GitHub</a>
+            <a class="btn btn-primary" href="https://github.com/cynicalight/NeoRead/releases/latest" target="_blank" rel="noopener"><svg class="icon"><use href="#i-download" /></svg><span data-en="Download">下载</span></a>
+            <a class="btn btn-ghost" href="https://github.com/cynicalight/NeoRead" target="_blank" rel="noopener"><svg class="icon"><use href="#i-github" /></svg>GitHub</a>
           </div>
         </div>
       </section>
@@ -616,9 +616,9 @@ codex login</div>
       <div class="wrap">
         <span>NeoRead · <span data-en="Built with React, Go, Readium and PDF.js">基于 React、Go、Readium 与 PDF.js 构建</span></span>
         <nav>
-          <a href="https://github.com/cynicalight/reader" target="_blank" rel="noopener">GitHub</a>
-          <a href="https://github.com/cynicalight/reader/releases" target="_blank" rel="noopener" data-en="Releases">版本发布</a>
-          <a href="https://github.com/cynicalight/reader/blob/main/docs/roadmap.md" target="_blank" rel="noopener" data-en="Roadmap">路线图</a>
+          <a href="https://github.com/cynicalight/NeoRead" target="_blank" rel="noopener">GitHub</a>
+          <a href="https://github.com/cynicalight/NeoRead/releases" target="_blank" rel="noopener" data-en="Releases">版本发布</a>
+          <a href="https://github.com/cynicalight/NeoRead/blob/main/docs/roadmap.md" target="_blank" rel="noopener" data-en="Roadmap">路线图</a>
           <a href="privacy/" data-en="Connector privacy">Connector 隐私政策</a>
         </nav>
       </div>

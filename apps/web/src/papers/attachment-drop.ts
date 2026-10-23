@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from "react";
-import type { Document } from "@reader/core";
+import type { Document } from "@neoread/core";
 import { uploadAttachments, useAttachments } from "./attachments";
 import { PAPER_DRAG_TYPE } from "./PaperSidebar";
 

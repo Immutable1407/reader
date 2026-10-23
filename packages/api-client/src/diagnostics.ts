@@ -2,7 +2,7 @@ import {
   diagnosticError,
   diagnosticRoute,
   type DiagnosticEvent,
-} from "../../reader-core/src/diagnostics";
+} from "../../neoread-core/src/diagnostics";
 
 let reporter: ((event: DiagnosticEvent) => void) | undefined;
 export function setDiagnosticReporter(next?: (event: DiagnosticEvent) => void) {

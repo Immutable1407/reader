@@ -15,7 +15,7 @@ afterEach(async () => {
   );
 });
 async function fixture() {
-  const cwd = await mkdtemp(join(tmpdir(), "reader-release-test-"));
+  const cwd = await mkdtemp(join(tmpdir(), "neoread-release-test-"));
   temporary.push(cwd);
   await mkdir(join(cwd, "apps/desktop"), { recursive: true });
   await mkdir(join(cwd, "release"));
@@ -39,11 +39,7 @@ function run(script, cwd, env = {}, args = []) {
 }
 async function installers(cwd) {
   const files = [];
-  for (const target of [
-    "mac-arm64.dmg",
-    "mac-arm64.zip",
-    "win-x64.exe",
-  ]) {
+  for (const target of ["mac-arm64.dmg", "mac-arm64.zip", "win-x64.exe"]) {
     const file = `NeoRead-0.2.0-${target}`;
     const bytes = Buffer.alloc(1024 * 1024 + 512);
     if (target.endsWith("dmg")) bytes.write("koly", bytes.length - 512);

@@ -22,7 +22,7 @@ export class PDFAnnotationLayer {
     // Rendering can refresh annotations between pointerdown and click. Keep the
     // gesture alive; removing the old markers also removes their hover state.
     this.host
-      .querySelectorAll(".reader-annotation")
+      .querySelectorAll(".neoread-annotation")
       .forEach((el) => el.remove());
     for (const annotation of this.annotations) {
       if (annotation.location.type !== "pdf" || annotation.kind === "bookmark")
@@ -34,14 +34,14 @@ export class PDFAnnotationLayer {
       // Composite the entire annotation once. Range.getClientRects() may
       // include overlapping element/text boxes, which must not darken the mark.
       const group = document.createElement("div");
-      group.className = "reader-annotation";
+      group.className = "neoread-annotation";
       group.style.setProperty(
         "--annotation-color",
         annotation.color || "#facc15",
       );
       for (const rect of annotation.location.rects || []) {
         const el = document.createElement("div");
-        el.className = "reader-highlight";
+        el.className = "neoread-highlight";
         el.dataset.annotationId = annotation.id;
         el.dataset.kind = annotation.kind;
         Object.assign(el.style, {
@@ -58,7 +58,7 @@ export class PDFAnnotationLayer {
   clear = () => {
     this.pressed = undefined;
     this.host
-      .querySelectorAll(".reader-highlight[data-hovered]")
+      .querySelectorAll(".neoread-highlight[data-hovered]")
       .forEach((el) => el.removeAttribute("data-hovered"));
   };
   private find(event: MouseEvent) {
@@ -105,7 +105,7 @@ export class PDFAnnotationLayer {
         ? this.find(event)
         : undefined;
     this.host
-      .querySelectorAll<HTMLElement>(".reader-highlight")
+      .querySelectorAll<HTMLElement>(".neoread-highlight")
       .forEach((el) =>
         el.toggleAttribute(
           "data-hovered",
@@ -142,7 +142,7 @@ export class PDFAnnotationLayer {
     this.host.removeEventListener("click", this.click, true);
     this.host.removeEventListener("scroll", this.clear);
     this.host
-      .querySelectorAll(".reader-annotation")
+      .querySelectorAll(".neoread-annotation")
       .forEach((el) => el.remove());
   }
 }

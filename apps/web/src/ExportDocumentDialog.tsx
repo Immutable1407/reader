@@ -24,7 +24,7 @@ import { exportAnnotatedPDFWithToast } from "./annotated-pdf-export";
 
 type DocumentExportPart = "translation" | ExportPart;
 const labels = { translation: "译文", ...exportParts };
-const storageKey = "reader.notes-export";
+const storageKey = "neoread.notes-export";
 function savedParts(): DocumentExportPart[] {
   try {
     const value: unknown = JSON.parse(localStorage.getItem(storageKey) || "");

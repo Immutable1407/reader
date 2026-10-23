@@ -219,7 +219,7 @@ export function LinkPreviewPanel({
         }}
       >
         <DialogContent
-          data-reader-floating-preview=""
+          data-neoread-floating-preview=""
           showOverlay={false}
           showCloseButton={false}
           initialFocus={true}

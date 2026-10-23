@@ -572,7 +572,7 @@ kbd {
   display: flex;
   flex-direction: column;
 }
-.reader-toolbar {
+.neoread-toolbar {
   height: 58px;
   flex-shrink: 0;
   display: flex;
@@ -582,13 +582,13 @@ kbd {
   gap: 15px;
   border-bottom: 1px solid var(--border);
 }
-.reader-title-group {
+.neoread-title-group {
   display: flex;
   align-items: center;
   gap: 12px;
   min-width: 0;
 }
-.reader-title {
+.neoread-title {
   min-width: 0;
   max-width: 360px;
   overflow: hidden;
@@ -609,11 +609,11 @@ kbd {
   align-items: center;
   gap: 7px;
 }
-.reader-panels {
+.neoread-panels {
   flex: 1;
   min-height: 0;
 }
-.reader-panels[data-toggling] > [data-slot="resizable-panel"] {
+.neoread-panels[data-toggling] > [data-slot="resizable-panel"] {
   transition: flex-grow 220ms cubic-bezier(0.32, 0.72, 0, 1);
 }
 .sidebar-handle-closed {
@@ -621,7 +621,7 @@ kbd {
   pointer-events: none;
   opacity: 0;
 }
-.reader-sidebar,
+.neoread-sidebar,
 .assistant-sidebar {
   height: 100%;
   background: var(--background);
@@ -629,13 +629,13 @@ kbd {
     opacity 160ms ease,
     transform 220ms cubic-bezier(0.32, 0.72, 0, 1);
 }
-.reader-sidebar {
+.neoread-sidebar {
   min-width: 180px;
 }
 .assistant-sidebar {
   min-width: 250px;
 }
-.reader-sidebar[data-open="false"] {
+.neoread-sidebar[data-open="false"] {
   opacity: 0;
   transform: translateX(-12px);
 }
@@ -851,7 +851,7 @@ kbd {
   font-size: 10px;
   color: var(--muted-foreground);
 }
-.reader-block-search-hit {
+.neoread-block-search-hit {
   position: absolute;
   pointer-events: none;
   z-index: 1;
@@ -861,59 +861,59 @@ kbd {
   height: 100%;
   position: relative;
 }
-.reader-stage {
+.neoread-stage {
   position: absolute;
   inset: 0;
   background: #f6f5f2;
 }
-.reader-stage[data-theme="dark"],
+.neoread-stage[data-theme="dark"],
 .pdf-reading[data-theme="dark"] {
   --pdf-dark-paper: #2f2c2f;
   --pdf-dark-ink: #dcd7d2;
 }
-.reader-stage[data-theme="dark"][data-dark-contrast="high"],
+.neoread-stage[data-theme="dark"][data-dark-contrast="high"],
 .pdf-reading[data-theme="dark"][data-dark-contrast="high"] {
   --pdf-dark-paper: #000;
   --pdf-dark-ink: #fff;
 }
-.reader-stage[data-theme="dark"] {
+.neoread-stage[data-theme="dark"] {
   background: var(--pdf-dark-paper);
 }
-.reader-stage[data-theme="sepia"] {
+.neoread-stage[data-theme="sepia"] {
   background: #eeede7;
 }
-.reader-host {
+.neoread-host {
   position: absolute;
   inset: 0;
 }
-.reader-engine {
+.neoread-engine {
   position: absolute;
   inset: 0;
   overflow: hidden;
 }
 /* Readium positions reflowable frames but leaves their viewport size to us.
    Fixed-layout frames are nested in wrappers and keep Readium's own sizing. */
-.reader-engine > .readium-navigator-iframe {
+.neoread-engine > .readium-navigator-iframe {
   top: 0;
   left: 0;
   width: 100%;
   height: 100%;
   border: 0;
 }
-.reader-engine.pdf-container {
+.neoread-engine.pdf-container {
   /* PDF.js assigns increasing z-index values to native annotations. Keep
      those layers inside the reader, below app dialogs and popovers. */
   isolation: isolate;
   overflow: auto;
 }
 /* Both reading panes keep a discoverable scrollbar, even before wheel input. */
-.reader-engine.pdf-container,
+.neoread-engine.pdf-container,
 .pdf-reading .translation-document {
   scrollbar-width: thin;
   scrollbar-gutter: stable;
   scrollbar-color: var(--muted-foreground) transparent;
 }
-.reader-engine.pdf-container::-webkit-scrollbar-thumb,
+.neoread-engine.pdf-container::-webkit-scrollbar-thumb,
 .pdf-reading .translation-document::-webkit-scrollbar-thumb {
   background-color: var(--muted-foreground);
 }
@@ -960,7 +960,7 @@ kbd {
   padding-inline: var(--reading-inset-x);
   padding-top: var(--reading-inset-y);
 }
-.reader-annotation {
+.neoread-annotation {
   position: absolute;
   inset: 0;
   opacity: 0.32;
@@ -969,24 +969,24 @@ kbd {
   z-index: 7;
   mix-blend-mode: multiply;
 }
-.reader-stage[data-theme="dark"] [class~="reader-annotation"] {
+.neoread-stage[data-theme="dark"] [class~="neoread-annotation"] {
   mix-blend-mode: screen;
 }
-.reader-highlight {
+.neoread-highlight {
   position: absolute;
   background: var(--annotation-color);
 }
-.reader-highlight[data-kind="underline"] {
+.neoread-highlight[data-kind="underline"] {
   background: transparent;
   border-bottom: 2px solid var(--annotation-color);
 }
-.reader-annotation:has(.reader-highlight[data-hovered]) {
+.neoread-annotation:has(.neoread-highlight[data-hovered]) {
   opacity: 0.48;
 }
-.reader-highlight[data-kind="underline"][data-hovered] {
+.neoread-highlight[data-kind="underline"][data-hovered] {
   background: color-mix(in srgb, var(--annotation-color) 30%, transparent);
 }
-.reader-loading {
+.neoread-loading {
   position: absolute;
   inset: 0;
   display: flex;
@@ -1584,7 +1584,7 @@ kbd {
   .library-sidebar {
     --sidebar-width: 210px;
   }
-  .reader-title {
+  .neoread-title {
     max-width: 210px;
   }
   .toolbar-actions {
@@ -1610,20 +1610,20 @@ kbd {
   .library-footer > span:last-child {
     display: none;
   }
-  .reader-title {
+  .neoread-title {
     max-width: 130px;
   }
-  .reader-title-group {
+  .neoread-title-group {
     gap: 6px;
   }
-  .reader-toolbar {
+  .neoread-toolbar {
     padding: 0 8px;
   }
   .toolbar-actions {
     gap: 0;
   }
-  .reader-title-group > svg,
-  .reader-title-group [data-slot="badge"] {
+  .neoread-title-group > svg,
+  .neoread-title-group [data-slot="badge"] {
     display: none;
   }
   .selection-bar {
@@ -1688,7 +1688,7 @@ kbd {
 .processing-progress[data-indeterminate] [data-slot="progress-indicator"] {
   width: 26%;
 }
-.reader-block-hover {
+.neoread-block-hover {
   position: absolute;
   pointer-events: none;
   z-index: 6;
@@ -1697,7 +1697,7 @@ kbd {
   background: rgb(97 137 113 / 7%);
   box-shadow: 0 0 0 3px rgb(97 137 113 / 3%);
 }
-.reader-block-reference-flash {
+.neoread-block-reference-flash {
   position: absolute;
   pointer-events: none;
   z-index: 6;
@@ -1705,7 +1705,7 @@ kbd {
   background: var(--primary);
   opacity: 0.3;
 }
-:root[data-theme="sepia"] .reader-block-reference-flash {
+:root[data-theme="sepia"] .neoread-block-reference-flash {
   background: var(--brand);
 }
 @keyframes processing-light {
@@ -2015,15 +2015,15 @@ kbd {
   height: 10px;
   -webkit-app-region: drag;
 }
-.app[data-platform="darwin"] :is(.library-topbar, .reader-toolbar) {
+.app[data-platform="darwin"] :is(.library-topbar, .neoread-toolbar) {
   -webkit-app-region: drag;
 }
 .app[data-platform="darwin"]
-  :is(.library-topbar, .reader-toolbar)
+  :is(.library-topbar, .neoread-toolbar)
   :is(button, input, a, select, textarea, [role="button"]) {
   -webkit-app-region: no-drag;
 }
-.app[data-platform="darwin"] .reader-toolbar,
+.app[data-platform="darwin"] .neoread-toolbar,
 .app[data-platform="darwin"]
   .library-sidebar.collapsed
   + .library-main
@@ -3634,17 +3634,17 @@ textarea.paper-note-input {
 
 /* Navigation feedback is independent of the native selection and remains above
    page canvases and saved marks in every reading appearance. */
-.reader-location-highlight {
+.neoread-location-highlight {
   position: absolute;
   inset: 0;
   pointer-events: none;
   z-index: 8;
 }
-.reader-location-highlight > div {
+.neoread-location-highlight > div {
   background: rgb(0 90 255 / 24%);
   border-radius: 2px;
 }
-.pdf-container[data-theme="dark"] .reader-location-highlight > div {
+.pdf-container[data-theme="dark"] .neoread-location-highlight > div {
   background: rgb(100 170 255 / 36%);
 }
 

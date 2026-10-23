@@ -9,7 +9,7 @@ import {
   type UpdateState,
 } from "./updates";
 import { downloadUpdate, type DownloadProgress } from "./update-download";
-import type { UpdateProgress } from "../../../packages/reader-core/src/update-progress";
+import type { UpdateProgress } from "../../../packages/neoread-core/src/update-progress";
 
 export async function startUpdateService(window: BrowserWindow) {
   const directory = app.getPath("userData");
@@ -241,7 +241,7 @@ export async function startUpdateService(window: BrowserWindow) {
             if (!downloading && selected.response === 0 && alive()) {
               try {
                 await shell.openExternal(
-                  "https://github.com/cynicalight/reader/releases/latest",
+                  "https://github.com/cynicalight/NeoRead/releases/latest",
                 );
               } catch {
                 if (alive())
@@ -249,7 +249,7 @@ export async function startUpdateService(window: BrowserWindow) {
                     type: "error",
                     message: "无法打开发布页",
                     detail:
-                      "请在浏览器中访问 https://github.com/cynicalight/reader/releases/latest",
+                      "请在浏览器中访问 https://github.com/cynicalight/NeoRead/releases/latest",
                   });
               }
             }

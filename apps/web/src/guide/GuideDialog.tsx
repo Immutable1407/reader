@@ -226,11 +226,11 @@ export function ReleaseNotesDialog({
 }) {
   const [opening, setOpening] = useState(false);
   const visitGitHub = async (issues: boolean) => {
-    const url = `https://github.com/cynicalight/reader${issues ? "/issues/new/choose" : ""}`;
+    const url = `https://github.com/cynicalight/NeoRead${issues ? "/issues/new/choose" : ""}`;
     setOpening(true);
     try {
-      if (window.readerDesktop?.openExternal) {
-        await window.readerDesktop.openExternal(url);
+      if (window.neoreadDesktop?.openExternal) {
+        await window.neoreadDesktop.openExternal(url);
       } else {
         const opened = window.open(url, "_blank");
         if (!opened) throw new Error("无法打开浏览器，请允许弹出窗口后重试。");

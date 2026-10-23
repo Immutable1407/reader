@@ -17,7 +17,7 @@ import { installCloseFlush } from "./close-flush";
 
 afterEach(() => {
   calls.length = 0;
-  Object.defineProperty(window, "readerDesktop", {
+  Object.defineProperty(window, "neoreadDesktop", {
     configurable: true,
     value: undefined,
   });
@@ -26,7 +26,7 @@ afterEach(() => {
 it("answers the desktop close request without any React tree", async () => {
   let close: (() => Promise<void>) | undefined;
   const remove = vi.fn();
-  Object.defineProperty(window, "readerDesktop", {
+  Object.defineProperty(window, "neoreadDesktop", {
     configurable: true,
     value: {
       onBeforeClose: (callback: () => Promise<void>) => {

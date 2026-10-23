@@ -6,7 +6,7 @@ import {
 import {
   diagnosticError,
   diagnosticRoute,
-} from "../../reader-core/src/diagnostics";
+} from "../../neoread-core/src/diagnostics";
 export { setDiagnosticReporter, reportDiagnostic } from "./diagnostics";
 import {
   consumeTranslationStream,
@@ -210,14 +210,14 @@ export const api = {
     return response.blob();
   },
   navigation: (id: string) =>
-    request<import("@reader/core").DocumentNavigation>(
+    request<import("@neoread/core").DocumentNavigation>(
       `/api/documents/${encodeURIComponent(id)}/navigation`,
     ),
   saveNavigation: (
     id: string,
-    navigation: import("@reader/core").DocumentNavigation,
+    navigation: import("@neoread/core").DocumentNavigation,
   ) =>
-    request<import("@reader/core").DocumentNavigation>(
+    request<import("@neoread/core").DocumentNavigation>(
       `/api/documents/${encodeURIComponent(id)}/navigation`,
       {
         method: "PUT",

@@ -16,7 +16,7 @@ import {
 } from "./library-location";
 let directory: string;
 beforeEach(async () => {
-  directory = await mkdtemp(join(tmpdir(), "reader-location-"));
+  directory = await mkdtemp(join(tmpdir(), "neoread-location-"));
   execute.mockReset();
 });
 afterEach(async () => {

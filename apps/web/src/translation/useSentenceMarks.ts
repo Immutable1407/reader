@@ -40,7 +40,7 @@ export function useSentenceMarks(
   searchQuery = "",
   searchResults: SearchResult[] = [],
 ) {
-  const prefix = `reader-sentences-${useId().replace(/[^a-zA-Z0-9]/g, "")}`;
+  const prefix = `neoread-sentences-${useId().replace(/[^a-zA-Z0-9]/g, "")}`;
   const latest = useRef({
     blocks,
     translations,

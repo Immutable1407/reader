@@ -121,7 +121,7 @@ it("combines translation and selected notes in one Markdown download", async () 
 
 it("includes only checked content in a ZIP and copies Markdown even with images checked", async () => {
   localStorage.setItem(
-    "reader.notes-export",
+    "neoread.notes-export",
     JSON.stringify(["translation", "chat"]),
   );
   await mount();
@@ -150,7 +150,7 @@ it("includes only checked content in a ZIP and copies Markdown even with images 
 });
 
 it("preserves old note preferences and exports notes without calling translation export", async () => {
-  localStorage.setItem("reader.notes-export", JSON.stringify(["paperNote"]));
+  localStorage.setItem("neoread.notes-export", JSON.stringify(["paperNote"]));
   await mount();
   expect(checkbox("译文").getAttribute("aria-checked")).toBe("false");
   await act(async () => button("导出").click());
@@ -164,7 +164,7 @@ it("preserves old note preferences and exports notes without calling translation
 
 it("does not retain ZIP mode after translation is unchecked and disables an empty selection", async () => {
   localStorage.setItem(
-    "reader.notes-export",
+    "neoread.notes-export",
     JSON.stringify(["translation", "paperNote"]),
   );
   await mount();
@@ -259,7 +259,7 @@ it("cancels an in-flight export and ignores its late response", async () => {
 });
 
 it("exports only selected annotation kinds into the original PDF", async () => {
-  localStorage.setItem("reader.notes-export", JSON.stringify(["notes"]));
+  localStorage.setItem("neoread.notes-export", JSON.stringify(["notes"]));
   await mount();
   await act(async () => button("导出 PDF").click());
   expect(exportAnnotatedPDFWithToast).toHaveBeenCalledWith(doc, ["note"]);

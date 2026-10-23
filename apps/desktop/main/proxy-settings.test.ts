@@ -31,7 +31,7 @@ import {
 
 let directory: string;
 beforeEach(async () => {
-  directory = await mkdtemp(join(tmpdir(), "reader-proxy-"));
+  directory = await mkdtemp(join(tmpdir(), "neoread-proxy-"));
   execute.mockReset();
   resolveSystem.mockReset();
   resolveSystem.mockImplementation(async (env) => ({ env: { ...env } }));

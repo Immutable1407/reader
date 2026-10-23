@@ -11,7 +11,7 @@ $ErrorActionPreference = 'Stop'
 Add-Type -TypeDefinition @'
 using System;
 using System.Runtime.InteropServices;
-public static class ReaderProxy {
+public static class NeoReadProxy {
   [StructLayout(LayoutKind.Sequential)]
   public struct Config {
     [MarshalAs(UnmanagedType.Bool)] public bool AutoDetect;
@@ -24,9 +24,9 @@ public static class ReaderProxy {
   public static extern IntPtr GlobalFree(IntPtr memory);
 }
 '@
-$config = New-Object ReaderProxy+Config
+$config = New-Object NeoReadProxy+Config
 try {
-  if (-not [ReaderProxy]::WinHttpGetIEProxyConfigForCurrentUser([ref]$config)) {
+  if (-not [NeoReadProxy]::WinHttpGetIEProxyConfigForCurrentUser([ref]$config)) {
     $code = [Runtime.InteropServices.Marshal]::GetLastWin32Error()
     if ($code -ne 2) { throw "Cannot read system proxy: $code" }
   }
@@ -38,7 +38,7 @@ try {
   } | ConvertTo-Json -Compress
 } finally {
   foreach ($pointer in @($config.AutoConfigUrl, $config.Proxy, $config.Bypass)) {
-    if ($pointer -ne [IntPtr]::Zero) { [void][ReaderProxy]::GlobalFree($pointer) }
+    if ($pointer -ne [IntPtr]::Zero) { [void][NeoReadProxy]::GlobalFree($pointer) }
   }
 }
 `;

@@ -19,14 +19,14 @@ import {
 import { randomBytes } from "node:crypto";
 import { homedir } from "node:os";
 import { agentPath } from "./agent-path";
-import { codexThreadURL } from "../../../packages/reader-core/src/codex-link";
-import { annotationUndoShortcut } from "../../../packages/reader-core/src/undo-shortcut";
-import { zoomCommand } from "../../../packages/reader-core/src/zoom-shortcut";
+import { codexThreadURL } from "../../../packages/neoread-core/src/codex-link";
+import { annotationUndoShortcut } from "../../../packages/neoread-core/src/undo-shortcut";
+import { zoomCommand } from "../../../packages/neoread-core/src/zoom-shortcut";
 import {
   LINK_SCHEMES,
-  parseReaderLink,
-  type ReaderLinkTarget,
-} from "../../../packages/reader-core/src/reader-link";
+  parseNeoReadLink,
+  type NeoReadLinkTarget,
+} from "../../../packages/neoread-core/src/neoread-link";
 import { writeClipboardImage, writeClipboardText } from "./clipboard";
 import {
   ProxySettingsService,
@@ -248,14 +248,14 @@ async function importPaths(
   window?.webContents.send("neoread:library-changed");
   return large;
 }
-// neoread:// (and legacy neoread://) links reach one window. The renderer claims queued links once its
+// neoread:// links reach one window. The renderer claims queued links once its
 // listener exists; later links are sent directly.
 const primary = app.requestSingleInstanceLock();
 if (!primary) app.quit();
-const pendingLinks: ReaderLinkTarget[] = [];
+const pendingLinks: NeoReadLinkTarget[] = [];
 let linksClaimed = false;
 function openLink(link: string) {
-  const target = parseReaderLink(link);
+  const target = parseNeoReadLink(link);
   if (!target) return;
   if (linksClaimed && window && !window.isDestroyed()) {
     window.webContents.send("neoread:open-link", target);
@@ -265,9 +265,7 @@ function openLink(link: string) {
 }
 const linkArgument = (argv: string[]) =>
   argv.find((arg) =>
-    LINK_SCHEMES.some((scheme) =>
-      arg.toLowerCase().startsWith(`${scheme}://`),
-    ),
+    LINK_SCHEMES.some((scheme) => arg.toLowerCase().startsWith(`${scheme}://`)),
   );
 app.on("open-url", (event, link) => {
   event.preventDefault();

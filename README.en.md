@@ -1,10 +1,10 @@
 <p align="center">
-  <img src="assets/logo/reader-logo.svg" width="112" alt="NeoRead logo" />
+  <img src="assets/logo/neoread-logo.svg" width="112" alt="NeoRead logo" />
 </p>
 
 <h1 align="center">NeoRead</h1>
 
-<p align="center"><a href="README.md">简体中文</a> | <b>English</b> | <a href="https://cynicalight.github.io/reader/">Website</a></p>
+<p align="center"><a href="README.md">简体中文</a> | <b>English</b> | <a href="https://cynicalight.github.io/NeoRead/">Website</a></p>
 
 A local-first EPUB / PDF reader for books and papers, with side-by-side translations, annotations, and AI assistance grounded in the text you are reading.
 
@@ -17,7 +17,7 @@ A local-first EPUB / PDF reader for books and papers, with side-by-side translat
 
 NeoRead treats EPUB and PDF as core document formats. It separates books and papers into two libraries and shares contents, search, bilingual reading, annotation, and chat tools across both. Documents, reading progress, and notes stay on your machine. AI features can use an already authenticated Claude Code, Codex CLI, or Kimi Code CLI without a separate API key in NeoRead, or connect to an OpenAI- or Anthropic-compatible API with your own endpoint and key.
 
-Download installers from [GitHub Releases](https://github.com/cynicalight/reader/releases): DMG for Apple Silicon Macs and EXE for Windows x64. Intel Mac builds are paused and Linux installers are not provided; you can also run from source. Installers have no trusted developer certificate and may require approval in your system security settings. See the [packaging and release guide (Chinese)](docs/releasing.md) for the workflow and validation scope.
+Download installers from [GitHub Releases](https://github.com/cynicalight/NeoRead/releases): DMG for Apple Silicon Macs and EXE for Windows x64. Intel Mac builds are paused and Linux installers are not provided; you can also run from source. Installers have no trusted developer certificate and may require approval in your system security settings. See the [packaging and release guide (Chinese)](docs/releasing.md) for the workflow and validation scope.
 
 ## Features
 
@@ -26,7 +26,7 @@ Download installers from [GitHub Releases](https://github.com/cynicalight/reader
 - **Book and paper libraries**: manage books and papers separately and move documents between them. The book library accepts EPUB / PDF; the paper library accepts PDFs up to 50 MB and 150 pages, asking first above 50 pages.
 - **Paper metadata**: edit authors, year, venue, DOI, arXiv ID, abstract, and more; online lookup never overwrites manual edits. Nested categories, tags with smart tag categories, list and sortable table views, reading status, batch actions, duplicate detection and merging, and two-way related papers.
 - **Journal ranks**: with an easyScholar key configured, show journal rank badges next to paper titles and choose which ranking systems to display.
-- **Several ways to add papers**: import by identifier, URL, or title; capture PDFs, metadata, and offline page snapshots from paper pages or search results with the [NeoRead Connector](docs/reader-connector.md) Chrome extension (Chinese); or [migrate from a local Zotero library](docs/zotero-migration.md) (Chinese), including PDFs, metadata, collections, tags, notes, and convertible annotations.
+- **Several ways to add papers**: import by identifier, URL, or title; capture PDFs, metadata, and offline page snapshots from paper pages or search results with the [NeoRead Connector](docs/neoread-connector.md) Chrome extension (Chinese); or [migrate from a local Zotero library](docs/zotero-migration.md) (Chinese), including PDFs, metadata, collections, tags, notes, and convertible annotations.
 - **Citations**: copy or batch-export GB/T 7714, APA, BibTeX, and RIS citations.
 - **Trash**: deleted documents keep their files, annotations, and conversations until permanently deleted, and can be undone or restored.
 
@@ -77,8 +77,8 @@ Captured from the app with the bundled sample documents. Images follow GitHub's 
 Requires **Node.js 22+, pnpm 10.30.3, and Go 1.26.5+**.
 
 ```sh
-git clone https://github.com/cynicalight/reader.git
-cd reader
+git clone https://github.com/cynicalight/NeoRead.git
+cd NeoRead
 pnpm install
 pnpm desktop
 ```
@@ -127,7 +127,7 @@ Original files are stored on the filesystem. Document metadata, progress, annota
 | Unpackaged desktop (`pnpm desktop`) | `~/Library/Application Support/NeoRead Dev/library/` on macOS                                     |
 | Browser development (`pnpm dev`)    | `.reader/` in the project root                                                                   |
 
-If you previously used `pnpm desktop` as your daily app, your old library is at `~/Library/Application Support/NeoRead/library/`. You can copy it to the new directory while NeoRead is closed.
+Legacy Reader libraries usually live at `~/Library/Application Support/Reader/library/` on macOS. See the [migration design](docs/neoread-migration.md) (Chinese); the safe migration flow still needs implementation and upgrade validation.
 
 ```text
 library/
@@ -178,7 +178,7 @@ apps/
 └── connector/     # NeoRead Connector Chrome extension
 packages/
 ├── ui/            # shadcn/ui + Base UI components
-├── reader-core/   # Document, Location, TOC, Annotation, ReaderAdapter
+├── neoread-core/   # Document, Location, TOC, Annotation, ReaderAdapter
 └── api-client/    # OpenAPI types and API client
 docs/              # Scope, roadmap, API contract, and verification notes
 website/           # Static project website and README screenshots
@@ -203,10 +203,10 @@ See the [roadmap](docs/roadmap.md) (Chinese) for longer-term plans.
 
 ## Star History
 
-<a href="https://www.star-history.com/?repos=cynicalight%2Freader&amp;type=date&amp;legend=top-left">
+<a href="https://www.star-history.com/?repos=cynicalight%2FNeoRead&amp;type=date&amp;legend=top-left">
   <picture>
-    <source media="(prefers-color-scheme: dark)" srcset="https://api.star-history.com/svg?repos=cynicalight/reader&amp;type=date&amp;legend=top-left&amp;theme=dark" />
-    <img src="https://api.star-history.com/svg?repos=cynicalight/reader&amp;type=date&amp;legend=top-left" alt="NeoRead GitHub star history" />
+    <source media="(prefers-color-scheme: dark)" srcset="https://api.star-history.com/svg?repos=cynicalight/NeoRead&amp;type=date&amp;legend=top-left&amp;theme=dark" />
+    <img src="https://api.star-history.com/svg?repos=cynicalight/NeoRead&amp;type=date&amp;legend=top-left" alt="NeoRead GitHub star history" />
   </picture>
 </a>
 

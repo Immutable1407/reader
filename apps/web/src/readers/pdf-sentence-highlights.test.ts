@@ -115,7 +115,7 @@ it("maps the real page 6 cached sentences to PDF text despite displaced mathemat
   expect(markedText().join("")).toContain(
     "to the finalizing phase for committing.",
   );
-  expect(page.querySelector(".reader-linked-highlight")).toBeNull();
+  expect(page.querySelector(".neoread-linked-highlight")).toBeNull();
 });
 afterEach(() => {
   nav.destroy();
@@ -154,14 +154,14 @@ it("highlights whole source sentences for a partial translation selection using 
   expect(markedText()).toEqual(sources.slice(1, 3));
   expect(window.getSelection()!.getRangeAt(0)).toBe(range);
   expect(window.getSelection()!.toString()).toBe("确定目标记录。它首先获");
-  expect(page.querySelector(".reader-linked-highlight")).toBeNull();
+  expect(page.querySelector(".neoread-linked-highlight")).toBeNull();
 });
 
 it("never paints a paragraph rectangle for an unmatched sentence and keeps other matched sentences", async () => {
   await nav.focusPassages([
     { blockId: block.id, sources: ["Unavailable sentence.", sources[2]] },
   ]);
-  expect(page.querySelector(".reader-linked-highlight")).toBeNull();
+  expect(page.querySelector(".neoread-linked-highlight")).toBeNull();
   expect(markedText()).toEqual([sources[2]]);
 });
 
@@ -190,7 +190,7 @@ it("waits for a text layer instead of displaying approximate boxes", async () =>
   page.innerHTML = "";
   await nav.focusPassages([{ blockId: block.id, sources: [sources[1]] }]);
   expect(markedText()).toEqual([]);
-  expect(page.querySelector(".reader-linked-highlight")).toBeNull();
+  expect(page.querySelector(".neoread-linked-highlight")).toBeNull();
   textLayer();
   nav.repaint();
   expect(markedText()).toEqual([sources[1]]);

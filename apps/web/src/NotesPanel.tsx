@@ -15,7 +15,7 @@ import {
   Trash2,
 } from "lucide-react";
 import {
-  readerLink,
+  neoreadLink,
   locationLabel,
   type Annotation,
   type Document,
@@ -133,7 +133,7 @@ function PaperNote({
     state === "loading"
       ? ""
       : annotationDigest(annotations, body, (a) =>
-          readerLink({ id: documentId, annotation: a.id }),
+          neoreadLink({ id: documentId, annotation: a.id }),
         );
   // Save on unmount so switching documents never drops the last edit.
   const latest = useRef(body);
@@ -252,7 +252,7 @@ function NoteCard({
             title="复制链接，可在笔记软件中点开回到这里"
             onClick={() =>
               void copyText(
-                readerLink({ id: a.documentId, annotation: a.id }),
+                neoreadLink({ id: a.documentId, annotation: a.id }),
                 "已复制链接",
               )
             }

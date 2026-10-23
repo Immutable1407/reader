@@ -1,11 +1,11 @@
 /// <reference types="vite/client" />
 
 interface Window {
-  readerDesktop?: {
+  neoreadDesktop?: {
     platform: string;
     exportDiagnostics?: () => Promise<boolean>;
     recordDiagnostic?: (
-      event: import("../../../packages/reader-core/src/diagnostics").DiagnosticEvent,
+      event: import("../../../packages/neoread-core/src/diagnostics").DiagnosticEvent,
     ) => void;
     diagnosticSettings?: (settings: unknown) => void;
     checkForUpdates: () => Promise<void>;
@@ -60,7 +60,7 @@ interface Window {
     openExternal: (url: string) => Promise<void>;
     openCodexThread?: (threadId: string) => Promise<void>;
     onOpenLink?: (
-      callback: (target: import("@neoread/core").ReaderLinkTarget) => void,
+      callback: (target: import("@neoread/core").NeoReadLinkTarget) => void,
     ) => () => void;
     onBeforeClose: (callback: () => Promise<void>) => () => void;
     onLibraryChanged: (callback: () => void) => () => void;

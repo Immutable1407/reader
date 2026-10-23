@@ -34,7 +34,7 @@ export function ReaderView({
   useEffect(() => {
     let disposed = false;
     const container = document.createElement("div");
-    container.className = "reader-engine";
+    container.className = "neoread-engine";
     host.current!.append(container);
     let engine: ReaderAdapter | undefined;
     const setup = async () => {
@@ -138,19 +138,19 @@ export function ReaderView({
   }, [blocks]);
   return (
     <div
-      className="reader-stage"
+      className="neoread-stage"
       data-theme={theme.mode}
       data-dark-contrast={theme.pdfDarkContrast ?? "soft"}
     >
-      <div className="reader-host" ref={host} />
+      <div className="neoread-host" ref={host} />
       {loading && (
-        <div className="reader-loading">
+        <div className="neoread-loading">
           <Loader2 className="animate-spin" />
           <p>正在排版，准备阅读…</p>
         </div>
       )}
       {error && (
-        <div className="reader-loading">
+        <div className="neoread-loading">
           <h3>这份文档暂时无法打开</h3>
           <p className="max-w-md text-center text-sm text-muted-foreground">
             {error}

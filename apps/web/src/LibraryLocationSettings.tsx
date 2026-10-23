@@ -9,7 +9,7 @@ import {
 } from "@neoread/ui/components/dialog";
 
 export function LibraryLocationSettings({ open }: { open: boolean }) {
-  const desktop = window.readerDesktop;
+  const desktop = window.neoreadDesktop;
   const [directory, setDirectory] = useState("");
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");

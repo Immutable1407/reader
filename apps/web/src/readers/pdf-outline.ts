@@ -1,5 +1,5 @@
 import type { PDFDocumentProxy } from "pdfjs-dist/types/src/display/api";
-import type { PDFLocation, TOCItem } from "@reader/core";
+import type { PDFLocation, TOCItem } from "@neoread/core";
 
 /** Read the file's navigation, preserving page coordinates for same-page ordering. */
 export async function readPDFOutline(

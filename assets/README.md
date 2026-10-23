@@ -4,8 +4,8 @@ NeoRead 的 logo 与应用图标。所有文件由 `scripts/build-brand-assets.m
 
 | 路径 | 用途 |
 | --- | --- |
-| `logo/reader-logo.svg`、`logo/reader-logo-dark.svg` | 浅色 / 深色圆角方块 logo，README 首图 |
-| `logo/reader-mark.svg`、`logo/reader-mark-light.svg` | 不带底板的标志，分别用于浅色和深色背景 |
+| `logo/neoread-logo.svg`、`logo/neoread-logo-dark.svg` | 浅色 / 深色圆角方块 logo，README 首图 |
+| `logo/neoread-mark.svg`、`logo/neoread-mark-light.svg` | 不带底板的标志，分别用于浅色和深色背景 |
 | `logo/png/` | 256 / 512 / 1024 px 位图 |
 | `icons/macos/icon.icns` | macOS 应用图标（`icon.svg` 为 1024 px 网格源图） |
 | `icons/windows/icon.ico` | Windows 应用与安装器图标，16–256 px |

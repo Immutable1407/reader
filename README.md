@@ -1,10 +1,10 @@
 <p align="center">
-  <img src="assets/logo/reader-logo.svg" width="112" alt="NeoRead logo" />
+  <img src="assets/logo/neoread-logo.svg" width="112" alt="NeoRead logo" />
 </p>
 
 <h1 align="center">NeoRead</h1>
 
-<p align="center"><b>简体中文</b> | <a href="README.en.md">English</a> | <a href="https://cynicalight.github.io/reader/">官网</a></p>
+<p align="center"><b>简体中文</b> | <a href="README.en.md">English</a> | <a href="https://cynicalight.github.io/NeoRead/">官网</a></p>
 
 一个本地优先的 EPUB / PDF AI 阅读器，用于阅读电子书与论文、对照译文、记录批注，以及结合原文向 AI 提问。
 
@@ -14,7 +14,7 @@
 
 NeoRead 以 EPUB 和 PDF 为两种核心文档格式，将图书库与论文库分开管理，提供目录、搜索、双语对照、批注与 AI 助读。文档、阅读进度和笔记保存在本机。AI 功能可以通过已登录的 Claude Code、Codex CLI 或 Kimi Code CLI 调用，无需在 NeoRead 中另填 API Key；也可以填写 API 地址和 Key，接入 OpenAI 或 Anthropic 兼容接口。
 
-可从[官网](https://cynicalight.github.io/reader/)了解项目，或在 [GitHub Releases](https://github.com/cynicalight/reader/releases) 下载安装包：macOS（Apple Silicon）DMG 与 Windows x64 EXE。Intel Mac 安装包暂停构建，Linux 不提供安装包，也可以从源码运行。安装包没有受系统信任的开发者证书，首次运行可能需要允许系统安全提示。流程与验证范围见[安装包与发版说明](docs/releasing.md)。
+可从[官网](https://cynicalight.github.io/NeoRead/)了解项目，或在 [GitHub Releases](https://github.com/cynicalight/NeoRead/releases) 下载安装包：macOS（Apple Silicon）DMG 与 Windows x64 EXE。Intel Mac 安装包暂停构建，Linux 不提供安装包，也可以从源码运行。安装包没有受系统信任的开发者证书，首次运行可能需要允许系统安全提示。流程与验证范围见[安装包与发版说明](docs/releasing.md)。
 
 ## 功能
 
@@ -23,7 +23,7 @@ NeoRead 以 EPUB 和 PDF 为两种核心文档格式，将图书库与论文库�
 - **图书库与论文库**：分别管理电子书和论文，可在两库间移动文档。图书库支持 EPUB / PDF；论文库只收 PDF，单个文件不超过 50 MB、150 页，超过 50 页时会先询问。
 - **论文信息**：编辑作者、年份、出处、DOI、arXiv、摘要等信息；在线补全不覆盖手动修改。支持嵌套分类、标签与智能标签分类、列表与可排序表格视图、阅读状态、批量操作、重复论文检测与合并、双向相关论文。
 - **期刊评级**：配置 easyScholar 密钥后，在论文标题旁显示期刊评级，可选择要显示的评级体系。
-- **多种收录方式**：通过编号、链接或标题导入；安装 [NeoRead Connector](docs/reader-connector.md) Chrome 扩展后，可从论文页面或搜索结果收录 PDF、论文信息和离线网页快照；也可[从本机 Zotero 迁移](docs/zotero-migration.md) PDF、论文信息、分类、标签、笔记和可转换的批注。
+- **多种收录方式**：通过编号、链接或标题导入；安装 [NeoRead Connector](docs/neoread-connector.md) Chrome 扩展后，可从论文页面或搜索结果收录 PDF、论文信息和离线网页快照；也可[从本机 Zotero 迁移](docs/zotero-migration.md) PDF、论文信息、分类、标签、笔记和可转换的批注。
 - **引用导出**：支持 GB/T 7714、APA、BibTeX 和 RIS，可复制单篇引用或批量导出。
 - **回收站**：删除后保留原文件、批注和对话，可撤销或恢复；确认彻底删除后才移除数据。
 
@@ -75,8 +75,8 @@ NeoRead 以 EPUB 和 PDF 为两种核心文档格式，将图书库与论文库�
 需要 **Node.js 22+、pnpm 10.30.3 和 Go 1.26.5+**。
 
 ```sh
-git clone https://github.com/cynicalight/reader.git
-cd reader
+git clone https://github.com/cynicalight/NeoRead.git
+cd NeoRead
 pnpm install
 pnpm desktop
 ```
@@ -129,7 +129,7 @@ CLI 在临时空目录中运行。Claude 配置为禁用工具与 MCP；Codex �
 
 书库保存路径（包括上级目录）不能包含 `?`。自定义位置记录在 `userData/library-location.json`，命令行也会跟随该位置。若外接存储设备未连接或保存位置已被移走，桌面版会停止启动并提示错误，不会自动创建空书库。上表是未自定义时的默认目录。
 
-此前用 `pnpm desktop` 作为日常应用的人，旧书库仍在 `~/Library/Application Support/NeoRead/library/`；关闭 NeoRead 后可将其复制到新目录。
+旧 Reader 的书库通常在 `~/Library/Application Support/Reader/library/`。更名涉及的数据迁移方案见[迁移设计](docs/neoread-migration.md)，尚待实现和升级验收。
 
 ```text
 library/
@@ -180,7 +180,7 @@ apps/
 └── connector/     # NeoRead Connector Chrome 扩展
 packages/
 ├── ui/            # shadcn/ui + Base UI 组件
-├── reader-core/   # Document、Location、TOC、Annotation、ReaderAdapter
+├── neoread-core/   # Document、Location、TOC、Annotation、ReaderAdapter
 └── api-client/    # OpenAPI 类型与 API 客户端
 docs/              # 范围、路线图、接口与验证记录
 website/           # 项目官网静态页面与 README 截图
@@ -207,10 +207,10 @@ assets/            # Logo 源文件与应用图标
 
 ## Star History
 
-<a href="https://www.star-history.com/?repos=cynicalight%2Freader&amp;type=date&amp;legend=top-left">
+<a href="https://www.star-history.com/?repos=cynicalight%2FNeoRead&amp;type=date&amp;legend=top-left">
   <picture>
-    <source media="(prefers-color-scheme: dark)" srcset="https://api.star-history.com/svg?repos=cynicalight/reader&amp;type=date&amp;legend=top-left&amp;theme=dark" />
-    <img src="https://api.star-history.com/svg?repos=cynicalight/reader&amp;type=date&amp;legend=top-left" alt="NeoRead 的 GitHub Star 增长历史" />
+    <source media="(prefers-color-scheme: dark)" srcset="https://api.star-history.com/svg?repos=cynicalight/NeoRead&amp;type=date&amp;legend=top-left&amp;theme=dark" />
+    <img src="https://api.star-history.com/svg?repos=cynicalight/NeoRead&amp;type=date&amp;legend=top-left" alt="NeoRead 的 GitHub Star 增长历史" />
   </picture>
 </a>
 

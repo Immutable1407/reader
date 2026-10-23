@@ -13,7 +13,7 @@ import (
 	"strings"
 )
 
-var readerVersion = "dev"
+var neoreadVersion = "dev"
 
 const usage = `neoread：在终端里读取和导入 NeoRead 书库中的文档（需要 NeoRead 正在运行）。
 
@@ -79,7 +79,7 @@ func run(args []string, out io.Writer) error {
 		return nil
 	}
 	if args[0] == "version" || args[0] == "--version" {
-		fmt.Fprintln(out, "neoread", readerVersion)
+		fmt.Fprintln(out, "neoread", neoreadVersion)
 		return nil
 	}
 	cmd, ok := commands[args[0]]

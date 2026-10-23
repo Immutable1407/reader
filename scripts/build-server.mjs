@@ -3,7 +3,7 @@ import { mkdir } from "node:fs/promises";
 import { spawnSync } from "node:child_process";
 import { fileURLToPath } from "node:url";
 
-const readerVersion = JSON.parse(
+const neoreadVersion = JSON.parse(
   readFileSync(new URL("../package.json", import.meta.url), "utf8"),
 ).version;
 const commitResult = spawnSync("git", ["rev-parse", "HEAD"], {
@@ -24,9 +24,9 @@ await mkdir(new URL("../apps/desktop/bin/", import.meta.url), {
 for (const [name, ldflags] of [
   [
     "neoread-server",
-    `-X main.readerVersion=${readerVersion} -X main.buildCommit=${buildCommit}`,
+    `-X main.neoreadVersion=${neoreadVersion} -X main.buildCommit=${buildCommit}`,
   ],
-  ["neoread", `-X main.readerVersion=${readerVersion}`],
+  ["neoread", `-X main.neoreadVersion=${neoreadVersion}`],
 ]) {
   const output = new URL(`../apps/desktop/bin/${name}${exe}`, import.meta.url);
   const result = spawnSync(

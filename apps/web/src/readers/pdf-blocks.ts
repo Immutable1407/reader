@@ -90,13 +90,13 @@ export class PDFBlockOverlay {
     private onFocus: (block: PDFBlock) => boolean = () => false,
   ) {
     this.overlay = document.createElement("div");
-    this.overlay.className = "reader-block-hover";
+    this.overlay.className = "neoread-block-hover";
     this.root = createRoot(this.overlay);
-    this.linked.className = "reader-block-hover reader-block-counterpart";
+    this.linked.className = "neoread-block-hover neoread-block-counterpart";
     this.linked.setAttribute("aria-hidden", "true");
-    this.focus.className = "reader-block-hover reader-block-focus";
+    this.focus.className = "neoread-block-hover neoread-block-focus";
     this.focus.setAttribute("aria-hidden", "true");
-    this.referenceFlash.className = "reader-block-reference-flash";
+    this.referenceFlash.className = "neoread-block-reference-flash";
     this.referenceFlash.setAttribute("aria-hidden", "true");
     this.focus.addEventListener("animationend", () => {
       if (!this.focusId) this.focus.remove();
@@ -129,7 +129,7 @@ export class PDFBlockOverlay {
     for (const id of wanted) {
       if (!this.searchBlocks.has(id)) {
         const element = document.createElement("div");
-        element.className = "reader-block-search-hit";
+        element.className = "neoread-block-search-hit";
         element.setAttribute("aria-hidden", "true");
         this.searchBlocks.set(id, element);
       }

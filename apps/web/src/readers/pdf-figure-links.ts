@@ -91,7 +91,7 @@ export class PDFFigureLinks {
           range.setStart(entry.node, startOffset);
           range.setEnd(entry.node, endOffset);
           const link = document.createElement("a");
-          link.href = `#reader-figure-${reference.label}`;
+          link.href = `#neoread-figure-${reference.label}`;
           link.dataset.figureReference = reference.label;
           link.setAttribute("aria-label", `跳转到 ${reference.text}`);
           // The canvas supplies visible glyphs. Preserve the invisible text

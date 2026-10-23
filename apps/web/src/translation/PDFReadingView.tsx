@@ -1,5 +1,5 @@
 import { figureTarget } from "../readers/figure-references";
-import { readerLayout, updateReaderLayout } from "../reader-layout";
+import { readerLayout, updateReaderLayout } from "../neoread-layout";
 import {
   useEffect,
   useLayoutEffect,

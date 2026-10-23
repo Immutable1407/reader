@@ -236,7 +236,7 @@ it("allows reading shortcuts beside a pinned preview but not from its controls",
   function Harness() {
     useShortcut("readerLeft", run);
     return (
-      <div role="dialog" data-reader-floating-preview="">
+      <div role="dialog" data-neoread-floating-preview="">
         <button>Preview</button>
       </div>
     );

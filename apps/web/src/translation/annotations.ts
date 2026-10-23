@@ -80,7 +80,7 @@ export function paintTranslatedAnnotations(
   if (!api || !Highlight) return;
   const ranges = translatedAnnotationRanges(host, annotations, translations);
   api.set(
-    "reader-translation-marks",
+    "neoread-translation-marks",
     new Highlight(
       ...ranges
         .filter((r) => r.annotation.kind !== "underline")
@@ -88,7 +88,7 @@ export function paintTranslatedAnnotations(
     ),
   );
   api.set(
-    "reader-translation-underlines",
+    "neoread-translation-underlines",
     new Highlight(
       ...ranges
         .filter((r) => r.annotation.kind === "underline")
@@ -96,8 +96,8 @@ export function paintTranslatedAnnotations(
     ),
   );
   return () => {
-    api.delete("reader-translation-marks");
-    api.delete("reader-translation-underlines");
+    api.delete("neoread-translation-marks");
+    api.delete("neoread-translation-underlines");
   };
 }
 

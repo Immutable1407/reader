@@ -3,7 +3,7 @@
   scrollbar-width: thin;
   scrollbar-color: transparent transparent;
 }
-[data-reader-scrolling] {
+[data-neoread-scrolling] {
   scrollbar-color: rgb(128 128 128 / 55%) transparent;
 }
 *::-webkit-scrollbar {
@@ -20,7 +20,7 @@
   border-radius: 8px;
   background-clip: padding-box;
 }
-[data-reader-scrolling]::-webkit-scrollbar-thumb {
+[data-neoread-scrolling]::-webkit-scrollbar-thumb {
   background-color: rgb(128 128 128 / 55%);
 }
 [data-slot="scroll-area-scrollbar"] {
@@ -28,7 +28,7 @@
   pointer-events: none;
   transition: opacity 180ms ease;
 }
-[data-slot="scroll-area"]:has(> [data-reader-scrolling])
+[data-slot="scroll-area"]:has(> [data-neoread-scrolling])
   > [data-slot="scroll-area-scrollbar"],
 [data-slot="scroll-area-scrollbar"]:active {
   opacity: 1;

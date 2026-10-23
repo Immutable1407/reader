@@ -1,6 +1,6 @@
 import { annotationsInRects, sentenceRectsAtPoint } from "./annotation-hover";
 import { useTranslations } from "./useTranslations";
-import { readerLayout, updateReaderLayout } from "../reader-layout";
+import { readerLayout, updateReaderLayout } from "../neoread-layout";
 import {
   useEffect,
   useRef,

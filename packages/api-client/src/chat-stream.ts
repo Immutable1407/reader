@@ -1,4 +1,4 @@
-import type { ToolActivity } from "@reader/core";
+import type { ToolActivity } from "@neoread/core";
 /** Decoded frozen wire contract. No provider-native events enter the renderer. */
 export type ChatStreamEvent =
   | { event: "tool"; data: ToolActivity }

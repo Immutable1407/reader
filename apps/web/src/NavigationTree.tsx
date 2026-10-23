@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { Bookmark, ChevronRight, SquareCheck, Trash2, X } from "lucide-react";
-import { api } from "@reader/api";
+import { api } from "@neoread/api";
 import type {
   Annotation,
   DocumentLocation,
@@ -8,21 +8,21 @@ import type {
   NavigationEdit,
   PDFBlock,
   TOCItem,
-} from "@reader/core";
-import { Button } from "@reader/ui/components/button";
-import { ScrollArea } from "@reader/ui/components/scroll-area";
-import { Input } from "@reader/ui/components/input";
+} from "@neoread/core";
+import { Button } from "@neoread/ui/components/button";
+import { ScrollArea } from "@neoread/ui/components/scroll-area";
+import { Input } from "@neoread/ui/components/input";
 import {
   Collapsible,
   CollapsibleContent,
   CollapsibleTrigger,
-} from "@reader/ui/components/collapsible";
+} from "@neoread/ui/components/collapsible";
 import {
   ContextMenu,
   ContextMenuContent,
   ContextMenuItem,
   ContextMenuTrigger,
-} from "@reader/ui/components/context-menu";
+} from "@neoread/ui/components/context-menu";
 import { toast } from "sonner";
 import {
   buildNavigation,

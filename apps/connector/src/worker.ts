@@ -28,7 +28,8 @@ async function save(
   library: "papers" | "books" = "papers",
 ): Promise<Result> {
   const { secret } = await chrome.storage.local.get("secret");
-  if (!secret) return { ok: false, error: "请先打开 NeoRead 后重新打开插件" };
+  if (!secret)
+    return { ok: false, error: "请先打开 NeoRead / Reader 后重新打开插件" };
   const blob = await downloadPDF(candidate);
   const form = new FormData();
   form.append("library", library);
@@ -47,7 +48,10 @@ async function save(
       body: form,
     });
   } catch {
-    return { ok: false, error: "无法连接 NeoRead，请确认桌面应用正在运行" };
+    return {
+      ok: false,
+      error: "无法连接 NeoRead / Reader，请确认桌面应用正在运行",
+    };
   }
   const data = await response
     .json()

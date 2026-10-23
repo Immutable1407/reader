@@ -1,4 +1,4 @@
-import { saveReaderSettings } from "./reader-settings";
+import { saveReaderSettings } from "./neoread-settings";
 import { flushProgress } from "./progress";
 import { useReaderStore } from "./store";
 
@@ -8,7 +8,7 @@ export function installCloseFlush() {
     void flushProgress().catch(() => {});
   };
   window.addEventListener("pagehide", flush);
-  const removeClose = window.readerDesktop?.onBeforeClose(async () => {
+  const removeClose = window.neoreadDesktop?.onBeforeClose(async () => {
     await flushProgress();
     await saveReaderSettings(useReaderStore.getState().theme);
   });

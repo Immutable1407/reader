@@ -1,7 +1,7 @@
 // @vitest-environment jsdom
 import { readFileSync } from "node:fs";
 import { afterEach, beforeEach, expect, it, vi } from "vitest";
-import type { Message } from "@reader/core";
+import type { Message } from "@neoread/core";
 import type { ChatSession } from "./chat-session";
 
 type LiveCase = {

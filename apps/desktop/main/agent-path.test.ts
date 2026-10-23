@@ -56,7 +56,7 @@ describe("agent process PATH", () => {
   it.skipIf(process.platform === "win32")(
     "launches an npm-style CLI and resolves its node interpreter",
     async () => {
-      const root = mkdtempSync(join(tmpdir(), "reader-agent-path-"));
+      const root = mkdtempSync(join(tmpdir(), "neoread-agent-path-"));
       try {
         const nodeDir = join(root, "node", "bin");
         const npmPrefix = join(root, "global");

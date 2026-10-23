@@ -32,7 +32,7 @@ Opt-in real Codex test (uses the existing CLI login and subscription):
 
 ```sh
 cd apps/server
-NEOREAD_TEST_CODEX=1 go test ./internal/reader -run '^TestLiveCodex$' -v -count=1
+NEOREAD_TEST_CODEX=1 go test ./internal/neoread -run '^TestLiveCodex$' -v -count=1
 ```
 
 The default automated test suite skips this call. To additionally test a paper image, set `NEOREAD_TEST_IMAGE` to its absolute PNG path and optionally `NEOREAD_TEST_OUTPUT` to a Markdown destination. The test runs in a fresh temporary working directory, disables shell tools and avoids user/project instruction configuration. It uses the CLI's authentication; NeoRead does not inspect credentials.

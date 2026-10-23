@@ -5,7 +5,7 @@ import { Button } from "@neoread/ui/components/button";
 
 /** Puts the bundled `neoread` command on PATH for terminals and coding agents. */
 export function CommandLineSettings({ open }: { open: boolean }) {
-  const desktop = window.readerDesktop;
+  const desktop = window.neoreadDesktop;
   const [status, setStatus] = useState<CommandLineStatus | null>(null);
   const [busy, setBusy] = useState(false);
   const [notice, setNotice] = useState("");

@@ -77,7 +77,7 @@ export async function runAgent(
       apiKey: {
         name: "NeoRead API",
         resolve: async () => ({
-          auth: { apiKey: input.key || "reader-keyless" },
+          auth: { apiKey: input.key || "neoread-keyless" },
         }),
       },
     },
@@ -89,7 +89,7 @@ export async function runAgent(
   modelRuntime.registerNativeProvider(provider);
   await modelRuntime.setRuntimeApiKey(
     model.provider,
-    input.key || "reader-keyless",
+    input.key || "neoread-keyless",
   );
   const resourceLoader: ResourceLoader = {
     getExtensions: () => ({

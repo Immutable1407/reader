@@ -64,7 +64,7 @@ const png = (source, target, size) =>
     source,
   ]);
 
-const tmp = await mkdtemp(join(tmpdir(), "reader-brand-"));
+const tmp = await mkdtemp(join(tmpdir(), "neoread-brand-"));
 try {
   const write = async (path, text) => {
     await mkdir(dirname(path), { recursive: true });
@@ -72,14 +72,14 @@ try {
     return path;
   };
   const source = {
-    large: await write(join(assets, "logo/reader-logo.svg"), logo()),
+    large: await write(join(assets, "logo/neoread-logo.svg"), logo()),
     medium: await write(
       join(tmp, "medium.svg"),
       logo({ width: weight.medium }),
     ),
     small: await write(join(tmp, "small.svg"), logo({ width: weight.small })),
     dark: await write(
-      join(assets, "logo/reader-logo-dark.svg"),
+      join(assets, "logo/neoread-logo-dark.svg"),
       logo({ tile: ink, stroke: ivory }),
     ),
     square: await write(join(tmp, "square.svg"), logo({ rx: 0 })),
@@ -95,18 +95,18 @@ try {
   };
   // The bare mark, cropped to its bounds, for surfaces that supply their own background.
   await write(
-    join(assets, "logo/reader-mark.svg"),
+    join(assets, "logo/neoread-mark.svg"),
     svg("25.5 17 50 67", mark(ink, weight.large)),
   );
   await write(
-    join(assets, "logo/reader-mark-light.svg"),
+    join(assets, "logo/neoread-mark-light.svg"),
     svg("25.5 17 50 67", mark(ivory, weight.large)),
   );
 
   await mkdir(join(assets, "logo/png"), { recursive: true });
   for (const size of [256, 512, 1024])
-    png(source.large, join(assets, `logo/png/reader-logo-${size}.png`), size);
-  png(source.dark, join(assets, "logo/png/reader-logo-dark-1024.png"), 1024);
+    png(source.large, join(assets, `logo/png/neoread-logo-${size}.png`), size);
+  png(source.dark, join(assets, "logo/png/neoread-logo-dark-1024.png"), 1024);
 
   // macOS .icns from a full iconset; the 16 and 32 pt slots use heavier strokes.
   const iconset = join(tmp, "icon.iconset");

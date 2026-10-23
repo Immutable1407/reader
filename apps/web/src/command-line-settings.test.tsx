@@ -22,7 +22,7 @@ function desktop(initial: CommandLineStatus, platform = "darwin") {
       installed,
     })),
   };
-  vi.stubGlobal("readerDesktop", api);
+  vi.stubGlobal("neoreadDesktop", api);
   return api;
 }
 const render = (open = true) =>

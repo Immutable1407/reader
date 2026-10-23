@@ -41,9 +41,9 @@ vi.mock("@neoread/ui/components/dialog", () => {
 });
 // These tests cover Agent requests and configuration, not hidden appearance or
 // paper-library panels. Keep the real tabs and the controls exercised below.
-vi.mock("@reader/ui/components/tabs", async (importOriginal) => {
+vi.mock("@neoread/ui/components/tabs", async (importOriginal) => {
   const actual =
-    await importOriginal<typeof import("@reader/ui/components/tabs")>();
+    await importOriginal<typeof import("@neoread/ui/components/tabs")>();
   return {
     ...actual,
     TabsContent: (props: ComponentProps<typeof actual.TabsContent>) =>
@@ -147,13 +147,13 @@ beforeEach(() => {
 afterEach(async () => {
   await act(async () => root.unmount());
   host.remove();
-  delete window.readerDesktop;
+  delete window.neoreadDesktop;
   vi.unstubAllGlobals();
 });
 
 it("groups proxy settings and log export under diagnostics without a network tab", async () => {
   const exportLogs = vi.fn(async () => true);
-  window.readerDesktop = {
+  window.neoreadDesktop = {
     platform: "darwin",
     proxySettings: vi.fn(async (): Promise<ProxySettingsState> => ({
       settings: { mode: "manual", host: "127.0.0.1", port: 7890 },

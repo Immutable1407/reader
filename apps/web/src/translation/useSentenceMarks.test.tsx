@@ -337,7 +337,7 @@ it("coalesces pointer bursts and ignores block-overlay mutations without rematch
   expect(reads).not.toHaveBeenCalled();
   await act(async () => {
     const overlay = document.createElement("div");
-    overlay.className = "reader-block-hover";
+    overlay.className = "neoread-block-hover";
     host.querySelector(".page")!.append(overlay);
     await vi.advanceTimersByTimeAsync(40);
   });

@@ -136,7 +136,7 @@ importers:
         version: link:../../packages/api-client
       '@neoread/core':
         specifier: workspace:*
-        version: link:../../packages/reader-core
+        version: link:../../packages/neoread-core
       '@neoread/ui':
         specifier: workspace:*
         version: link:../../packages/ui
@@ -224,12 +224,12 @@ importers:
     dependencies:
       '@neoread/core':
         specifier: workspace:*
-        version: link:../reader-core
+        version: link:../neoread-core
       openapi-fetch:
         specifier: ^0.17.0
         version: 0.17.0
 
-  packages/reader-core: {}
+  packages/neoread-core: {}
 
   packages/ui:
     dependencies:

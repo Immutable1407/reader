@@ -709,7 +709,7 @@ export function Settings({
             className="settings-panel"
             keepMounted
           >
-            {window.readerDesktop?.proxySettings && (
+            {window.neoreadDesktop?.proxySettings && (
               <div className="mb-6">
                 <ProxySettings open={open} />
               </div>
@@ -882,7 +882,7 @@ export function Settings({
             </section>
           </TabsContent>
           <TabsContent value="papers" className="settings-panel" keepMounted>
-            {window.readerDesktop?.libraryLocation && (
+            {window.neoreadDesktop?.libraryLocation && (
               <div className="mb-6">
                 <LibraryLocationSettings open={open} />
               </div>

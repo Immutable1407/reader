@@ -12,7 +12,7 @@ export function installCitationHover(
   let request = 0;
   const link = (target: EventTarget | null) =>
     target instanceof Element
-      ? target.closest<HTMLAnchorElement>('a[href^="#reader-citation?"]')
+      ? target.closest<HTMLAnchorElement>('a[href^="#neoread-citation?"]')
       : null;
   const clear = () => {
     clearTimeout(timer);

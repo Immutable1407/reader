@@ -8,7 +8,7 @@ Local-first EPUB/PDF reader. Use Chinese for user-facing communication. Keep cha
 - `apps/server/cmd/neoread`: the `neoread` command line; a client of the running app found through `server.json` in the library directory (`docs/cli.md`).
 - `apps/desktop`: Electron main/preload; starts Go, waits for readiness, stops it on exit.
 - `packages/ui`: actual shadcn Base Nova registry components, Base UI + Lucide. Do not replace primitives with handmade modals/buttons/tabs.
-- `packages/reader-core`: Document/Location/Annotation interfaces.
+- `packages/neoread-core`: Document/Location/Annotation interfaces.
 - `packages/api-client`: generated OpenAPI types and transport.
 
 Agent chat streams through the existing SSE endpoint: Codex App Server `item/agentMessage/delta`, Claude Code partial stream-json events, and Kimi ACP chunks. Keep text/image paths incremental, require provider completion before saving, and never append a fallback answer after visible partial output. Frontend contract: `docs/agent-streaming-contract.md`.

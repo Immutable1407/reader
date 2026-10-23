@@ -213,7 +213,7 @@ describe("guide host", () => {
       .mockReturnValue({ opener: null } as Window);
     await act(async () => button("去 GitHub 点 Star").click());
     expect(open).toHaveBeenCalledWith(
-      "https://github.com/cynicalight/reader",
+      "https://github.com/cynicalight/NeoRead",
       "_blank",
     );
     expect(api.saveGuidePreferences).toHaveBeenCalledWith({
@@ -228,7 +228,7 @@ describe("guide host", () => {
       seenVersion: "0.0.1",
     });
     const openExternal = vi.fn().mockResolvedValue(undefined);
-    Object.defineProperty(window, "readerDesktop", {
+    Object.defineProperty(window, "neoreadDesktop", {
       configurable: true,
       value: { openExternal },
     });
@@ -237,14 +237,14 @@ describe("guide host", () => {
       expect(document.querySelector('[data-slot="dialog-close"]')).toBeNull();
       await act(async () => button("已点 Star，去提 Issue").click());
       expect(openExternal).toHaveBeenCalledWith(
-        "https://github.com/cynicalight/reader/issues/new/choose",
+        "https://github.com/cynicalight/NeoRead/issues/new/choose",
       );
       expect(api.saveGuidePreferences).toHaveBeenCalledWith({
         onboarded: true,
         seenVersion: "9.9.9",
       });
     } finally {
-      Object.defineProperty(window, "readerDesktop", {
+      Object.defineProperty(window, "neoreadDesktop", {
         configurable: true,
         value: undefined,
       });

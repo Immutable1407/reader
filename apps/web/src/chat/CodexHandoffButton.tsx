@@ -3,7 +3,7 @@ import { ExternalLink, LoaderCircle } from "lucide-react";
 import { api } from "@neoread/api";
 import { Button } from "@neoread/ui/components/button";
 import { toast } from "sonner";
-import { codexThreadURL } from "../../../../packages/reader-core/src/codex-link";
+import { codexThreadURL } from "../../../../packages/neoread-core/src/codex-link";
 
 export function CodexHandoffButton({
   documentId,
@@ -26,8 +26,8 @@ export function CodexHandoffButton({
         : await api.codexHandoff(documentId);
       const url = codexThreadURL(result.threadId);
       try {
-        if (window.readerDesktop?.openCodexThread) {
-          await window.readerDesktop.openCodexThread(result.threadId);
+        if (window.neoreadDesktop?.openCodexThread) {
+          await window.neoreadDesktop.openCodexThread(result.threadId);
         } else {
           window.location.assign(url);
         }

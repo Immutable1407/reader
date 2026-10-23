@@ -26,12 +26,12 @@ it("shows saved annotation geometry without parsed blocks or text layers", () =>
     rects: [{ x: 0.1, y: 0.2, width: 0.3, height: 0.02 }],
   });
   const mark = page.querySelector<HTMLElement>(
-    ".reader-location-highlight > div",
+    ".neoread-location-highlight > div",
   )!;
   expect(mark.style.left).toBe("10%");
   expect(mark.style.width).toBe("30%");
   vi.advanceTimersByTime(3000);
-  expect(page.querySelector(".reader-location-highlight")).toBeNull();
+  expect(page.querySelector(".neoread-location-highlight")).toBeNull();
 });
 it("waits for the text layer and highlights only the search match after it renders", () => {
   marks.show({ type: "pdf", page: 1, quote: "target" });
@@ -47,11 +47,11 @@ it("waits for the text layer and highlights only the search match after it rende
   marks.paint();
   expect(getRects).toHaveBeenCalled();
   expect(
-    page.querySelector<HTMLElement>(".reader-location-highlight > div")!.style
+    page.querySelector<HTMLElement>(".neoread-location-highlight > div")!.style
       .width,
   ).toBe("6%");
   marks.paint();
-  expect(page.querySelectorAll(".reader-location-highlight")).toHaveLength(1);
+  expect(page.querySelectorAll(".neoread-location-highlight")).toHaveLength(1);
   Range.prototype.getClientRects = rangeRects;
 });
 it("replaces old targets and clears pending feedback", () => {
@@ -61,10 +61,10 @@ it("replaces old targets and clears pending feedback", () => {
     rects: [{ x: 0, y: 0, width: 1, height: 1 }],
   });
   marks.show({ type: "pdf", page: 2, quote: "missing" });
-  expect(page.querySelector(".reader-location-highlight")).toBeNull();
+  expect(page.querySelector(".neoread-location-highlight")).toBeNull();
   marks.clear();
   marks.paint();
-  expect(page.querySelector(".reader-location-highlight")).toBeNull();
+  expect(page.querySelector(".neoread-location-highlight")).toBeNull();
 });
 
 it("falls back to the paragraph when repaired text cannot match PDF text", () => {
@@ -73,7 +73,7 @@ it("falls back to the paragraph when repaired text cannot match PDF text", () =>
     { x: 0.2, y: 0.3, width: 0.4, height: 0.1 },
   ]);
   expect(
-    page.querySelector<HTMLElement>(".reader-location-highlight > div")!.style
+    page.querySelector<HTMLElement>(".neoread-location-highlight > div")!.style
       .width,
   ).toBe("40%");
 });
@@ -98,7 +98,7 @@ it("distinguishes repeated words using the selected occurrence in its paragraph"
         y: 0.5,
       });
       expect(
-        page.querySelector<HTMLElement>(".reader-location-highlight > div")!
+        page.querySelector<HTMLElement>(".neoread-location-highlight > div")!
           .style.left,
       ).toBe(start + "%");
     }

@@ -1,6 +1,6 @@
 import { contextBridge, ipcRenderer } from "electron";
-import type { ProxySettings } from "../../../packages/reader-core/src/proxy-settings";
-import type { UpdateProgress } from "../../../packages/reader-core/src/update-progress";
+import type { ProxySettings } from "../../../packages/neoread-core/src/proxy-settings";
+import type { UpdateProgress } from "../../../packages/neoread-core/src/update-progress";
 async function proxyRequest(channel: string, ...args: unknown[]) {
   try {
     return await ipcRenderer.invoke(channel, ...args);
@@ -15,7 +15,7 @@ async function proxyRequest(channel: string, ...args: unknown[]) {
     );
   }
 }
-contextBridge.exposeInMainWorld("readerDesktop", {
+contextBridge.exposeInMainWorld("neoreadDesktop", {
   platform: process.platform,
   exportDiagnostics: () => ipcRenderer.invoke("neoread:export-diagnostics"),
   recordDiagnostic: (event: unknown) =>
@@ -27,7 +27,8 @@ contextBridge.exposeInMainWorld("readerDesktop", {
     const listener = (_event: unknown, progress: UpdateProgress | null) =>
       callback(progress);
     ipcRenderer.on("neoread:update-progress", listener);
-    return () => ipcRenderer.removeListener("neoread:update-progress", listener);
+    return () =>
+      ipcRenderer.removeListener("neoread:update-progress", listener);
   },
   proxySettings: () => proxyRequest("neoread:proxy-settings"),
   saveProxySettings: (settings: ProxySettings) =>
@@ -97,6 +98,7 @@ contextBridge.exposeInMainWorld("readerDesktop", {
   onLibraryChanged: (callback: () => void) => {
     const listener = () => callback();
     ipcRenderer.on("neoread:library-changed", listener);
-    return () => ipcRenderer.removeListener("neoread:library-changed", listener);
+    return () =>
+      ipcRenderer.removeListener("neoread:library-changed", listener);
   },
 });

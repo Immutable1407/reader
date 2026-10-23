@@ -9,8 +9,7 @@ module.exports = {
   compression: "maximum",
   npmRebuild: false,
   publish: null,
-  // reader:// stays registered so links exported before the rename still open.
-  protocols: [{ name: "NeoRead", schemes: ["neoread", "reader"] }],
+  protocols: [{ name: "NeoRead", schemes: ["neoread"] }],
   mac: {
     compression: "normal",
     // The zip is the Squirrel.Mac in-place update payload.

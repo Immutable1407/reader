@@ -1,6 +1,6 @@
 import { useState } from "react";
-import { Button } from "@reader/ui/components/button";
-import type { ToolActivity, WebSource, WebSearchConfig } from "@reader/core";
+import { Button } from "@neoread/ui/components/button";
+import type { ToolActivity, WebSource, WebSearchConfig } from "@neoread/core";
 import { ToolActivities } from "./ToolActivities";
 import { WebSearchSettings } from "../WebSearchSettings";
 import { Thinking } from "./Thinking";

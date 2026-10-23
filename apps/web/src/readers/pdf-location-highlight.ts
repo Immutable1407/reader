@@ -30,7 +30,7 @@ export class PDFLocationHighlight {
     if (!rects.length) rects = this.fallback ?? [];
     if (!rects.length) return;
     const layer = document.createElement("div");
-    layer.className = "reader-location-highlight";
+    layer.className = "neoread-location-highlight";
     layer.setAttribute("aria-hidden", "true");
     for (const rect of rects) {
       const mark = document.createElement("div");

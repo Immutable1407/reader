@@ -274,7 +274,7 @@ it("stages a signed Mac update silently and installs it on restart", async () =>
     expect.objectContaining({
       installer: "NeoRead-0.2.0-mac-arm64.zip",
       downloadURL:
-        "https://github.com/cynicalight/reader/releases/download/v0.2.0/NeoRead-0.2.0-mac-arm64.zip",
+        "https://github.com/cynicalight/NeoRead/releases/download/v0.2.0/NeoRead-0.2.0-mac-arm64.zip",
     }),
     "/test/user-data/updates",
     expect.any(Function),
@@ -367,7 +367,7 @@ it.each([0, 1])(
     );
     if (response === 0)
       expect(mocks.external).toHaveBeenCalledWith(
-        "https://github.com/cynicalight/reader/releases/latest",
+        "https://github.com/cynicalight/NeoRead/releases/latest",
       );
     else expect(mocks.external).not.toHaveBeenCalled();
     expect(mocks.download).not.toHaveBeenCalled();

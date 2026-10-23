@@ -329,10 +329,10 @@ export class PDFReadingNavigation {
   }
   private clearLinkedRanges() {
     const registry = typeof CSS !== "undefined" ? CSS.highlights : undefined;
-    const highlight = registry?.get("reader-linked-sentences");
+    const highlight = registry?.get("neoread-linked-sentences");
     if (highlight) {
       for (const range of this.linkedRanges) highlight.delete(range);
-      if (!highlight.size) registry!.delete("reader-linked-sentences");
+      if (!highlight.size) registry!.delete("neoread-linked-sentences");
     }
     this.linkedRanges = [];
   }
@@ -361,9 +361,9 @@ export class PDFReadingNavigation {
     }
     if (!this.linkedRanges.length) return;
     const highlight =
-      CSS.highlights.get("reader-linked-sentences") ?? new Highlight();
+      CSS.highlights.get("neoread-linked-sentences") ?? new Highlight();
     for (const range of this.linkedRanges) highlight.add(range);
-    CSS.highlights.set("reader-linked-sentences", highlight);
+    CSS.highlights.set("neoread-linked-sentences", highlight);
   }
   async matchSentences(
     location: PDFLocation,

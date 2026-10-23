@@ -11,7 +11,7 @@ import zlib
 ready_path = Path(sys.argv[1]).resolve()
 ready = json.loads(ready_path.read_text())
 root = Path(ready['data']).resolve()
-assert root == ready_path.parent and root.name.startswith('reader-frontend-preview-')
+assert root == ready_path.parent and root.name.startswith('neoread-frontend-preview-')
 identifier = 'streaming-synthetic-image'
 analysis = root / 'cache' / identifier / 'analysis'
 assets = analysis / 'assets'

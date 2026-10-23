@@ -38,9 +38,9 @@ vi.mock("@neoread/ui/components/dialog", () => {
 });
 // These tests cover Agent requests and configuration, not hidden appearance or
 // paper-library panels. Keep the real tabs and the controls exercised below.
-vi.mock("@reader/ui/components/tabs", async (importOriginal) => {
+vi.mock("@neoread/ui/components/tabs", async (importOriginal) => {
   const actual =
-    await importOriginal<typeof import("@reader/ui/components/tabs")>();
+    await importOriginal<typeof import("@neoread/ui/components/tabs")>();
   return {
     ...actual,
     TabsContent: (props: ComponentProps<typeof actual.TabsContent>) =>

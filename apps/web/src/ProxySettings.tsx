@@ -18,7 +18,7 @@ import {
 const labels = { system: "跟随系统", manual: "手动 HTTP 代理", direct: "直连" };
 
 export function ProxySettings({ open }: { open: boolean }) {
-  const desktop = window.readerDesktop;
+  const desktop = window.neoreadDesktop;
   const [state, setState] = useState<ProxySettingsState>();
   const [mode, setMode] = useState<Configuration["mode"]>("system");
   const [host, setHost] = useState("127.0.0.1");

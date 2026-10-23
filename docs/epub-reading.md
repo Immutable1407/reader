@@ -39,7 +39,7 @@ pnpm build
 
 - 修正根元素版式识别：`body .quote`、`:root > h1` 及伪元素样式不再误拒整本书，新增选择器边界测试。此检查不计算完整 CSS 层叠，也不识别仅在 `:is()` / `:where()` 参数中声明的根元素。
 - 长段落以可见字符的 Range 保持阅读位置，新增字号和栏宽重排的合成几何回归。
-- 最终 `pnpm typecheck`、`pnpm build`、Go 全套通过。Vitest 484 项通过、4 项跳过；`paper-library.test.tsx` 与 `windows-proxy-reader.test.ts` 各失败一项，已在主线 `43d5466` 复现相同失败。
+- 最终 `pnpm typecheck`、`pnpm build`、Go 全套通过。Vitest 484 项通过、4 项跳过；`paper-library.test.tsx` 与 `windows-proxy-neoread.test.ts` 各失败一项，已在主线 `43d5466` 复现相同失败。
 - 真实 HTTP 检查覆盖 MAKE 的 127 章、1,499 个文字/图片块、80 张图片，以及原创样本的 3 章、19 个块；HTML 块 ID 对齐、图片可读与 API 鉴权通过。使用最终构建重启后，两本书的全部章节接口再次通过。
 - 独立预览设置为默认打开「图书库」，避免首次进入空的「论文库」。尚未进行浏览器排版、触控板或桌面视觉验收；模型整书翻译也未在本轮验证。
 

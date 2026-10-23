@@ -16,7 +16,7 @@ beforeEach(() => {
     addEventListener() {},
     removeEventListener() {},
   }));
-  Object.defineProperty(window, "readerDesktop", {
+  Object.defineProperty(window, "neoreadDesktop", {
     configurable: true,
     value: { openExternal },
   });
@@ -25,7 +25,7 @@ beforeEach(() => {
 });
 afterEach(() => {
   host.remove();
-  Object.defineProperty(window, "readerDesktop", {
+  Object.defineProperty(window, "neoreadDesktop", {
     configurable: true,
     value: undefined,
   });
@@ -55,7 +55,7 @@ it("opens translated links in the system browser and routes citations without to
       "https://example.com/",
     );
     const citations = host.querySelectorAll<HTMLAnchorElement>(
-      'a[href^="#reader-citation?"]',
+      'a[href^="#neoread-citation?"]',
     );
     expect(citations).toHaveLength(2);
     citations[0].click();
@@ -105,7 +105,7 @@ it("renders citation-linked text containing inline math", async () => {
     );
     // The lazy formula renders its source as a fallback first.
     expect(host.textContent).toContain("O(n)");
-    expect(host.querySelectorAll('a[href^="#reader-citation?"]')).toHaveLength(
+    expect(host.querySelectorAll('a[href^="#neoread-citation?"]')).toHaveLength(
       1,
     );
   } finally {
@@ -128,7 +128,7 @@ const plain = (node: unknown): string => {
 };
 const citations = (node: unknown): string[] => {
   const n = node as { type: string; url?: string; children?: unknown[] };
-  if (n.type === "link" && n.url?.startsWith("#reader-citation?"))
+  if (n.type === "link" && n.url?.startsWith("#neoread-citation?"))
     return [new URLSearchParams(n.url.split("?")[1]).get("label")!];
   return n.children?.flatMap(citations) ?? [];
 };
@@ -196,7 +196,7 @@ it("renders bracketed figure references as one keyboard-accessible link", async 
       ),
     );
     const links = host.querySelectorAll<HTMLAnchorElement>(
-      'a[href^="#reader-citation?"]',
+      'a[href^="#neoread-citation?"]',
     );
     expect(Array.from(links, (link) => link.textContent)).toEqual([
       "图三",

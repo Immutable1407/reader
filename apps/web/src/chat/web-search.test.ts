@@ -1,5 +1,5 @@
 import { expect, it } from "vitest";
-import type { WebSearchConfig } from "@reader/core";
+import type { WebSearchConfig } from "@neoread/core";
 import { webSearchEnabled } from "./web-search";
 
 it("uses saved search permissions independently of the chat model connection", () => {

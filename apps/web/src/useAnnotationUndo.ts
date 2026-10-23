@@ -2,7 +2,7 @@ import { useEffect, useRef } from "react";
 import type { Annotation } from "@neoread/core";
 import { api } from "@neoread/api";
 import { toast } from "sonner";
-import { annotationUndoShortcut } from "../../../packages/reader-core/src/undo-shortcut";
+import { annotationUndoShortcut } from "../../../packages/neoread-core/src/undo-shortcut";
 
 export function useAnnotationUndo(
   documentId: string,

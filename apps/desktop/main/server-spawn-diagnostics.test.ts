@@ -4,7 +4,7 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { serverSpawnDiagnostics } from "./server-spawn-diagnostics";
 
-const directory = mkdtempSync(join(tmpdir(), "reader-spawn-diagnostics-"));
+const directory = mkdtempSync(join(tmpdir(), "neoread-spawn-diagnostics-"));
 afterEach(() => rmSync(join(directory, "neoread-server.exe"), { force: true }));
 
 it("distinguishes a missing packaged server without exposing its path", () => {

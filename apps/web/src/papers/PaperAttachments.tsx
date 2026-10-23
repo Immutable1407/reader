@@ -12,11 +12,11 @@ import {
   Trash2,
   X,
 } from "lucide-react";
-import type { Document } from "@reader/core";
-import { api, type PaperAttachment } from "@reader/api";
-import { Button } from "@reader/ui/components/button";
-import { Input } from "@reader/ui/components/input";
-import { Progress } from "@reader/ui/components/progress";
+import type { Document } from "@neoread/core";
+import { api, type PaperAttachment } from "@neoread/api";
+import { Button } from "@neoread/ui/components/button";
+import { Input } from "@neoread/ui/components/input";
+import { Progress } from "@neoread/ui/components/progress";
 import {
   Dialog,
   DialogContent,
@@ -24,14 +24,14 @@ import {
   DialogFooter,
   DialogHeader,
   DialogTitle,
-} from "@reader/ui/components/dialog";
+} from "@neoread/ui/components/dialog";
 import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuSeparator,
   DropdownMenuTrigger,
-} from "@reader/ui/components/dropdown-menu";
+} from "@neoread/ui/components/dropdown-menu";
 import {
   AlertDialog,
   AlertDialogCancel,
@@ -40,7 +40,7 @@ import {
   AlertDialogFooter,
   AlertDialogHeader,
   AlertDialogTitle,
-} from "@reader/ui/components/alert-dialog";
+} from "@neoread/ui/components/alert-dialog";
 import { toast } from "sonner";
 import { refreshLibrary } from "../store";
 import {

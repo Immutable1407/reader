@@ -1,8 +1,8 @@
 // @vitest-environment jsdom
 import { expect, it, vi } from "vitest";
-import type { Annotation, EPUBReadingBlock, TOCItem } from "@reader/core";
+import type { Annotation, EPUBReadingBlock, TOCItem } from "@neoread/core";
 const mocks = vi.hoisted(() => ({ chapters: vi.fn(), chapter: vi.fn() }));
-vi.mock("@reader/api", () => ({
+vi.mock("@neoread/api", () => ({
   api: { epubChapters: mocks.chapters, epubChapter: mocks.chapter },
 }));
 import { epubNavigationOrders } from "./epub-navigation-order";

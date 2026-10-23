@@ -5,7 +5,7 @@ import { afterEach, beforeEach, expect, it, vi } from "vitest";
 import { TranslationPanes } from "./TranslationPanes";
 import { defaultTheme } from "@neoread/core";
 import { useReaderStore } from "../store";
-import { readerLayout, updateReaderLayout } from "../reader-layout";
+import { readerLayout, updateReaderLayout } from "../neoread-layout";
 
 let host: HTMLDivElement, root: Root;
 const mount = vi.fn(),

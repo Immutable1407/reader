@@ -51,9 +51,9 @@ describe("release boundaries", () => {
       version: "0.2.0",
       installer: "NeoRead-0.2.0-win-x64.exe",
       downloadURL:
-        "https://github.com/cynicalight/reader/releases/download/v0.2.0/NeoRead-0.2.0-win-x64.exe",
+        "https://github.com/cynicalight/NeoRead/releases/download/v0.2.0/NeoRead-0.2.0-win-x64.exe",
       checksumURL:
-        "https://github.com/cynicalight/reader/releases/download/v0.2.0/SHA256SUMS.txt",
+        "https://github.com/cynicalight/NeoRead/releases/download/v0.2.0/SHA256SUMS.txt",
     });
     expect(
       selectRelease(release(), "0.1.0", "darwin", "x64", manifest).status,
@@ -84,7 +84,7 @@ describe("release boundaries", () => {
     expect(mac.status === "available" && mac.update.archive).toEqual({
       installer: "NeoRead-0.2.0-mac-arm64.zip",
       downloadURL:
-        "https://github.com/cynicalight/reader/releases/download/v0.2.0/NeoRead-0.2.0-mac-arm64.zip",
+        "https://github.com/cynicalight/NeoRead/releases/download/v0.2.0/NeoRead-0.2.0-mac-arm64.zip",
     });
     const intel = selectRelease(
       release(),
@@ -146,7 +146,9 @@ describe("release boundaries", () => {
     const line = `${hash}  NeoRead.dmg`;
     expect(installerChecksum(line, "NeoRead.dmg")).toBe(hash);
     expect(() => installerChecksum(line, "Other.dmg")).toThrow();
-    expect(() => installerChecksum(`${line}\n${line}`, "NeoRead.dmg")).toThrow();
+    expect(() =>
+      installerChecksum(`${line}\n${line}`, "NeoRead.dmg"),
+    ).toThrow();
   });
 });
 describe("daily scheduling", () => {
@@ -179,7 +181,7 @@ describe("daily scheduling", () => {
     expect(fetch).toHaveBeenCalledTimes(2);
     expect(fetch).toHaveBeenNthCalledWith(
       1,
-      "https://github.com/cynicalight/reader/releases/latest",
+      "https://github.com/cynicalight/NeoRead/releases/latest",
       expect.objectContaining({
         headers: { Accept: "application/json" },
         redirect: "follow",
@@ -188,7 +190,7 @@ describe("daily scheduling", () => {
     );
     expect(fetch).toHaveBeenNthCalledWith(
       2,
-      "https://github.com/cynicalight/reader/releases/download/v0.2.0/SHA256SUMS.txt",
+      "https://github.com/cynicalight/NeoRead/releases/download/v0.2.0/SHA256SUMS.txt",
       expect.objectContaining({ redirect: "follow", credentials: "omit" }),
     );
     expect(state).toEqual({ lastAttempt: day, lastChecked: day });

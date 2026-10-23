@@ -21,7 +21,7 @@
     "baseUrl": ".",
     "paths": {
       "@neoread/core": [
-        "packages/reader-core/src/index.ts"
+        "packages/neoread-core/src/index.ts"
       ],
       "@neoread/api": [
         "packages/api-client/src/index.ts"

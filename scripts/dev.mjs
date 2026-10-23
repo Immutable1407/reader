@@ -52,7 +52,7 @@ createInterface({ input: server.stdout }).once("line", () => {
   web = spawn(process.execPath, [pnpm, "--filter", "@neoread/web", "dev"], {
     stdio: "inherit",
   });
-  console.log(`\nReader: http://127.0.0.1:5173/#token=${token}\n`);
+  console.log(`\nNeoRead: http://127.0.0.1:5173/#token=${token}\n`);
   web.once("exit", () => stop());
 });
 let stopping = false;

@@ -1,1 +1,4 @@
 patches/*.patch whitespace=-blank-at-eol
+
+# PDF cross-reference records contain significant trailing spaces.
+*.pdf binary

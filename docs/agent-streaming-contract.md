@@ -90,7 +90,7 @@ type ChatRequest = {
 };
 ```
 
-`claude` 对应 Claude Code，`kimi` 对应 Kimi Code，`api` 对应设置中填写的 OpenAI 兼容 API（地址与 Key）。`references` 用于保存来源引用；EPUB 使用自身的 `href`、`locator` 等位置字段，PDF 使用页码，类型见 [reader-core](../packages/reader-core/src/index.ts)。
+`claude` 对应 Claude Code，`kimi` 对应 Kimi Code，`api` 对应设置中填写的 OpenAI 兼容 API（地址与 Key）。`references` 用于保存来源引用；EPUB 使用自身的 `href`、`locator` 等位置字段，PDF 使用页码，类型见 [neoread-core](../packages/neoread-core/src/index.ts)。
 
 普通提问默认传空 `context` 和 `references`，并记录发送时的原生 `readingLocation`。手动引用、解释选区或提问批注时，只发送用户主动选择的原文和位置，不附带所在整章、邻近段落或全篇批注。图片附件不自动附加当前页文字。Codex/API 文档 Agent 根据概要、位置和问题调用工具；未具备文档工具的 CLI，仅在用户主动点击“总结当前页面／章节”等操作时通过阅读器取得该范围文字。无工具 API 的预检索仍复用后端原文索引。
 
@@ -230,15 +230,15 @@ data: {"ok":true}
 
 ```sh
 cd apps/server
-go test ./internal/reader -run 'TestAgent|TestCodexProtocolBoundaries|TestChatStreamsOverHTTP|TestChatPartialFailure' -count=1
+go test ./internal/neoread -run 'TestAgent|TestCodexProtocolBoundaries|TestChatStreamsOverHTTP|TestChatPartialFailure' -count=1
 ```
 
 真实调用可选以下测试，只发送内置原创提示，并使用 CLI 自身登录：
 
 ```sh
-NEOREAD_TEST_STREAM_PROVIDER=codex go test ./internal/reader -run '^TestLiveAgentStreaming$' -count=1 -v
-NEOREAD_TEST_STREAM_PROVIDER=claude go test ./internal/reader -run '^TestLiveAgentStreaming$' -count=1 -v
-NEOREAD_TEST_STREAM_PROVIDER=kimi go test ./internal/reader -run '^TestLiveAgentStreaming$' -count=1 -v
+NEOREAD_TEST_STREAM_PROVIDER=codex go test ./internal/neoread -run '^TestLiveAgentStreaming$' -count=1 -v
+NEOREAD_TEST_STREAM_PROVIDER=claude go test ./internal/neoread -run '^TestLiveAgentStreaming$' -count=1 -v
+NEOREAD_TEST_STREAM_PROVIDER=kimi go test ./internal/neoread -run '^TestLiveAgentStreaming$' -count=1 -v
 ```
 
 本次本机实测：Codex CLI 0.160.0 返回 193 个片段，首段约 6.1 秒、完成约 10.6 秒；Kimi 返回 214 个片段，首段约 6.2 秒、完成约 11.8 秒。这些是一次请求的记录，不是延迟承诺。Codex 另通过合成图片识别测试。Claude Code 2.1.220 当前未登录，已验证模拟协议，真实生成待具备登录环境后验证。

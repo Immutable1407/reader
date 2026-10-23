@@ -2,7 +2,7 @@
 import { act } from "react";
 import { createRoot, type Root } from "react-dom/client";
 import { afterEach, beforeEach, expect, it, vi } from "vitest";
-import { api, type PaperAttachment } from "@reader/api";
+import { api, type PaperAttachment } from "@neoread/api";
 import AttachmentPreview from "./AttachmentPreview";
 import { useAttachments } from "./attachments";
 import { paper } from "./fixtures";
@@ -52,7 +52,7 @@ vi.mock("pdfjs-dist/web/pdf_viewer.mjs", () => {
     },
   };
 });
-vi.mock("@reader/api", () => ({
+vi.mock("@neoread/api", () => ({
   api: { downloadPaperAttachment: vi.fn() },
   paperAttachmentSource: () => ({
     url: "/api/documents/paper/attachments/attachment/file",

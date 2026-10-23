@@ -69,10 +69,10 @@ done 立即停止生成，再 GET messages。关联要求开始前 ID 集合、�
 
 开发回放：`pnpm --filter @neoread/web dev --port 15173`；已监听且 HTTP 200：[http://127.0.0.1:15173/__streaming](http://127.0.0.1:15173/__streaming)。不读取书库、不调用模型，默认开启 silky 动画，提供 Markdown 综合示例、脚注与引用边界、四种分片和三档大样本。
 
-正式前端+已交付后端预览：`http://127.0.0.1:50351`，独立临时库，服务进程存活期间可用。状态文件（0600）：`/var/folders/1g/3yj40ngn5b33fs9gg0wzvms00000gn/T/reader-frontend-preview-3gM2qF/preview.json`。包含本机临时 token，未提交。以此命令打开带认证的本机页面（不打印 token）：
+正式前端+已交付后端预览：`http://127.0.0.1:50351`，独立临时库，服务进程存活期间可用。状态文件（0600）：`/var/folders/1g/3yj40ngn5b33fs9gg0wzvms00000gn/T/neoread-frontend-preview-3gM2qF/preview.json`。包含本机临时 token，未提交。以此命令打开带认证的本机页面（不打印 token）：
 
 ```sh
-node -e 'const r=JSON.parse(require("fs").readFileSync(process.argv[1],"utf8")); require("child_process").spawn("open",[r.url+"/#token="+r.token]);' /var/folders/1g/3yj40ngn5b33fs9gg0wzvms00000gn/T/reader-frontend-preview-3gM2qF/preview.json
+node -e 'const r=JSON.parse(require("fs").readFileSync(process.argv[1],"utf8")); require("child_process").spawn("open",[r.url+"/#token="+r.token]);' /var/folders/1g/3yj40ngn5b33fs9gg0wzvms00000gn/T/neoread-frontend-preview-3gM2qF/preview.json
 ```
 
 重新启动：`node apps/web/scripts/start-streaming-preview.cjs <已验证后端neoread-server绝对路径>`。该脚本只新建临时库、使用本前端 dist、自动选 loopback 端口并写 0600 状态文件。可运行 `python3 apps/web/scripts/seed-streaming-image.py <新preview.json>` 准备合成图片；只允许该脚本新建的临时库，不覆盖已有条目。

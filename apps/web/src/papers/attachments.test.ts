@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 import { afterEach, beforeEach, expect, it, vi } from "vitest";
-import { api, type PaperAttachment } from "@reader/api";
+import { api, type PaperAttachment } from "@neoread/api";
 import {
   loadAttachments,
   putAttachment,
@@ -8,7 +8,7 @@ import {
   useAttachments,
 } from "./attachments";
 import { paper } from "./fixtures";
-vi.mock("@reader/api", () => ({
+vi.mock("@neoread/api", () => ({
   api: { paperAttachments: vi.fn(), addPaperAttachment: vi.fn() },
 }));
 vi.mock("../store", () => ({ refreshLibrary: vi.fn(async () => {}) }));

@@ -16,7 +16,7 @@ import { DiagnosticLogs, diagnosticSettings } from "./diagnostics";
 import {
   diagnosticError,
   validateDiagnosticEvent,
-} from "../../../packages/reader-core/src/diagnostics";
+} from "../../../packages/neoread-core/src/diagnostics";
 
 declare const NEOREAD_BUILD_COMMIT: string;
 
@@ -55,7 +55,7 @@ export function startDiagnosticService(
       let temporary: string | undefined;
       try {
         temporary = await mkdtemp(
-          join(dirname(selected.filePath), ".reader-diagnostics-"),
+          join(dirname(selected.filePath), ".neoread-diagnostics-"),
         );
         const output = join(temporary, "bundle.zip");
         const result = await logs.export(

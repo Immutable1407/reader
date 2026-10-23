@@ -1,5 +1,5 @@
 import { useShortcut, loadBindings } from "./shortcuts/shortcuts";
-import { useSaveReaderSettings } from "./reader-settings";
+import { useSaveReaderSettings } from "./neoread-settings";
 import { useEffect, useMemo, useRef, useState } from "react";
 import {
   BookOpen,
@@ -144,7 +144,7 @@ export function App() {
       root.dataset.darkContrast = resolvedTheme.pdfDarkContrast ?? "soft";
     else delete root.dataset.darkContrast;
     root.style.colorScheme = dark ? "dark" : "light";
-    void window.readerDesktop
+    void window.neoreadDesktop
       ?.setAppearance(theme.appearance ?? "system", {
         pdfDarkContrast: theme.pdfDarkContrast,
         systemLightMode: theme.systemLightMode,
@@ -182,9 +182,9 @@ export function App() {
       : "";
   };
   const chooseFiles = (folder = currentPaperFolder()) => {
-    if (window.readerDesktop) {
+    if (window.neoreadDesktop) {
       setBusy(true);
-      void window.readerDesktop
+      void window.neoreadDesktop
         .importFiles(currentMode(), folder)
         .then((large) => {
           setLargePapers(large);
@@ -205,7 +205,7 @@ export function App() {
       if (library === "books") switchMode("books");
       const desktop = papers.flatMap((p) => (p.id ? [p.id] : []));
       if (desktop.length)
-        await window.readerDesktop?.importLargePapers(
+        await window.neoreadDesktop?.importLargePapers(
           desktop,
           library,
           library === "papers" ? largePaperFolder : "",
@@ -232,7 +232,7 @@ export function App() {
   };
   useEffect(() => {
     if (loading) return;
-    return window.readerDesktop?.onOpenLink?.((target) => {
+    return window.neoreadDesktop?.onOpenLink?.((target) => {
       void openLinkTarget(target)
         .then((found) => {
           if (!found) toast.error("找不到这份文档，它可能已被删除或在回收站中");
@@ -242,7 +242,7 @@ export function App() {
   }, [loading]);
   useEffect(
     () =>
-      window.readerDesktop?.onLibraryChanged(() => {
+      window.neoreadDesktop?.onLibraryChanged(() => {
         void refreshLibrary().catch((e) => toast.error(e.message));
       }),
     [],
@@ -414,7 +414,7 @@ export function App() {
     <TooltipProvider>
       <div
         className="app"
-        data-platform={window.readerDesktop?.platform}
+        data-platform={window.neoreadDesktop?.platform}
         onDragOver={(e) => {
           e.preventDefault();
         }}
@@ -791,14 +791,14 @@ export function App() {
               <dt className="text-muted-foreground">版本</dt>
               <dd>{version}</dd>
             </dl>
-            {window.readerDesktop?.checkForUpdates && (
+            {window.neoreadDesktop?.checkForUpdates && (
               <Button
                 variant="outline"
                 disabled={checkingUpdates}
                 onClick={() => {
                   setCheckingUpdates(true);
                   void window
-                    .readerDesktop!.checkForUpdates()
+                    .neoreadDesktop!.checkForUpdates()
                     .catch((error) => toast.error(String(error)))
                     .finally(() => setCheckingUpdates(false));
                 }}

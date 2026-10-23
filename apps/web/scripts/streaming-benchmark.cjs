@@ -3,7 +3,7 @@ const { app, BrowserWindow } = require("electron");
 const os = require("node:os");
 const path = require("node:path");
 const fs = require("node:fs");
-app.setPath("userData", fs.mkdtempSync(path.join(os.tmpdir(), "reader-benchmark-")));
+app.setPath("userData", fs.mkdtempSync(path.join(os.tmpdir(), "neoread-benchmark-")));
 app.commandLine.appendSwitch("js-flags", "--expose-gc");
 const results = [];
 app.whenReady().then(async () => {

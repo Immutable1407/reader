@@ -9,8 +9,8 @@ import {
   AlertDialogFooter,
   AlertDialogHeader,
   AlertDialogTitle,
-} from "@reader/ui/components/alert-dialog";
-import { Button } from "@reader/ui/components/button";
+} from "@neoread/ui/components/alert-dialog";
+import { Button } from "@neoread/ui/components/button";
 import { useReaderStore } from "../../store";
 import {
   blockedRects,

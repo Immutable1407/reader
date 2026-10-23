@@ -2,7 +2,7 @@
 import { act } from "react";
 import { createRoot } from "react-dom/client";
 import { expect, it, vi } from "vitest";
-import type { ToolActivity } from "@reader/core";
+import type { ToolActivity } from "@neoread/core";
 import { ToolActivities } from "./ToolActivities";
 it("keeps real execution states and saved web evidence accessible", async () => {
   vi.stubGlobal("IS_REACT_ACT_ENVIRONMENT", true);

@@ -17,16 +17,16 @@ import {
 } from "pdfjs-dist/web/pdf_viewer.mjs";
 import workerURL from "pdfjs-dist/build/pdf.worker.min.mjs?url";
 import "pdfjs-dist/web/pdf_viewer.css";
-import { api, paperAttachmentSource } from "@reader/api";
-import { Button } from "@reader/ui/components/button";
-import { Input } from "@reader/ui/components/input";
+import { api, paperAttachmentSource } from "@neoread/api";
+import { Button } from "@neoread/ui/components/button";
+import { Input } from "@neoread/ui/components/input";
 import {
   Dialog,
   DialogContent,
   DialogDescription,
   DialogHeader,
   DialogTitle,
-} from "@reader/ui/components/dialog";
+} from "@neoread/ui/components/dialog";
 import {
   attachmentPreviewKind,
   downloadAttachment,

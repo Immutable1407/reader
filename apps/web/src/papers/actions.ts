@@ -227,15 +227,15 @@ export async function deleteCategory(name: string) {
 
 export function openLink(url: string) {
   if (!url) return;
-  if (window.readerDesktop?.openExternal)
-    void window.readerDesktop
+  if (window.neoreadDesktop?.openExternal)
+    void window.neoreadDesktop
       .openExternal(url)
       .catch((e) => toast.error((e as Error).message));
   else window.open(url, "_blank", "noopener,noreferrer");
 }
 
 export function revealFile(doc: Document, open = false) {
-  const desktop = window.readerDesktop;
+  const desktop = window.neoreadDesktop;
   if (!desktop?.showDocumentFile) {
     toast.info("请在桌面版中打开文件");
     return;

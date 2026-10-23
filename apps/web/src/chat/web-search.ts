@@ -1,4 +1,4 @@
-import type { WebSearchConfig } from "@reader/core";
+import type { WebSearchConfig } from "@neoread/core";
 
 /** A request captures the saved permission; there is no per-composer toggle. */
 export function webSearchEnabled(provider: string, config?: WebSearchConfig) {

@@ -5,7 +5,7 @@ import { join } from "node:path";
 import { once } from "node:events";
 import { createInterface } from "node:readline";
 import { randomBytes } from "node:crypto";
-const data = await mkdtemp(join(tmpdir(), "reader-smoke-"));
+const data = await mkdtemp(join(tmpdir(), "neoread-smoke-"));
 const token = randomBytes(32).toString("hex");
 const child = spawn(
   `./apps/desktop/bin/neoread-server${process.platform === "win32" ? ".exe" : ""}`,

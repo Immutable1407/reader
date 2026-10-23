@@ -1,1 +1,1 @@
-Local-first EPUB/PDF reader with annotations and AI assistance through Claude Code and Codex CLI. Built with React, TypeScript, shadcn/ui, Go, and Electron.
+NeoRead: a local-first EPUB/PDF reader with annotations, side-by-side translation, and AI assistance through Claude Code, Codex CLI, and Kimi CLI.

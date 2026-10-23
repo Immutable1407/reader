@@ -16,14 +16,14 @@ beforeEach(() => {
 afterEach(async () => {
   await act(async () => root.unmount());
   host.remove();
-  delete window.readerDesktop;
+  delete window.neoreadDesktop;
   vi.useRealTimers();
 });
 async function render(search: ReturnType<typeof vi.fn>) {
-  window.readerDesktop = {
+  window.neoreadDesktop = {
     findEndNoteLibraries: search,
     cancelEndNoteSearch: vi.fn(async () => {}),
-  } as unknown as Window["readerDesktop"];
+  } as unknown as Window["neoreadDesktop"];
   await act(async () =>
     root.render(<EndNoteSourcePicker busy={false} onConfirm={confirm} />),
   );
@@ -63,7 +63,7 @@ it("stops after ten seconds and ignores late candidates without replacing manual
   );
   expect(input.value).toBe("/manual/My.enl");
   expect(host.textContent).not.toContain("late.enl");
-  expect(window.readerDesktop!.cancelEndNoteSearch).toHaveBeenCalled();
+  expect(window.neoreadDesktop!.cancelEndNoteSearch).toHaveBeenCalled();
   expect(confirm).not.toHaveBeenCalled();
 });
 it("requires explicit confirmation of an automatically found library", async () => {

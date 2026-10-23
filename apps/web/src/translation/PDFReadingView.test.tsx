@@ -276,7 +276,7 @@ it("keeps the translated selection and navigation metadata without marking the o
   window.getSelection()!.addRange(range);
   document.dispatchEvent(new Event("selectionchange"));
   expect(
-    [...highlights.get("reader-translation-selection")!][0].toString(),
+    [...highlights.get("neoread-translation-selection")!][0].toString(),
   ).toBe("第二句。");
   expect(
     host
@@ -318,7 +318,7 @@ it("keeps the translated selection and navigation metadata without marking the o
   await act(async () => fixture.ready!.clearSelection());
   expect(events.selection).toHaveBeenLastCalledWith(null);
   document.dispatchEvent(new Event("selectionchange"));
-  expect(highlights.has("reader-translation-selection")).toBe(false);
+  expect(highlights.has("neoread-translation-selection")).toBe(false);
 });
 it("focuses the visible middle translation once when entering parallel mode", async () => {
   vi.stubGlobal("matchMedia", () => ({ matches: true }));

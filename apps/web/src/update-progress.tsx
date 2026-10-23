@@ -7,14 +7,14 @@ const megabytes = (bytes: number) => Math.round(bytes / 1024 / 1024);
 export function useUpdateProgress() {
   useEffect(
     () =>
-      window.readerDesktop?.onUpdateProgress?.((progress) => {
+      window.neoreadDesktop?.onUpdateProgress?.((progress) => {
         if (!progress) {
-          toast.dismiss("reader-update");
+          toast.dismiss("neoread-update");
           return;
         }
         if (progress.phase === "prepare") {
           toast.loading(`正在准备安装 NeoRead ${progress.version}`, {
-            id: "reader-update",
+            id: "neoread-update",
             description: undefined,
             duration: Infinity,
           });
@@ -22,7 +22,7 @@ export function useUpdateProgress() {
         }
         const { received, total } = progress;
         toast.loading(`正在下载 NeoRead ${progress.version}`, {
-          id: "reader-update",
+          id: "neoread-update",
           duration: Infinity,
           description: (
             <div className="mt-2 grid gap-1.5">

@@ -104,7 +104,7 @@ it("uses selected glyph positions to distinguish repeated words and includes bot
     ]);
     // Sentence focusing is exercised through native highlight ranges in
     // pdf-sentence-highlights.test.ts; it no longer appends page rectangles.
-    expect(page.querySelector(".reader-linked-highlight")).toBeNull();
+    expect(page.querySelector(".neoread-linked-highlight")).toBeNull();
     nav.destroy();
   } finally {
     Range.prototype.getClientRects = old;

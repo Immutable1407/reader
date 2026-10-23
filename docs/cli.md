@@ -48,7 +48,7 @@ NeoRead 启动本地服务后，在书库目录写入 `server.json`（服务地�
 
 ## 实现
 
-- 服务端：`apps/server/internal/reader/cli_api.go` 提供 `GET /api/documents/{id}/text`（按页或章节返回段落，可附译文）与 `GET /api/search`（跨文档全文搜索）；`discovery.go` 写入和清理 `server.json`。
+- 服务端：`apps/server/internal/neoread/cli_api.go` 提供 `GET /api/documents/{id}/text`（按页或章节返回段落，可附译文）与 `GET /api/search`（跨文档全文搜索）；`discovery.go` 写入和清理 `server.json`。
 - 命令行：`apps/server/cmd/neoread`，只依赖 Go 标准库，经同一套本地 API 访问，接口见 `docs/openapi.yaml`。
 - 打包：`scripts/build-server.mjs` 同时构建 `neoread-server` 与 `neoread`，`scripts/package-smoke.mjs` 在安装包中运行 `neoread status` 验证连接。
 - 安装：`apps/desktop/main/command-line.ts`。

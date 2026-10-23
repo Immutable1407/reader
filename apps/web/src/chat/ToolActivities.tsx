@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { Check, CircleX, Globe, LoaderCircle, Wrench } from "lucide-react";
-import type { ToolActivity, WebSource } from "@reader/core";
+import type { ToolActivity, WebSource } from "@neoread/core";
 import { ChatDisclosure } from "./ChatDisclosure";
 import { openExternalLink } from "../reading-links";
 

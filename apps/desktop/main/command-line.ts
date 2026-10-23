@@ -9,7 +9,7 @@ import {
 } from "node:fs/promises";
 import { basename, dirname, join, win32 } from "node:path";
 import { promisify } from "node:util";
-import type { CommandLineStatus } from "../../../packages/reader-core/src/command-line";
+import type { CommandLineStatus } from "../../../packages/neoread-core/src/command-line";
 
 // Puts the bundled `neoread` command on the user's PATH. macOS links it from
 // /usr/local/bin, which login shells include by default, like VS Code's `code`.
@@ -19,14 +19,14 @@ import type { CommandLineStatus } from "../../../packages/reader-core/src/comman
 const run = promisify(execFile);
 export const macLink = "/usr/local/bin/neoread";
 
-export const readerBundleId = "io.github.cynicalight.neoread";
+export const neoreadBundleId = "io.github.cynicalight.neoread";
 
 /**
  * Whether a link target is the command of some copy of NeoRead.app, so a new
  * install may replace it. An existing bundle must carry NeoRead's bundle ID; a
  * bundle since moved or deleted is recognised by its NeoRead.app name only.
  */
-export async function isReaderLink(target: string) {
+export async function isNeoReadLink(target: string) {
   const bundle = /^(.*\.app)\/Contents\/Resources\/bin\/neoread$/.exec(
     target,
   )?.[1];
@@ -47,7 +47,7 @@ export async function isReaderLink(target: string) {
   const id = /<key>CFBundleIdentifier<\/key>\s*<string>([^<]*)<\/string>/.exec(
     plist,
   )?.[1];
-  return id === readerBundleId;
+  return id === neoreadBundleId;
 }
 
 export async function macStatus(
@@ -60,7 +60,7 @@ export async function macStatus(
     if (!info.isSymbolicLink()) return { ...status, conflict: true };
     const current = await readlink(link);
     if (current === target) return { ...status, installed: true };
-    return (await isReaderLink(current))
+    return (await isNeoReadLink(current))
       ? status
       : { ...status, conflict: true };
   } catch (error) {
@@ -155,9 +155,9 @@ export function pathWithout(raw: string, directory: string) {
 function windowsScript(write: boolean) {
   const action = write
     ? String.raw`$key.SetValue('Path', $env:NEOREAD_PATH_VALUE, [Microsoft.Win32.RegistryValueKind]::ExpandString)
-    Add-Type -Namespace ReaderCli -Name Native -MemberDefinition '[DllImport("user32.dll", CharSet = CharSet.Unicode)] public static extern IntPtr SendMessageTimeout(IntPtr hWnd, uint msg, UIntPtr wParam, string lParam, uint flags, uint timeout, out UIntPtr result);'
+    Add-Type -Namespace NeoReadCli -Name Native -MemberDefinition '[DllImport("user32.dll", CharSet = CharSet.Unicode)] public static extern IntPtr SendMessageTimeout(IntPtr hWnd, uint msg, UIntPtr wParam, string lParam, uint flags, uint timeout, out UIntPtr result);'
     $result = [UIntPtr]::Zero
-    [void][ReaderCli.Native]::SendMessageTimeout([IntPtr]0xffff, 0x1A, [UIntPtr]::Zero, 'Environment', 2, 5000, [ref]$result)`
+    [void][NeoReadCli.Native]::SendMessageTimeout([IntPtr]0xffff, 0x1A, [UIntPtr]::Zero, 'Environment', 2, 5000, [ref]$result)`
     : String.raw`@{ path = [string]$key.GetValue('Path', '', [Microsoft.Win32.RegistryValueOptions]::DoNotExpandEnvironmentNames) } | ConvertTo-Json -Compress`;
   return String.raw`
 $ErrorActionPreference = 'Stop'

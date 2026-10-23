@@ -10,10 +10,10 @@ const removeScrollbars = installScrollbars(document);
 if (import.meta.hot) import.meta.hot.dispose(removeScrollbars);
 const token =
   new URLSearchParams(location.hash.slice(1)).get("token") ||
-  sessionStorage.getItem("reader-session") ||
+  sessionStorage.getItem("neoread-session") ||
   "";
 if (token) {
-  sessionStorage.setItem("reader-session", token);
+  sessionStorage.setItem("neoread-session", token);
   history.replaceState(null, "", location.pathname + location.search);
 }
 configureAPI(token);

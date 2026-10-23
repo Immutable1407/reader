@@ -17,13 +17,13 @@ import (
 	"path/filepath"
 	"neoread.local/server/internal/diagnostics"
 	"neoread.local/server/internal/networkprobe"
-	"neoread.local/server/internal/reader"
+	"neoread.local/server/internal/neoread"
 	"runtime"
 	"syscall"
 	"time"
 )
 
-var readerVersion = "dev"
+var neoreadVersion = "dev"
 var buildCommit = "unknown"
 
 func main() {
@@ -38,7 +38,7 @@ func main() {
 	shutdownOnStdin := flag.Bool("shutdown-on-stdin", false, "shut down when the desktop closes stdin")
 	flag.Parse()
 	if *migrateLibrary != "" {
-		if err := reader.CopyLibrary(*data, *migrateLibrary); err != nil {
+		if err := neoread.CopyLibrary(*data, *migrateLibrary); err != nil {
 			log.Fatal(err)
 		}
 		return
@@ -60,14 +60,14 @@ func main() {
 	} else {
 		log.Printf("local logging unavailable: %v", logErr)
 	}
-	recorder.Environment = map[string]any{"mode": "server", "appVersion": readerVersion, "buildCommit": buildCommit, "os": runtime.GOOS, "architecture": runtime.GOARCH, "goVersion": runtime.Version()}
-	slog.Info("server.start", "appVersion", readerVersion, "buildCommit", buildCommit, "goVersion", runtime.Version())
-	unlock, err := reader.LockLibrary(root)
+	recorder.Environment = map[string]any{"mode": "server", "appVersion": neoreadVersion, "buildCommit": buildCommit, "os": runtime.GOOS, "architecture": runtime.GOARCH, "goVersion": runtime.Version()}
+	slog.Info("server.start", "appVersion", neoreadVersion, "buildCommit", buildCommit, "goVersion", runtime.Version())
+	unlock, err := neoread.LockLibrary(root)
 	if err != nil {
 		log.Fatal(err)
 	}
 	defer unlock()
-	store, err := reader.OpenStore(root)
+	store, err := neoread.OpenStore(root)
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -85,13 +85,13 @@ func main() {
 		log.Fatal(err)
 	}
 	recorder.Secrets = append(recorder.Secrets, token)
-	server := reader.NewServer(store, token, *web)
+	server := neoread.NewServer(store, token, *web)
 	server.SetDiagnostics(recorder)
 	defer server.Close()
 	if !*connector {
 		server.SetConnectorUnavailable("disabled")
 	} else {
-		connectorListener, connectorError := net.Listen("tcp", "127.0.0.1:"+reader.ConnectorPort)
+		connectorListener, connectorError := net.Listen("tcp", "127.0.0.1:"+neoread.ConnectorPort)
 		if connectorError != nil {
 			server.SetConnectorUnavailable("port-in-use")
 			log.Printf("NeoRead Connector unavailable: %v", connectorError)
@@ -107,7 +107,7 @@ func main() {
 	stopProcessing := server.StartProcessing(runContext)
 	defer stopProcessing()
 	httpServer := &http.Server{BaseContext: func(net.Listener) context.Context { return runContext }, Handler: server.Handler(), ReadHeaderTimeout: 10 * time.Second, IdleTimeout: 60 * time.Second}
-	removeDiscovery, discoveryErr := reader.WriteDiscovery(root, reader.Discovery{URL: "http://" + listener.Addr().String(), Token: token, PID: os.Getpid(), Version: readerVersion})
+	removeDiscovery, discoveryErr := neoread.WriteDiscovery(root, neoread.Discovery{URL: "http://" + listener.Addr().String(), Token: token, PID: os.Getpid(), Version: neoreadVersion})
 	if discoveryErr != nil {
 		log.Printf("command line discovery unavailable: %v", discoveryErr)
 	} else {

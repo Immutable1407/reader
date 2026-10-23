@@ -75,7 +75,7 @@ export function ZoteroImportDialog({
 
   const chooseDirectory = async (linked: boolean) => {
     try {
-      const path = await window.readerDesktop?.chooseZoteroDirectory?.();
+      const path = await window.neoreadDesktop?.chooseZoteroDirectory?.();
       if (path) (linked ? setLinkedBase : setDirectory)(path);
     } catch (e) {
       setError((e as Error).message);
@@ -239,7 +239,7 @@ export function ZoteroImportDialog({
                     onChange={(event) => setDirectory(event.target.value)}
                     placeholder="包含 zotero.sqlite 和 storage 的目录"
                   />
-                  {window.readerDesktop?.chooseZoteroDirectory && (
+                  {window.neoreadDesktop?.chooseZoteroDirectory && (
                     <Button
                       type="button"
                       variant="outline"
@@ -273,7 +273,7 @@ export function ZoteroImportDialog({
                       disabled={busy}
                       onChange={(event) => setLinkedBase(event.target.value)}
                     />
-                    {window.readerDesktop?.chooseZoteroDirectory && (
+                    {window.neoreadDesktop?.chooseZoteroDirectory && (
                       <Button
                         type="button"
                         variant="outline"
