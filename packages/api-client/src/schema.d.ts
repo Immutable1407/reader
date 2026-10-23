@@ -1673,10 +1673,7 @@ export interface paths {
                             /** @enum {string} */
                             precision?: "page" | "block" | "paragraph";
                         }[];
-                        /**
-                         * @description Explicit permission for this turn. Codex native search or DeepSeek official Search/Fetch only.
-                         * @default false
-                         */
+                        /** @description Omission uses saved search settings. Explicit true requires those settings to permit search; false opts out. Saved questions retain their permission on regeneration. */
                         webSearch?: boolean;
                     };
                 };
@@ -4000,10 +3997,7 @@ export interface paths {
                             /** @enum {string} */
                             precision?: "page" | "block" | "paragraph";
                         }[];
-                        /**
-                         * @description Explicit permission for this turn. Codex native search or DeepSeek official Search/Fetch only.
-                         * @default false
-                         */
+                        /** @description Omission uses saved search settings. Explicit true requires those settings to permit search; false opts out. Saved questions retain their permission on regeneration. */
                         webSearch?: boolean;
                     };
                 };
@@ -4609,7 +4603,22 @@ export interface components {
         };
         /** @enum {string} */
         ReasoningEffort: "low" | "medium" | "high" | "max";
+        WebSearchConfig: {
+            /** @description Allow supported CLI native web search. Currently Codex. */
+            cliEnabled: boolean;
+            /**
+             * @description Empty disables the search API.
+             * @enum {string}
+             */
+            provider: "" | "deepseek";
+            /** @description DeepSeek Search/Fetch compatible base URL. Independent of the chat model endpoint. */
+            url: string;
+            key?: string;
+            /** @description An empty key with hasKey=true preserves the saved key only at the same address. */
+            hasKey: boolean;
+        };
         AIConfig: {
+            webSearch?: components["schemas"]["WebSearchConfig"];
             primary: string;
             models: {
                 [key: string]: string;

@@ -1,6 +1,7 @@
 import { PaperServiceSettings } from "./papers/PaperServiceSettings";
 import { AutoTranslationSettings } from "./papers/AutoTranslationSettings";
 import { TranslationPromptSettings } from "./TranslationPromptSettings";
+import { WebSearchSettings } from "./WebSearchSettings";
 import { useEffect, useRef, useState } from "react";
 import {
   ChevronLeft,
@@ -1136,7 +1137,16 @@ export function Settings({
                   />
                 </div>
               )}
-              <div className="grid grid-cols-1 items-start gap-3 sm:grid-cols-2">
+              {config && (
+                <WebSearchSettings
+                  value={config.webSearch}
+                  disabled={saving || aiModelSaving}
+                  onSave={(webSearch) =>
+                    saveConfig((latest) => ({ ...latest, webSearch }))
+                  }
+                />
+              )}
+              <div className="mt-5 grid grid-cols-1 items-start gap-3 sm:grid-cols-2">
                 {(["codex", "claude", "kimi", "api"] as const).map((name) => {
                   const p = providers.find((p) => p.id === name);
                   const capability = config?.capabilities[name];

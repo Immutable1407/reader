@@ -1,12 +1,19 @@
 import { useState } from "react";
 import { Button } from "@reader/ui/components/button";
-import type { ToolActivity, WebSource } from "@reader/core";
+import type { ToolActivity, WebSource, WebSearchConfig } from "@reader/core";
 import { ToolActivities } from "./ToolActivities";
+import { WebSearchSettings } from "../WebSearchSettings";
 import { Thinking } from "./Thinking";
 import { MessageMarkdown } from "./MessageMarkdown";
 export default function WebSearchPreview() {
   const [dark, setDark] = useState(false),
     [state, setState] = useState<ToolActivity["status"]>("running");
+  const [searchConfig, setSearchConfig] = useState<WebSearchConfig>({
+    cliEnabled: false,
+    provider: "",
+    url: "https://api.deepseek.com",
+    hasKey: false,
+  });
   const tools: ToolActivity[] = [
     {
       id: "search",
@@ -49,6 +56,7 @@ export default function WebSearchPreview() {
         background: "var(--background)",
         color: "var(--foreground)",
         padding: 24,
+        overflow: "auto",
       }}
     >
       <div className="flex flex-wrap gap-2 mb-4">
@@ -84,6 +92,14 @@ export default function WebSearchPreview() {
         {state === "completed" && (
           <MessageMarkdown content="根据当前文档原文和[公开网页资料](https://example.com/docs)，可以分别核对两类依据。" />
         )}
+        <WebSearchSettings
+          value={searchConfig}
+          disabled={false}
+          onSave={async ({ key, ...saved }) => {
+            setSearchConfig({ ...saved, hasKey: !!key || saved.hasKey });
+            return true;
+          }}
+        />
       </section>
     </main>
   );

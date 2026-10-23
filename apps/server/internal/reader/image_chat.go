@@ -8,6 +8,7 @@ import (
 	"fmt"
 	"image/png"
 	"io"
+	"log/slog"
 	"net/http"
 	"os"
 	"strings"
@@ -66,7 +67,6 @@ func (s *Server) blockImage(w http.ResponseWriter, r *http.Request, documentID, 
 	http.ServeContent(w, r, blockID+".png", time.Time{}, bytes.NewReader(data))
 }
 func (s *Server) chatDocument(w http.ResponseWriter, r *http.Request, document Document, provider, question, textContext string, references json.RawMessage, ids []string, readingLocation json.RawMessage, userMessageID string, search ...bool) {
-	webSearch := len(search) > 0 && search[0]
 	documentID := document.ID
 	if len(ids) > 4 {
 		fail(w, 400, "每次最多附加 4 张图片")
@@ -98,6 +98,11 @@ func (s *Server) chatDocument(w http.ResponseWriter, r *http.Request, document D
 	}
 	config := s.aiConfig()
 	config.Primary = provider
+	webSearch := webSearchEnabled(config, provider)
+	if len(search) > 0 {
+		webSearch = search[0]
+	}
+	s.diagnosticEvent(slog.LevelInfo, "web.search.permissions", "requestId", requestID(r.Context()), "provider", provider, "requested", webSearch, "enabled", webSearch && webSearchEnabled(config, provider), "configured", webSearchEnabled(config, provider))
 	if webSearch {
 		if err := validateWebSearchConfig(config); err != nil {
 			fail(w, 400, err.Error())
@@ -137,7 +142,7 @@ func (s *Server) chatDocument(w http.ResponseWriter, r *http.Request, document D
 		fail(w, status, err.Error())
 		return
 	}
-	chat := &chatInput{WebSearch: webSearch, server: s, DocumentID: documentID, Title: document.Title, Summary: document.Metadata.Abstract, Question: question, CurrentText: textContext + descriptions.String(), History: history, ReadingLocation: readingLocation}
+	chat := &chatInput{WebAPI: searchAPIConnection(config), WebSearch: webSearch, server: s, DocumentID: documentID, Title: document.Title, Summary: document.Metadata.Abstract, Question: question, CurrentText: textContext + descriptions.String(), History: history, ReadingLocation: readingLocation}
 	s.streamChat(ctx, cancel, w, documentID, config, AIInput{Prompt: question, Images: images, Chat: chat})
 }
 

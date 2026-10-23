@@ -75,6 +75,12 @@ func TestLiveWebSearchLifecycle(t *testing.T) {
 				cap.Fingerprint = configPrint(cfg, apiCapabilityKey(model))
 				cfg.Capabilities[apiCapabilityKey(model)] = cap
 			}
+			cfg.WebSearch = &WebSearchConfig{CLIEnabled: provider == "codex"}
+			if provider == "api" {
+				cfg.WebSearch.Provider = "deepseek"
+				cfg.WebSearch.URL = defaultSearchURL
+				cfg.WebSearch.Key = cfg.API.Key
+			}
 			s, _ := prepareConversationFixture(t)
 			s.Token = id() + id()
 			if err := s.writeAIConfig(cfg); err != nil {

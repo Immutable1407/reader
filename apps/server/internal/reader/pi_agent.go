@@ -149,8 +149,8 @@ func streamPiChat(ctx context.Context, c APIConnection, req completionRequest, i
 		a.chat = in.Chat
 	}
 	if in.Chat.WebSearch {
-		if !deepSeekSearchConnection(c) {
-			return GenerateResult{}, generationError(ErrorConfiguration, "联网搜索需要 DeepSeek 官方 API 连接")
+		if !validSearchConnection(in.Chat.WebAPI) {
+			return GenerateResult{}, generationError(ErrorConfiguration, "请先在设置中配置搜索 API")
 		}
 		if !req.Tools {
 			cap, e := in.Chat.server.ensureDocumentTools(ctx, c, req.Model, nil)
@@ -309,7 +309,7 @@ func streamPiChat(ctx context.Context, c APIConnection, req completionRequest, i
 		}
 
 		if isWebTool(name) {
-			raw, err := in.Chat.callWebTool(ctx, c, name, args)
+			raw, err := in.Chat.callWebTool(ctx, in.Chat.WebAPI, name, args)
 			if err != nil {
 				return nil, err
 			}

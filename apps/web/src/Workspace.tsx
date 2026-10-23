@@ -1,4 +1,4 @@
-import { webSearchSupported } from "./chat/web-search";
+import { webSearchEnabled } from "./chat/web-search";
 import { useShortcut } from "./shortcuts/shortcuts";
 import { useDocumentTheme } from "./useDocumentTheme";
 import {
@@ -21,7 +21,6 @@ import {
   type CSSProperties,
 } from "react";
 import {
-  Globe,
   Languages,
   ChartColumn,
   ArrowLeft,
@@ -428,7 +427,7 @@ export function Workspace({
   const currentSession =
     sessions.find((s) => s.id === preferred) ?? sessions[0];
   const provider = aiConfig?.primary ?? "";
-  const webSearchAvailable = webSearchSupported(provider, aiConfig?.api);
+  const webSearch = webSearchEnabled(provider, aiConfig?.webSearch);
   const sessionListSerial = useRef(0);
   const refreshSessions = useCallback(async () => {
     const serial = ++sessionListSerial.current;
@@ -466,8 +465,6 @@ export function Workspace({
     };
   }, [refreshSessions]);
   const [prompt, setPrompt] = useState("");
-  const [webSearch, setWebSearch] = useState(false);
-  useEffect(() => setWebSearch(false), [doc.id, currentSession?.id]);
   const [quotes, setQuotes] = useState<ReaderSelection[]>([]);
   const [images, setImages] = useState<ImageAttachment[]>([]);
   const [previewImage, setPreviewImage] = useState<ImageAttachment>();
@@ -867,7 +864,7 @@ export function Workspace({
       if (!directImage) setPrompt("");
       await session.send({
         provider,
-        webSearch: webSearch && webSearchAvailable,
+        webSearch,
         prompt: question,
         context,
         references: captured.references,
@@ -1767,30 +1764,6 @@ export function Workspace({
                     }}
                   />
                   <div className="compose-footer">
-                    <Button
-                      variant={
-                        webSearch && webSearchAvailable ? "secondary" : "ghost"
-                      }
-                      size="sm"
-                      className="chat-web-toggle"
-                      aria-label="联网搜索"
-                      aria-pressed={webSearch && webSearchAvailable}
-                      title={
-                        !webSearchAvailable
-                          ? "联网搜索支持 Codex 和 DeepSeek 官方 API"
-                          : webSearch
-                            ? "联网搜索已开启，点击关闭"
-                            : "联网搜索已关闭，点击开启"
-                      }
-                      disabled={sending || !webSearchAvailable}
-                      onClick={() => setWebSearch((v) => !v)}
-                    >
-                      <Globe className="size-3.5" />
-                      <span>
-                        联网搜索：
-                        {webSearch && webSearchAvailable ? "开" : "关"}
-                      </span>
-                    </Button>
                     <ModelSelector
                       key={provider}
                       disabled={sending || !currentSession}

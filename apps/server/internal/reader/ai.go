@@ -83,7 +83,7 @@ var chatMessageIDPattern = regexp.MustCompile(`^[a-f0-9]{32}$`)
 
 func (s *Server) chat(w http.ResponseWriter, r *http.Request) {
 	var req struct {
-		WebSearch       bool            `json:"webSearch"`
+		WebSearch       *bool           `json:"webSearch"`
 		UserMessageID   string          `json:"userMessageId"`
 		Provider        string          `json:"provider"`
 		Prompt          string          `json:"prompt"`
@@ -135,5 +135,9 @@ func (s *Server) chat(w http.ResponseWriter, r *http.Request) {
 			r.SetPathValue("legacy", "true")
 		}
 	}
-	s.chatDocument(w, r, d, req.Provider, req.Prompt, *req.Context, req.References, req.Attachments, req.ReadingLocation, req.UserMessageID, req.WebSearch)
+	var search []bool
+	if req.WebSearch != nil {
+		search = []bool{*req.WebSearch}
+	}
+	s.chatDocument(w, r, d, req.Provider, req.Prompt, *req.Context, req.References, req.Attachments, req.ReadingLocation, req.UserMessageID, search...)
 }

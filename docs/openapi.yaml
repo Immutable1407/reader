@@ -2040,8 +2040,7 @@
                                   "webSearch":
                                     {
                                       "type": "boolean",
-                                      "default": false,
-                                      "description": "Explicit permission for this turn. Codex native search or DeepSeek official Search/Fetch only.",
+                                      "description": "Omission uses saved search settings. Explicit true requires those settings to permit search; false opts out. Saved questions retain their permission on regeneration.",
                                     },
                                 },
                               "required": ["provider", "prompt", "context"],
@@ -4718,8 +4717,7 @@
                                   "webSearch":
                                     {
                                       "type": "boolean",
-                                      "default": false,
-                                      "description": "Explicit permission for this turn. Codex native search or DeepSeek official Search/Fetch only.",
+                                      "description": "Omission uses saved search settings. Explicit true requires those settings to permit search; false opts out. Saved questions retain their permission on regeneration.",
                                     },
                                 },
                               "required": ["provider", "prompt", "context"],
@@ -6060,11 +6058,43 @@
             },
           "ReasoningEffort":
             { "type": "string", "enum": ["low", "medium", "high", "max"] },
+          "WebSearchConfig":
+            {
+              "type": "object",
+              "properties":
+                {
+                  "cliEnabled":
+                    {
+                      "type": "boolean",
+                      "description": "Allow supported CLI native web search. Currently Codex.",
+                    },
+                  "provider":
+                    {
+                      "type": "string",
+                      "enum": ["", "deepseek"],
+                      "description": "Empty disables the search API.",
+                    },
+                  "url":
+                    {
+                      "type": "string",
+                      "description": "DeepSeek Search/Fetch compatible base URL. Independent of the chat model endpoint.",
+                    },
+                  "key": { "type": "string", "writeOnly": true },
+                  "hasKey":
+                    {
+                      "type": "boolean",
+                      "description": "An empty key with hasKey=true preserves the saved key only at the same address.",
+                    },
+                },
+              "required": ["cliEnabled", "provider", "url", "hasKey"],
+            },
           "AIConfig":
             {
               "type": "object",
               "properties":
                 {
+                  "webSearch":
+                    { "$ref": "#/components/schemas/WebSearchConfig" },
                   "primary": { "type": "string" },
                   "models":
                     {

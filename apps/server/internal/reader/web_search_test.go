@@ -86,7 +86,7 @@ func TestWebConnectionAndRedirectBoundaries(t *testing.T) {
 		r.Header.Set("Location", "https://other.example/leak")
 		return r, nil
 	})
-	if _, err := deepSeekWebRequest(t.Context(), "secret", "search", map[string]string{"query": "x"}, transport); err == nil {
+	if _, err := deepSeekWebRequest(t.Context(), APIConnection{URL: defaultSearchURL, Key: "secret"}, "search", map[string]string{"query": "x"}, transport); err == nil {
 		t.Fatal("redirect accepted")
 	}
 	if got := displayWebURL("https://example.com/page?token=private&q=reader#secret"); strings.Contains(got, "private") || strings.Contains(got, "secret") || !strings.Contains(got, "q=reader") {
@@ -134,7 +134,9 @@ func TestPiDeepSeekWebToolsBridge(t *testing.T) {
 	s, a := originalDocumentFixture(t)
 	preload := filepath.Join(t.TempDir(), "mock-model.cjs")
 	script := `globalThis.fetch=async function(url,init){
+ if(new Headers(init.headers).get('authorization')!=='Bearer model-secret')throw new Error('model credential missing');
  const p=JSON.parse(init.body),tools=p.messages.filter(m=>m.role==='tool');
+ if(init.body.includes('search-secret'))throw new Error('search key leaked to model');
  if(!p.tools?.some(t=>t.function.name==='web_search'))throw new Error('web tool missing');
  const call=tools.length===0?{name:'web_search',arguments:JSON.stringify({query:'official docs'})}:tools.length===1?{name:'web_fetch',arguments:JSON.stringify({url:'https://1.1.1.1/docs'})}:null;
  const delta=call?{tool_calls:[{index:0,id:'tool-'+tools.length,type:'function',function:call}]}:{content:'See [Official](https://1.1.1.1/docs).'};
@@ -146,14 +148,17 @@ func TestPiDeepSeekWebToolsBridge(t *testing.T) {
 	}
 	t.Setenv("NODE_OPTIONS", "--require="+preload)
 	calls := []string{}
-	chat := &chatInput{server: s, DocumentID: "doc", SessionID: "", Question: "Find official docs", Agent: a, WebSearch: true, webTransport: webRoundTrip(func(r *http.Request) (*http.Response, error) {
+	chat := &chatInput{server: s, DocumentID: "doc", SessionID: "", Question: "Find official docs", Agent: a, WebSearch: true, WebAPI: APIConnection{URL: "https://search.example/gateway/v1", Key: "search-secret"}, webTransport: webRoundTrip(func(r *http.Request) (*http.Response, error) {
+		if r.URL.Host != "search.example" || !strings.HasPrefix(r.URL.Path, "/gateway/v1/tools/") || r.Header.Get("Authorization") != "Bearer search-secret" {
+			t.Fatal("search connection was mixed with the model connection")
+		}
 		calls = append(calls, r.URL.Path)
 		if strings.HasSuffix(r.URL.Path, "search") {
 			return webJSON(200, `{"results":[{"title":"Official","url":"https://1.1.1.1/docs","summary":"Search candidate"}]}`), nil
 		}
 		return webJSON(200, `{"title":"Official","content":"Verified public page text"}`), nil
 	})}
-	result, err := streamPiChat(t.Context(), APIConnection{URL: "https://api.deepseek.com/v1", Key: "dummy-test-key"}, completionRequest{Model: "test", Tools: true, ContextWindow: 64000}, AIInput{Prompt: chat.Question, Chat: chat}, nil)
+	result, err := streamPiChat(t.Context(), APIConnection{URL: "https://model.example/v1", Key: "model-secret"}, completionRequest{Model: "test", Tools: true, ContextWindow: 64000}, AIInput{Prompt: chat.Question, Chat: chat}, nil)
 	if err != nil || !strings.Contains(result.Text, "https://1.1.1.1/docs") || len(calls) != 2 || len(chat.Tools) != 2 || len(chat.WebSources) != 1 || chat.WebSources[0].Kind != "page" || chat.WebSources[0].Text != "Verified public page text" {
 		t.Fatal(err, result.Text, calls, chat.Tools, chat.WebSources)
 	}

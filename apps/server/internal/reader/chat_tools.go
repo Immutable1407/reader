@@ -217,13 +217,10 @@ func deepSeekSearchConnection(c APIConnection) bool {
 	return e == nil && u.Scheme == "https" && strings.EqualFold(u.Host, "api.deepseek.com") && u.User == nil && u.RawQuery == "" && u.Fragment == "" && (u.Path == "" || u.Path == "/v1" || u.Path == "/beta") && c.Key != "" && c.Protocol != "anthropic"
 }
 func validateWebSearchConfig(c AIConfig) error {
-	if c.Primary == "codex" {
+	if webSearchEnabled(c, c.Primary) {
 		return nil
 	}
-	if c.Primary == "api" && deepSeekSearchConnection(c.API) {
-		return nil
-	}
-	return generationError(ErrorConfiguration, "联网搜索支持 Codex 或已配置 Key 的 DeepSeek 官方 API 连接")
+	return generationError(ErrorConfiguration, "请在设置的联网搜索中开启 CLI 原生搜索或配置搜索 API")
 }
 func webInstructions(base string, enabled bool) string {
 	if !enabled {

@@ -671,7 +671,17 @@ export interface APIConnection {
 }
 export type ReasoningEffort = "low" | "medium" | "high" | "max";
 
+export interface WebSearchConfig {
+  cliEnabled: boolean;
+  provider: "" | "deepseek";
+  url: string;
+  key?: string;
+  hasKey: boolean;
+}
+
 export interface AIConfig {
+  /** Persistent search permissions and a search connection independent of the model. */
+  webSearch?: WebSearchConfig;
   primary: string;
   models: Record<string, string>;
   efforts?: Record<string, Record<string, ReasoningEffort>>;

@@ -85,7 +85,12 @@ func TestCodexWebSearchIPCToChatHistory(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	body := `{"provider":"codex","prompt":"Look up official docs","context":"","webSearch":true}`
+	config := s.aiConfig()
+	config.WebSearch = &WebSearchConfig{CLIEnabled: true}
+	if err := s.writeAIConfig(config); err != nil {
+		t.Fatal(err)
+	}
+	body := `{"provider":"codex","prompt":"Look up official docs","context":""}`
 	out := request(t, s, "POST", "/api/documents/doc/chat", strings.NewReader(body))
 	if out.Code != 200 || !strings.Contains(out.Body.String(), "event: done") || !strings.Contains(out.Body.String(), "event: tool") || !strings.Contains(out.Body.String(), "读取网页") {
 		t.Fatal(out.Code, out.Body.String())
@@ -93,6 +98,18 @@ func TestCodexWebSearchIPCToChatHistory(t *testing.T) {
 	history, err := s.Store.chatHistory("doc")
 	if err != nil || len(history) != 2 || !history[0].WebSearch || len(history[1].Tools) != 2 || history[1].Tools[0].Status != "completed" || len(history[1].WebSources) != 1 {
 		t.Fatal(history, err)
+	}
+	config.WebSearch.CLIEnabled = false
+	if err := s.writeAIConfig(config); err != nil {
+		t.Fatal(err)
+	}
+	denied := request(t, s, "POST", "/api/documents/doc/chat", strings.NewReader(`{"provider":"codex","prompt":"bypass settings","context":"","webSearch":true}`))
+	if denied.Code != 400 {
+		t.Fatal("request bypassed disabled setting", denied.Code)
+	}
+	history, err = s.Store.chatHistory("doc")
+	if err != nil || len(history) != 2 {
+		t.Fatal("rejected request changed saved history")
 	}
 }
 func TestCodexOfflineIPCDoesNotExposeSearch(t *testing.T) {

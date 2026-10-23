@@ -1,27 +1,13 @@
-import type { APIConnection } from "@reader/core";
-export function webSearchSupported(
-  provider: string,
-  connection?: APIConnection,
-) {
-  if (provider === "codex") return true;
-  if (
-    provider !== "api" ||
-    !connection?.hasKey ||
-    connection.protocol === "anthropic"
-  )
-    return false;
-  try {
-    const u = new URL(connection.url.replace(/\/+$/, ""));
-    return (
-      u.protocol === "https:" &&
-      u.host === "api.deepseek.com" &&
-      !u.username &&
-      !u.password &&
-      !u.search &&
-      !u.hash &&
-      ["", "/v1", "/beta"].includes(u.pathname === "/" ? "" : u.pathname)
-    );
-  } catch {
-    return false;
-  }
+import type { WebSearchConfig } from "@reader/core";
+
+/** A request captures the saved permission; there is no per-composer toggle. */
+export function webSearchEnabled(provider: string, config?: WebSearchConfig) {
+  if (!config) return false;
+  if (provider === "codex") return config.cliEnabled;
+  return (
+    provider === "api" &&
+    config.provider === "deepseek" &&
+    !!config.url &&
+    config.hasKey
+  );
 }

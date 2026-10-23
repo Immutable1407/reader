@@ -38,13 +38,17 @@ func validateWebTarget(ctx context.Context, raw string) error {
 	}
 	return nil
 }
-func deepSeekWebRequest(ctx context.Context, key, path string, payload any, transport http.RoundTripper) ([]byte, error) {
+func deepSeekWebRequest(ctx context.Context, conn APIConnection, path string, payload any, transport http.RoundTripper) ([]byte, error) {
 	raw, _ := json.Marshal(payload)
-	request, err := http.NewRequestWithContext(ctx, "POST", "https://api.deepseek.com/v1/tools/"+path, bytes.NewReader(raw))
+	base := strings.TrimRight(conn.URL, "/")
+	if !strings.HasSuffix(base, "/v1") {
+		base += "/v1"
+	}
+	request, err := http.NewRequestWithContext(ctx, "POST", base+"/tools/"+path, bytes.NewReader(raw))
 	if err != nil {
 		return nil, err
 	}
-	request.Header.Set("Authorization", "Bearer "+key)
+	request.Header.Set("Authorization", "Bearer "+conn.Key)
 	request.Header.Set("Content-Type", "application/json")
 	client := &http.Client{Transport: transport, Timeout: 30 * time.Second, CheckRedirect: func(*http.Request, []*http.Request) error { return http.ErrUseLastResponse }}
 	response, err := client.Do(request)
@@ -86,7 +90,7 @@ func deepSeekWebRequest(ctx context.Context, key, path string, payload any, tran
 	return data, nil
 }
 func (c *chatInput) callWebTool(ctx context.Context, conn APIConnection, name string, args json.RawMessage) (result json.RawMessage, err error) {
-	if !c.WebSearch || !isWebTool(name) || !deepSeekSearchConnection(conn) {
+	if !c.WebSearch || !isWebTool(name) || !validSearchConnection(conn) {
 		return nil, generationError(ErrorPermission, "本轮没有授权 DeepSeek 网页工具")
 	}
 	c.toolMu.Lock()
@@ -142,7 +146,7 @@ func (c *chatInput) callWebTool(ctx context.Context, conn APIConnection, name st
 		if c.webSourceBudgetFull("") {
 			return failed(generationError(ErrorLimit, "网页来源预算已满，请使用已保存的来源"))
 		}
-		data, e := deepSeekWebRequest(requestCtx, conn.Key, "search", map[string]any{"query": q.Query, "count": 5, "need_content": false}, c.webTransport)
+		data, e := deepSeekWebRequest(requestCtx, conn, "search", map[string]any{"query": q.Query, "count": 5, "need_content": false}, c.webTransport)
 		if e != nil {
 			return failed(e)
 		}
@@ -187,7 +191,7 @@ func (c *chatInput) callWebTool(ctx context.Context, conn APIConnection, name st
 	if c.webSourceBudgetFull(q.URL) {
 		return failed(generationError(ErrorLimit, "网页来源预算已满，请读取已保存来源的 URL"))
 	}
-	data, e := deepSeekWebRequest(requestCtx, conn.Key, "fetch", map[string]string{"url": q.URL}, c.webTransport)
+	data, e := deepSeekWebRequest(requestCtx, conn, "fetch", map[string]string{"url": q.URL}, c.webTransport)
 	if e != nil {
 		return failed(e)
 	}
