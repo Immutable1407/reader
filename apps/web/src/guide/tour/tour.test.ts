@@ -135,7 +135,14 @@ describe("tour steps", () => {
     });
   });
   it("points at the key field and DeepSeek inside the API settings", () => {
-    const { view } = at(1, { ...inSettings, method: "api", apiDetails: true });
+    // The API settings hide the tabs, including the Agent panel.
+    const { view } = at(1, {
+      ...inSettings,
+      agentPanel: false,
+      method: "api",
+      apiDetails: true,
+    });
+    expect(view?.title).toBe("填写 API Key");
     expect(view?.pointer).toEqual({
       gesture: "click",
       target: '[data-tour="api-form"] input[aria-label="API Key"]',

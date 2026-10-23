@@ -107,13 +107,7 @@ export const join = (names: string[]) =>
     : `${names.slice(0, -1).join("、")}和${names.at(-1)}`;
 
 function agentView(s: TourState): TourView {
-  if (!s.agentPanel)
-    return {
-      title: "回到 Agent 设置",
-      body: "点击左侧的「Agent」。",
-      click: [tour("settings-agent-tab")],
-      pointer: { gesture: "click", target: tour("settings-agent-tab") },
-    };
+  // The API settings replace the tabs, so check them first.
   if (s.apiDetails)
     return s.agents.some((a) => a.id === "api" && a.status === "ready")
       ? {
@@ -131,6 +125,13 @@ function agentView(s: TourState): TourView {
           anchor: apiKey,
           link: { label: "打开 platform.deepseek.com", url: deepseek },
         };
+  if (!s.agentPanel)
+    return {
+      title: "回到 Agent 设置",
+      body: "点击左侧的「Agent」。",
+      click: [tour("settings-agent-tab")],
+      pointer: { gesture: "click", target: tour("settings-agent-tab") },
+    };
   const choice = { options: connections, chosen: s.method };
   if (!s.method)
     return {
