@@ -39,9 +39,6 @@ func mergeWebSearchConfig(c, old *WebSearchConfig) error {
 	if len(c.Key) > 8192 || strings.ContainsAny(c.Key, "\r\n") {
 		return errors.New("搜索 API Key 格式无效")
 	}
-	if c.Provider != "" && c.Key == "" {
-		return errors.New("请填写搜索 API Key")
-	}
 	return nil
 }
 

@@ -92,6 +92,7 @@ export function Settings({
   const checked = useRef(new Set<string>());
   const refreshing = useRef(false);
   const [saving, setSaving] = useState(false);
+  const [searchSaving, setSearchSaving] = useState(false);
   const [loading, setLoading] = useState(false);
   const [apiModels, setAPIModels] = useState<AgentModel[]>([]);
   const [apiModelsError, setAPIModelsError] = useState("");
@@ -348,7 +349,10 @@ export function Settings({
       setSaving(false);
     }
   };
-  const saveConfig = async (change: (latest: AIConfig) => AIConfig) => {
+  const saveConfig = async (
+    change: (latest: AIConfig) => AIConfig,
+    refreshAfter = true,
+  ) => {
     setSaving(true);
     try {
       setAIConfig(await api.saveAIConfig(change(await api.aiConfig())));
@@ -358,7 +362,7 @@ export function Settings({
     } finally {
       setSaving(false);
     }
-    await refresh();
+    if (refreshAfter) await refresh();
     return true;
   };
   const saveAPI = async (connection: APIConnection) => {
@@ -1140,10 +1144,18 @@ export function Settings({
               {config && (
                 <WebSearchSettings
                   value={config.webSearch}
-                  disabled={saving || aiModelSaving}
-                  onSave={(webSearch) =>
-                    saveConfig((latest) => ({ ...latest, webSearch }))
-                  }
+                  disabled={aiModelSaving || (saving && !searchSaving)}
+                  onSave={async (webSearch) => {
+                    setSearchSaving(true);
+                    try {
+                      return await saveConfig(
+                        (latest) => ({ ...latest, webSearch }),
+                        false,
+                      );
+                    } finally {
+                      setSearchSaving(false);
+                    }
+                  }}
                 />
               )}
               <div className="mt-5 grid grid-cols-1 items-start gap-3 sm:grid-cols-2">

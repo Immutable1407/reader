@@ -1,4 +1,4 @@
-import { useEffect, useId, useState } from "react";
+import { useEffect, useId, useRef, useState } from "react";
 import type { WebSearchConfig } from "@reader/core";
 import { Button } from "@reader/ui/components/button";
 import { Checkbox } from "@reader/ui/components/checkbox";
@@ -12,7 +12,14 @@ import {
 } from "@reader/ui/components/select";
 
 const defaultURL = "https://api.deepseek.com";
-const normalizeURL = (url: string) => url.trim().replace(/\/+$/, "");
+const defaults: WebSearchConfig = {
+  cliEnabled: false,
+  provider: "",
+  url: defaultURL,
+  hasKey: false,
+};
+const normalizeURL = (url: string) =>
+  url.trim().replace(/\/+$/, "") || defaultURL;
 
 export function WebSearchSettings({
   value,
@@ -24,65 +31,111 @@ export function WebSearchSettings({
   onSave: (value: WebSearchConfig) => Promise<boolean>;
 }) {
   const id = useId();
+  const saved = useRef(value ?? defaults);
+  const queue = useRef(Promise.resolve());
+  const cliPending = useRef(0),
+    providerPending = useRef(0);
   const [cliEnabled, setCLIEnabled] = useState(value?.cliEnabled ?? false);
   const [provider, setProvider] = useState(value?.provider ?? "");
   const [url, setURL] = useState(value?.url || defaultURL);
   const [key, setKey] = useState("");
-  const [clearKey, setClearKey] = useState(false);
-  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState("");
+  const [pending, setPending] = useState(0);
+  const previousURL = useRef(value?.url || defaultURL);
   useEffect(() => {
-    setCLIEnabled(value?.cliEnabled ?? false);
-    setProvider(value?.provider ?? "");
-    setURL(value?.url || defaultURL);
-    setKey("");
-    setClearKey(false);
-  }, [value?.cliEnabled, value?.provider, value?.url, value?.hasKey]);
+    saved.current = value ?? defaults;
+  }, [value]);
+  useEffect(() => {
+    if (!cliPending.current) setCLIEnabled(value?.cliEnabled ?? false);
+  }, [value?.cliEnabled]);
+  useEffect(() => {
+    if (!providerPending.current) setProvider(value?.provider ?? "");
+  }, [value?.provider]);
+  useEffect(() => {
+    const next = value?.url || defaultURL,
+      previous = previousURL.current;
+    setURL((draft) =>
+      normalizeURL(draft) === normalizeURL(previous) ? next : draft,
+    );
+    previousURL.current = next;
+  }, [value?.url]);
+
+  // Serialize patches against the last accepted configuration, so a blur save
+  // and a checkbox click cannot overwrite one another or reuse a stale key.
+  const persist = (change: (latest: WebSearchConfig) => WebSearchConfig) => {
+    setPending((n) => n + 1);
+    const task = queue.current.then(async () => {
+      const next = change(saved.current);
+      let ok = false;
+      try {
+        ok = await onSave(next);
+      } catch {
+        /* The parent normally reports details. */
+      }
+      if (ok) {
+        saved.current = {
+          ...next,
+          key: undefined,
+          hasKey: !!next.key || next.hasKey,
+        };
+        setError("");
+      } else setError("联网设置保存失败，请重试。");
+      setPending((n) => n - 1);
+      return ok;
+    });
+    queue.current = task.then(() => {});
+    return task;
+  };
+  const saveCLI = (checked: boolean) => {
+    setCLIEnabled(checked);
+    cliPending.current++;
+    void persist((latest) => ({ ...latest, cliEnabled: checked })).then(() => {
+      if (!--cliPending.current) setCLIEnabled(saved.current.cliEnabled);
+    });
+  };
+  const saveProvider = (next: WebSearchConfig["provider"]) => {
+    setProvider(next);
+    providerPending.current++;
+    void persist((latest) => ({ ...latest, provider: next })).then(() => {
+      if (!--providerPending.current) setProvider(saved.current.provider);
+    });
+  };
   const addressChanged =
     normalizeURL(url) !== normalizeURL(value?.url || defaultURL);
-  const keepKey = !!value?.hasKey && !addressChanged && !clearKey;
-  const changed =
-    cliEnabled !== (value?.cliEnabled ?? false) ||
-    provider !== (value?.provider ?? "") ||
-    addressChanged ||
-    !!key.trim() ||
-    clearKey;
-  const locked = disabled || saving;
-  const save = async () => {
-    setSaving(true);
-    try {
-      if (
-        await onSave({
-          cliEnabled,
-          provider,
-          url: normalizeURL(url) || defaultURL,
-          key: key.trim() || undefined,
-          hasKey: !key.trim() && keepKey,
-        })
-      ) {
-        setKey("");
-        setClearKey(false);
+  const needsNewKey = !!value?.hasKey && addressChanged && !key.trim();
+  const saveAPI = () => {
+    const endpoint = normalizeURL(url),
+      secret = key.trim();
+    if (needsNewKey || (!addressChanged && !secret)) return;
+    void persist((latest) => ({
+      ...latest,
+      url: endpoint,
+      key: secret || undefined,
+      hasKey: !secret && latest.hasKey && normalizeURL(latest.url) === endpoint,
+    })).then((ok) => {
+      if (ok) {
+        setKey((current) => (current.trim() === secret ? "" : current));
+        setURL((current) =>
+          normalizeURL(current) === endpoint ? endpoint : current,
+        );
       }
-    } finally {
-      setSaving(false);
-    }
+    });
   };
   return (
-    <section className="mt-5 border-t pt-5" aria-labelledby={`${id}-title`}>
+    <section
+      className="mt-5 border-t pt-5"
+      aria-labelledby={`${id}-title`}
+      aria-busy={pending > 0}
+    >
       <h3 id={`${id}-title`} className="text-sm font-medium">
         联网搜索
       </h3>
-      <form
-        className="mt-3 space-y-3"
-        onSubmit={(event) => {
-          event.preventDefault();
-          if (changed && !locked) void save();
-        }}
-      >
+      <div className="mt-3 space-y-3">
         <label className="flex items-center gap-2 text-sm">
           <Checkbox
             checked={cliEnabled}
-            disabled={locked}
-            onCheckedChange={(checked) => setCLIEnabled(checked === true)}
+            disabled={disabled}
+            onCheckedChange={(checked) => saveCLI(checked === true)}
           />
           允许 CLI 原生联网搜索
         </label>
@@ -95,10 +148,10 @@ export function WebSearchSettings({
           </label>
           <Select
             value={provider || "off"}
-            disabled={locked}
+            disabled={disabled}
             onValueChange={(next) => {
               if (next === "off" || next === "deepseek")
-                setProvider(next === "off" ? "" : next);
+                saveProvider(next === "off" ? "" : next);
             }}
           >
             <SelectTrigger
@@ -122,8 +175,12 @@ export function WebSearchSettings({
               <Input
                 id={`${id}-url`}
                 value={url}
-                disabled={locked}
+                disabled={disabled}
                 onChange={(event) => setURL(event.target.value)}
+                onBlur={saveAPI}
+                onKeyDown={(event) => {
+                  if (event.key === "Enter") event.currentTarget.blur();
+                }}
                 autoComplete="off"
                 spellCheck={false}
                 placeholder={defaultURL}
@@ -137,48 +194,61 @@ export function WebSearchSettings({
                 id={`${id}-key`}
                 type="password"
                 value={key}
-                disabled={locked}
+                disabled={disabled}
                 onChange={(event) => setKey(event.target.value)}
+                onBlur={saveAPI}
+                onKeyDown={(event) => {
+                  if (event.key === "Enter") event.currentTarget.blur();
+                }}
                 autoComplete="off"
                 placeholder={
-                  keepKey ? "已保存，留空保持不变" : "填写此搜索服务的 API Key"
+                  value?.hasKey && !addressChanged
+                    ? "已保存，留空保持不变"
+                    : "填写此搜索服务的 API Key"
                 }
               />
             </div>
             <p className="text-xs leading-5 text-muted-foreground">
-              支持 DeepSeek Search / Fetch
-              协议，可填写官方或兼容服务地址。聊天模型与搜索服务分别配置。
+              {needsNewKey
+                ? "地址已更改，填写此服务的 API Key 后自动保存。"
+                : !value?.hasKey && !key
+                  ? "填写搜索 API Key 后自动启用。"
+                  : "支持 DeepSeek Search / Fetch 协议，聊天模型与搜索服务分别配置。"}
             </p>
           </>
         )}
-        <div className="flex justify-end gap-2">
-          {value?.hasKey && (
+        {value?.hasKey && (
+          <div className="flex justify-end">
             <Button
               type="button"
               variant="ghost"
               size="sm"
-              disabled={locked || clearKey}
+              disabled={disabled}
               onClick={() => {
-                setClearKey(true);
                 setKey("");
                 setProvider("");
+                providerPending.current++;
+                void persist((latest) => ({
+                  ...latest,
+                  provider: "",
+                  key: undefined,
+                  hasKey: false,
+                })).then(() => {
+                  if (!--providerPending.current)
+                    setProvider(saved.current.provider);
+                });
               }}
             >
               移除搜索密钥
             </Button>
-          )}
-          <Button
-            type="submit"
-            variant="outline"
-            size="sm"
-            disabled={
-              locked || !changed || (!!provider && !key.trim() && !keepKey)
-            }
-          >
-            保存联网设置
-          </Button>
-        </div>
-      </form>
+          </div>
+        )}
+        {error && (
+          <p role="alert" className="text-xs text-destructive">
+            {error}
+          </p>
+        )}
+      </div>
     </section>
   );
 }

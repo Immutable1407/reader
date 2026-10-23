@@ -60,7 +60,6 @@ func TestSearchSettingsKeepSecretsSeparateAndPreserveOmittedChanges(t *testing.T
 func TestSearchSettingsValidationAndSavedPermissions(t *testing.T) {
 	for _, config := range []WebSearchConfig{
 		{Provider: "unsupported", Key: "key"},
-		{Provider: "deepseek"},
 		{Provider: "deepseek", URL: "http://remote.example", Key: "key"},
 		{Provider: "deepseek", URL: "https://u:p@search.example", Key: "key"},
 		{Provider: "deepseek", URL: "https://search.example?token=x", Key: "key"},
@@ -73,6 +72,14 @@ func TestSearchSettingsValidationAndSavedPermissions(t *testing.T) {
 	c := AIConfig{API: APIConnection{URL: defaultSearchURL, Key: "model-secret"}}
 	if webSearchEnabled(c, "api") || webSearchEnabled(c, "codex") {
 		t.Fatal("model connection implicitly authorized search")
+	}
+	incomplete := &WebSearchConfig{Provider: "deepseek"}
+	if mergeWebSearchConfig(incomplete, nil) != nil {
+		t.Fatal("cannot select a search provider before entering its key")
+	}
+	c.WebSearch = incomplete
+	if webSearchEnabled(c, "api") {
+		t.Fatal("selecting a provider without a key authorized search")
 	}
 	c.WebSearch = &WebSearchConfig{Provider: "deepseek", URL: "http://127.0.0.1:1234/v1", Key: "search-secret"}
 	if !webSearchEnabled(c, "api") || webSearchEnabled(c, "codex") || webSearchEnabled(c, "claude") || webSearchEnabled(c, "kimi") {

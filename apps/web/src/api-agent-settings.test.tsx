@@ -436,3 +436,17 @@ it.each(["text", "vision"] as const)(
     else expect(row.textContent).toContain("文本首输出 0.10 s");
   },
 );
+
+it("persists CLI web search directly from the checkbox without a Save action", async () => {
+  await act(async () => root.render(<Settings open onOpenChange={() => {}} />));
+  const label = [...host.querySelectorAll("label")].find((node) =>
+    node.textContent?.includes("允许 CLI 原生联网搜索"),
+  )!;
+  const checkbox = label.querySelector<HTMLButtonElement>('[role="checkbox"]')!;
+  await act(async () => checkbox.click());
+  expect(
+    vi.mocked(api.saveAIConfig).mock.lastCall?.[0].webSearch?.cliEnabled,
+  ).toBe(true);
+  expect(useReaderStore.getState().aiConfig?.webSearch?.cliEnabled).toBe(true);
+  expect(checkbox.getAttribute("aria-checked")).toBe("true");
+});
