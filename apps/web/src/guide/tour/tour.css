@@ -27,20 +27,16 @@
   pointer-events: fill;
 }
 
-/* Hairline frames around what the step is about. */
+/* A breathing glow around what the step is about. */
 .tour-frame {
   position: fixed;
   top: 0;
   left: 0;
-  border: 2px solid var(--tour-accent);
   border-radius: 10px;
   transition:
     transform 320ms cubic-bezier(0.32, 0.72, 0, 1),
     width 320ms cubic-bezier(0.32, 0.72, 0, 1),
     height 320ms cubic-bezier(0.32, 0.72, 0, 1);
-  animation: tour-fade 240ms ease-out;
-}
-.tour-frame[data-clickable] {
   animation:
     tour-fade 240ms ease-out,
     tour-breathe 2s ease-in-out infinite;
@@ -277,10 +273,10 @@
   }
   .tour-press,
   .tour-ripple,
-  .tour-frame[data-clickable] {
+  .tour-frame {
     animation: none !important;
   }
-  .tour-frame[data-clickable] {
+  .tour-frame {
     box-shadow: 0 0 0 3px
       color-mix(in oklab, var(--tour-accent) 30%, transparent);
   }
