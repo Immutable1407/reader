@@ -23,6 +23,8 @@ interface Window {
     ) => Promise<import("@neoread/core").ProxyCheckResult>;
     restart?: () => Promise<void>;
     libraryLocation?: () => Promise<string>;
+    libraryWarning?: () => Promise<string>;
+    importLibrary?: () => Promise<boolean>;
     moveLibrary?: () => Promise<boolean>;
     commandLine?: () => Promise<import("@neoread/core").CommandLineStatus>;
     setCommandLine?: (
