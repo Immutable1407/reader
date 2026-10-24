@@ -4,6 +4,10 @@ import type { Annotation, ReaderAnnotationTarget } from "@neoread/core";
 export class PDFAnnotationLayer {
   private annotations: Annotation[] = [];
   private pressed?: { x: number; y: number };
+  private geometryStyles = new WeakMap<
+    HTMLElement,
+    { input: string; cssText: string }
+  >();
   constructor(
     private host: HTMLElement,
     private activate: (target: ReaderAnnotationTarget) => void,
@@ -19,40 +23,104 @@ export class PDFAnnotationLayer {
     this.paint();
   }
   paint = () => {
-    // Rendering can refresh annotations between pointerdown and click. Keep the
-    // gesture alive; removing the old markers also removes their hover state.
-    this.host
-      .querySelectorAll(".neoread-annotation")
-      .forEach((el) => el.remove());
+    const byPage = new Map<number, Annotation[]>();
     for (const annotation of this.annotations) {
       if (annotation.location.type !== "pdf" || annotation.kind === "bookmark")
         continue;
-      const page = this.host.querySelector<HTMLElement>(
-        `.page[data-page-number="${annotation.location.page}"]`,
-      );
-      if (!page) continue;
-      // Composite the entire annotation once. Range.getClientRects() may
-      // include overlapping element/text boxes, which must not darken the mark.
-      const group = document.createElement("div");
-      group.className = "neoread-annotation";
-      group.style.setProperty(
-        "--annotation-color",
-        annotation.color || "#facc15",
-      );
-      for (const rect of annotation.location.rects || []) {
-        const el = document.createElement("div");
-        el.className = "neoread-highlight";
-        el.dataset.annotationId = annotation.id;
-        el.dataset.kind = annotation.kind;
-        Object.assign(el.style, {
-          left: `${rect.x * 100}%`,
-          top: `${rect.y * 100}%`,
-          width: `${rect.width * 100}%`,
-          height: `${rect.height * 100}%`,
-        });
-        group.append(el);
+      const annotations = byPage.get(annotation.location.page) ?? [];
+      annotations.push(annotation);
+      byPage.set(annotation.location.page, annotations);
+    }
+
+    // Reconcile against the current page DOM, so page resets/replacements need
+    // no cache invalidation and detached pages are never retained by the layer.
+    for (const page of this.host.querySelectorAll<HTMLElement>(
+      ".page[data-page-number]",
+    )) {
+      const remaining = new Map<string, HTMLElement>();
+      for (const child of Array.from(page.children)) {
+        if (
+          child instanceof HTMLElement &&
+          child.classList.contains("neoread-annotation")
+        ) {
+          remaining.set(child.dataset.annotationId!, child);
+        }
       }
-      if (group.childElementCount) page.append(group);
+      const ordered: HTMLElement[] = [];
+      for (const annotation of byPage.get(Number(page.dataset.pageNumber)) ??
+        []) {
+        if (annotation.location.type !== "pdf") continue;
+        const rects = annotation.location.rects ?? [];
+        if (!rects.length) continue;
+        let group = remaining.get(annotation.id);
+        remaining.delete(annotation.id);
+        if (!group) {
+          group = document.createElement("div");
+          group.className = "neoread-annotation";
+          group.dataset.annotationId = annotation.id;
+        }
+        const color = annotation.color || "#facc15";
+        if (group.style.getPropertyValue("--annotation-color") !== color)
+          group.style.setProperty("--annotation-color", color);
+        // Composite the entire annotation once, including overlapping rects.
+        // Keep unchanged children and their hover state across repaints.
+        rects.forEach((rect, index) => {
+          let el = group.children[index] as HTMLElement | undefined;
+          if (!el) {
+            el = document.createElement("div");
+            el.className = "neoread-highlight";
+            group.append(el);
+          }
+          if (el.dataset.annotationId !== annotation.id)
+            el.dataset.annotationId = annotation.id;
+          if (el.dataset.kind !== annotation.kind)
+            el.dataset.kind = annotation.kind;
+          const geometry = {
+            left: rect.x,
+            top: rect.y,
+            width: rect.width,
+            height: rect.height,
+          };
+          // CSSOM may round percentages on readback. Compare the last input
+          // and its serialized result to avoid repeatedly invoking setters.
+          // Weak keys allow removed rectangles to be garbage-collected.
+          const input = [rect.x, rect.y, rect.width, rect.height].join(",");
+          const previous = this.geometryStyles.get(el);
+          if (
+            previous?.input === input &&
+            previous.cssText === el.style.cssText
+          )
+            return;
+          for (const property of ["left", "top", "width", "height"] as const) {
+            const value = `${geometry[property] * 100}%`;
+            if (el.style[property] !== value) el.style[property] = value;
+          }
+          this.geometryStyles.set(el, { input, cssText: el.style.cssText });
+        });
+        while (group.children.length > rects.length)
+          group.lastElementChild!.remove();
+        ordered.push(group);
+      }
+      for (const group of remaining.values()) group.remove();
+      let next = page.querySelector<HTMLElement>(
+        ":scope > .neoread-annotation",
+      );
+      for (const group of ordered) {
+        if (group !== next) {
+          // Avoid disconnecting existing groups (and restarting transitions)
+          // where state-preserving moves are supported.
+          if (
+            group.parentElement === page &&
+            "moveBefore" in page &&
+            typeof page.moveBefore === "function"
+          )
+            page.moveBefore(group, next);
+          else page.insertBefore(group, next);
+        }
+        next = group.nextElementSibling as HTMLElement | null;
+        while (next && !next.classList.contains("neoread-annotation"))
+          next = next.nextElementSibling as HTMLElement | null;
+      }
     }
   };
   clear = () => {

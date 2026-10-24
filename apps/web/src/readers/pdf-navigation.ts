@@ -21,6 +21,9 @@ export class PDFReadingNavigation {
   private operation = 0;
   private focus: PDFPassage[] = [];
   private linkedRanges: Range[] = [];
+  get isNavigating() {
+    return this.moving;
+  }
   constructor(
     private host: HTMLElement,
     private viewer: PDFViewer,
@@ -181,6 +184,7 @@ export class PDFReadingNavigation {
         "(prefers-reduced-motion: reduce)",
       ).matches;
       let started: number | undefined;
+      let zoomed = false;
       await new Promise<void>((resolve) => {
         const frame = (now: number) => {
           if (this.disposed || operation !== this.operation) {
@@ -193,12 +197,16 @@ export class PDFReadingNavigation {
           // Scale and position share one animation. Adding centering space or zooming
           // must never produce a visible jump before the scroll starts.
           this.updateInsets();
-          const zoom = initialScale + (scale - initialScale) * ease;
+          const zoom =
+            Math.round((initialScale + (scale - initialScale) * ease) * 100) /
+            100;
           if (Math.abs(this.viewer.currentScale - zoom) > 0.0001) {
+            zoomed = true;
             if (this.viewer.updateScale)
               this.viewer.updateScale({
                 scaleFactor: zoom / this.viewer.currentScale,
-                drawingDelay: 100,
+                // Keep the completed frame throughout the 240ms animation.
+                drawingDelay: 300,
               });
             else this.viewer.currentScaleValue = String(zoom);
           }
@@ -224,6 +232,8 @@ export class PDFReadingNavigation {
         requestAnimationFrame(frame);
       });
       if (this.disposed || operation !== this.operation) return false;
+      // Flush once at the final scale; refresh also clears PDF.js's debounce.
+      if (zoomed) this.viewer.refresh?.();
       const anchor = this.anchor();
       if (anchor) this.events.readingAnchor?.(anchor);
       return true;

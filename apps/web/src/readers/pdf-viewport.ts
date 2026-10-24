@@ -40,11 +40,9 @@ export class PDFViewport {
     this.capture();
   }
   scaleChanged() {
-    if (
-      this.size?.width === this.host.clientWidth &&
-      this.size.height === this.host.clientHeight
-    )
-      this.reset();
+    // Width is the zoom basis. A scrollbar changing available height must not
+    // prevent an explicit zoom from becoming the next resize basis.
+    if (this.size?.width === this.host.clientWidth) this.reset();
   }
   private visible() {
     return (
@@ -133,7 +131,7 @@ export class PDFViewport {
       this.capture();
     };
   }
-  resize(fitWidth: boolean, updateInsets: () => void) {
+  resize(fitWidth: boolean, updateInsets: () => void, navigating = false) {
     this.cancelAnimation();
     if (!this.visible()) return;
     if (!this.size || !this.basis) {
@@ -143,6 +141,12 @@ export class PDFViewport {
     const width = this.host.clientWidth,
       height = this.host.clientHeight;
     if (width === this.size.width && height === this.size.height) return;
+    // Navigation already follows the current height on each frame. Let it own
+    // positioning until it finishes; only a width change needs to take over.
+    if (width === this.size.width && navigating) {
+      this.reset();
+      return;
+    }
     const before = this.size,
       anchor = this.anchor,
       scroll = this.scroll;

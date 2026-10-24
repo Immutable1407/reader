@@ -7,6 +7,8 @@ vi.mock("pdfjs-dist", () => ({
   Util: { transform: (_a: number[], b: number[]) => b },
 }));
 import { PDFReadingNavigation } from "./pdf-navigation";
+import { PDFViewport } from "./pdf-viewport";
+import { PDFResizeObserver } from "./pdf-resize";
 beforeEach(() => vi.useFakeTimers());
 afterEach(() => {
   vi.useRealTimers();
@@ -79,6 +81,7 @@ function setup() {
   );
   const viewer = {
     currentPageNumber: 1,
+    refresh: vi.fn(),
     get currentScale() {
       return scale;
     },
@@ -120,6 +123,101 @@ function centered(s: ReturnType<typeof setup>, id: string) {
   expect(r.left + r.width / 2).toBeCloseTo(v.left + v.width / 2);
   expect(r.top).toBeCloseTo(v.top + Math.max(0, (v.height - r.height) / 2));
 }
+
+function resizingFocus(fitWidth = false) {
+  const s = setup();
+  document.body.append(s.host);
+  for (let i = 0; i < 2; i++) {
+    const node = s.viewer.getPageView(i).div;
+    node.className = "page";
+    s.host.append(node);
+  }
+  s.viewer.currentScaleValue = "0.25";
+  const viewport = new PDFViewport(s.host, s.viewer);
+  viewport.reset();
+  let resizing = false;
+  s.viewer.updateScale = vi.fn(({ scaleFactor }) => {
+    s.viewer.currentScaleValue = String(
+      Math.round(s.viewer.currentScale * scaleFactor! * 100) / 100,
+    );
+    if (!resizing) viewport.scaleChanged();
+  });
+  let notify!: () => void;
+  vi.stubGlobal(
+    "ResizeObserver",
+    class {
+      constructor(callback: () => void) {
+        notify = callback;
+      }
+      observe() {}
+      disconnect() {}
+    },
+  );
+  const adapt = vi.fn(() => s.nav.resizeViewport());
+  const observer = new PDFResizeObserver(
+    s.host,
+    () => {
+      resizing = true;
+      try {
+        viewport.resize(fitWidth, adapt, s.nav.isNavigating);
+      } finally {
+        resizing = false;
+      }
+    },
+    () => viewport.cancelAnimation(),
+  );
+  return {
+    ...s,
+    notify: () => notify(),
+    adapt,
+    destroy() {
+      observer.disconnect();
+      s.nav.destroy();
+      s.host.remove();
+    },
+  };
+}
+
+it.each([false, true])(
+  "keeps first focus zoom through a height-only resize (fit width: %s)",
+  async (fitWidth) => {
+    const s = resizingFocus(fitWidth);
+    try {
+      const first = s.nav.focusBlock("a");
+      await vi.advanceTimersByTimeAsync(16);
+      s.size.height -= 6;
+      s.notify();
+      await vi.advanceTimersByTimeAsync(144);
+      expect(s.adapt).not.toHaveBeenCalled();
+      expect(s.viewer.currentScale).toBeGreaterThan(0.25);
+      expect(await finish(first)).toBe(true);
+      expect(s.viewer.currentScale).toBe(1.5);
+      centered(s, "a");
+      expect(await finish(s.nav.focusBlock("a"))).toBe(true);
+      expect(s.viewer.currentScale).toBe(1.5);
+    } finally {
+      s.destroy();
+    }
+  },
+);
+
+it("still interrupts focus and adapts to an actual panel width change", async () => {
+  const s = resizingFocus();
+  try {
+    const pending = s.nav.focusBlock("a");
+    await vi.advanceTimersByTimeAsync(80);
+    const before = s.viewer.currentScale;
+    s.size.width = 400;
+    s.notify();
+    expect(await finish(pending)).toBe(false);
+    expect(s.adapt).toHaveBeenCalledOnce();
+    expect(s.viewer.currentScale).toBe(
+      Math.round(((before * 400) / 600) * 100) / 100,
+    );
+  } finally {
+    s.destroy();
+  }
+});
 it("smoothly scales and centers from the first click without a mode or an initial jump", async () => {
   const s = setup();
   try {
@@ -253,6 +351,25 @@ it("cancels motion on wheel input and supports clicking again after manual zoom"
     s.nav.destroy();
     await finish(last);
     expect(s.focus).toHaveBeenLastCalledWith(null);
+  } finally {
+    s.nav.destroy();
+  }
+});
+
+it("coalesces focus zoom into one final redraw and does not redraw on an identical second focus", async () => {
+  const s = setup();
+  try {
+    const pending = s.nav.focusBlock("a");
+    await vi.advanceTimersByTimeAsync(128);
+    expect(s.viewer.refresh).not.toHaveBeenCalled();
+    for (const [options] of vi.mocked(s.viewer.updateScale).mock.calls)
+      expect(options?.drawingDelay).toBe(300);
+    await finish(pending);
+    expect(s.viewer.refresh).toHaveBeenCalledTimes(1);
+    vi.mocked(s.viewer.updateScale).mockClear();
+    await finish(s.nav.focusBlock("a"));
+    expect(s.viewer.updateScale).not.toHaveBeenCalled();
+    expect(s.viewer.refresh).toHaveBeenCalledTimes(1);
   } finally {
     s.nav.destroy();
   }

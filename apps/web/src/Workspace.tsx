@@ -1811,7 +1811,7 @@ export function Workspace({
             toast.error(String(error)),
           )
         }
-        renderKey={`${theme.mode}:${theme.pdfDarkImageMode}:${theme.pdfDarkContrast}`}
+        renderKey={`${theme.mode}:${theme.pdfDarkContrast}`}
       />
       {previewImage && (
         <ImagePreview
