@@ -1,5 +1,5 @@
 diff --git a/build/pdf.mjs b/build/pdf.mjs
-index c55a629aa4482ce73d02e19d4e5eddeba8976e97..51b883fbf445f90f7f168093b620efb247d5f41a 100644
+index c55a629aa4482ce73d02e19d4e5eddeba8976e97..06fe7cbb30749e66b6409ac7cccbdc0a2a128dfb 100644
 --- a/build/pdf.mjs
 +++ b/build/pdf.mjs
 @@ -10905,6 +10905,30 @@ const LINE_JOIN_STYLES = ["miter", "round", "bevel"];
@@ -79,7 +79,15 @@ index c55a629aa4482ce73d02e19d4e5eddeba8976e97..51b883fbf445f90f7f168093b620efb2
      const started = consumePath && this.#beginKnockoutElement(this.current.fillAlpha);
      const ctx = this.ctx;
      const fillColor = this.current.fillColor;
-@@ -12205,6 +12234,9 @@ class CanvasGraphics {
+@@ -11975,6 +12004,7 @@ class CanvasGraphics {
+     this.consumePath(opIdx, path);
+   }
+   rawFillPath(opIdx, path) {
++    this.#applyObjectColors(true, false);
+     const started = this.#beginKnockoutElement(this.current.fillAlpha);
+     this.ctx.fill(path);
+     this.dependencyTracker?.recordDependencies(opIdx, Dependencies.rawFillPath).recordOperation(opIdx);
+@@ -12205,6 +12235,9 @@ class CanvasGraphics {
      return shadow(this, "isFontSubpixelAAEnabled", enabled);
    }
    showText(opIdx, glyphs) {
@@ -89,7 +97,7 @@ index c55a629aa4482ce73d02e19d4e5eddeba8976e97..51b883fbf445f90f7f168093b620efb2
      if (this.dependencyTracker) {
        this.dependencyTracker.recordDependencies(opIdx, Dependencies.showText).resetBBox(opIdx);
        if (this.current.textRenderingMode & TextRenderingMode.ADD_TO_PATH_FLAG) {
-@@ -12942,7 +12974,10 @@ class CanvasGraphics {
+@@ -12942,7 +12975,10 @@ class CanvasGraphics {
      }
      const started = this.#beginKnockoutElement(this.current.fillAlpha);
      const ctx = this.ctx;
@@ -101,7 +109,7 @@ index c55a629aa4482ce73d02e19d4e5eddeba8976e97..51b883fbf445f90f7f168093b620efb2
      const isPatternFill = this.current.patternFill;
      this.dependencyTracker?.resetBBox(opIdx).recordDependencies(opIdx, Dependencies.transformAndFill);
      for (const image of images) {
-@@ -13117,6 +13152,7 @@ class CanvasGraphics {
+@@ -13117,6 +13153,7 @@ class CanvasGraphics {
      this.#endKnockoutElement(started);
    }
    paintSolidColorImageMask(opIdx) {
@@ -110,7 +118,7 @@ index c55a629aa4482ce73d02e19d4e5eddeba8976e97..51b883fbf445f90f7f168093b620efb2
        return;
      }
 diff --git a/legacy/build/pdf.mjs b/legacy/build/pdf.mjs
-index 993f35056cbb76d09d83c25dccd96fe1916ee372..462db100955d5d8683262edb9da184b55bfb22ef 100644
+index 993f35056cbb76d09d83c25dccd96fe1916ee372..d900eb33608cb069467da5a3b549cef8693f5351 100644
 --- a/legacy/build/pdf.mjs
 +++ b/legacy/build/pdf.mjs
 @@ -17364,6 +17364,30 @@ const LINE_JOIN_STYLES = ["miter", "round", "bevel"];
@@ -190,7 +198,15 @@ index 993f35056cbb76d09d83c25dccd96fe1916ee372..462db100955d5d8683262edb9da184b5
      const started = consumePath && this.#beginKnockoutElement(this.current.fillAlpha);
      const ctx = this.ctx;
      const fillColor = this.current.fillColor;
-@@ -18664,6 +18693,9 @@ class CanvasGraphics {
+@@ -18434,6 +18463,7 @@ class CanvasGraphics {
+     this.consumePath(opIdx, path);
+   }
+   rawFillPath(opIdx, path) {
++    this.#applyObjectColors(true, false);
+     const started = this.#beginKnockoutElement(this.current.fillAlpha);
+     this.ctx.fill(path);
+     this.dependencyTracker?.recordDependencies(opIdx, Dependencies.rawFillPath).recordOperation(opIdx);
+@@ -18664,6 +18694,9 @@ class CanvasGraphics {
      return shadow(this, "isFontSubpixelAAEnabled", enabled);
    }
    showText(opIdx, glyphs) {
@@ -200,7 +216,7 @@ index 993f35056cbb76d09d83c25dccd96fe1916ee372..462db100955d5d8683262edb9da184b5
      if (this.dependencyTracker) {
        this.dependencyTracker.recordDependencies(opIdx, Dependencies.showText).resetBBox(opIdx);
        if (this.current.textRenderingMode & TextRenderingMode.ADD_TO_PATH_FLAG) {
-@@ -19401,7 +19433,10 @@ class CanvasGraphics {
+@@ -19401,7 +19434,10 @@ class CanvasGraphics {
      }
      const started = this.#beginKnockoutElement(this.current.fillAlpha);
      const ctx = this.ctx;
@@ -212,7 +228,7 @@ index 993f35056cbb76d09d83c25dccd96fe1916ee372..462db100955d5d8683262edb9da184b5
      const isPatternFill = this.current.patternFill;
      this.dependencyTracker?.resetBBox(opIdx).recordDependencies(opIdx, Dependencies.transformAndFill);
      for (const image of images) {
-@@ -19576,6 +19611,7 @@ class CanvasGraphics {
+@@ -19576,6 +19612,7 @@ class CanvasGraphics {
      this.#endKnockoutElement(started);
    }
    paintSolidColorImageMask(opIdx) {

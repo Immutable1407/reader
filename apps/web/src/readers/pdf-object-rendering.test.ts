@@ -185,18 +185,39 @@ async function stateFixture(colors: PDFObjectColors | null) {
   const glyph = doc.context.register(
     doc.context.flateStream("1000 0 d0 0 0 800 800 re f"),
   );
+  const stencil = doc.context.register(
+    doc.context.flateStream(
+      new Uint8Array([0xaa, 0x55, 0xaa, 0x55, 0xaa, 0x55, 0xaa, 0x55]),
+      {
+        Type: "XObject",
+        Subtype: "Image",
+        Width: 8,
+        Height: 8,
+        ImageMask: true,
+        BitsPerComponent: 1,
+        Decode: [0, 1],
+      },
+    ),
+  );
+  // A Type3 stencil can be compiled into rawFillPath. The glyph's own color
+  // setter must not overwrite target ink after the outer showText call.
+  const stencilGlyph = doc.context.register(
+    doc.context.flateStream(
+      `1000 0 d0 ${components("#204080")} rg 800 0 0 800 0 0 cm /Bit Do`,
+    ),
+  );
   const type3 = doc.context.register(
     doc.context.obj({
       Type: "Font",
       Subtype: "Type3",
       FontBBox: [0, 0, 1000, 1000],
       FontMatrix: [0.001, 0, 0, 0.001, 0, 0],
-      CharProcs: { A: glyph },
-      Encoding: { Type: "Encoding", Differences: [65, "A"] },
+      CharProcs: { A: glyph, B: stencilGlyph },
+      Encoding: { Type: "Encoding", Differences: [65, "A", "B"] },
       FirstChar: 65,
-      LastChar: 65,
-      Widths: [1000],
-      Resources: {},
+      LastChar: 66,
+      Widths: [1000, 1000],
+      Resources: { XObject: { Bit: stencil } },
     }),
   );
   page.node.setFontDictionary(PDFName.of("Glyph"), type3);
@@ -223,7 +244,7 @@ q ${components("#204080")} rg 4 20 10 10 re f
 q ${components("#804020")} rg 18 20 10 10 re f Q
 32 20 10 10 re f Q 46 20 10 10 re f
 q ${components("#804020")} rg 1 0 0 1 65 5 cm /Group Do Q
-q ${components("#204080")} rg BT /Glyph 18 Tf 5 45 Td (AA) Tj ET Q
+q ${components("#204080")} rg BT /Glyph 18 Tf 5 45 Td (AB) Tj ET Q
 q ${components("#804020")} rg ${components("#204080")} RG
 BT /Body 15 Tf 1 Tr 1 w 45 45 Td (stroke) Tj ET
 BT /Body 15 Tf 2 Tr 1 w 45 65 Td (both) Tj ET Q
