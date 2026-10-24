@@ -132,7 +132,7 @@ try {
   assert.equal((await request("/samples/reading-notes.pdf")).status, 200);
   // The command line finds the running service through the library directory.
   const cli = spawnSync(
-    join(resources, "bin", `reader${windows ? ".exe" : ""}`),
+    join(resources, "bin", `neoread${windows ? ".exe" : ""}`),
     ["status", "--json"],
     {
       cwd: temporary,

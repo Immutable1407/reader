@@ -92,4 +92,4 @@ jobs:
           cache-dependency-path: apps/server/go.sum
       - name: Test Windows attachment cleanup and byte-range serving
         working-directory: apps/server
-        run: go test ./internal/reader -run '^TestPaperAttachment(Download|FileRanges|CountUses)' -count=1
+        run: go test ./internal/neoread -run '^TestPaperAttachment(Download|FileRanges|CountUses)' -count=1
