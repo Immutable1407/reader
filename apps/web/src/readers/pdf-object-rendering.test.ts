@@ -1,5 +1,5 @@
 import { createRequire } from "node:module";
-import { expect, it } from "vitest";
+import { expect, it, vi } from "vitest";
 import {
   PDFDocument,
   StandardFonts,
@@ -170,6 +170,110 @@ async function render(
     await task.destroy();
   }
 }
+
+async function stateFixture(colors: PDFObjectColors | null) {
+  const doc = await PDFDocument.create();
+  const page = doc.addPage([160, 100]);
+  const components = (hex: string) => {
+    const mapped = colors?.mapColor(hex) ?? hex;
+    return [1, 3, 5]
+      .map((offset) => parseInt(mapped.slice(offset, offset + 2), 16) / 255)
+      .join(" ");
+  };
+  const font = await doc.embedFont(StandardFonts.Helvetica);
+  page.node.setFontDictionary(PDFName.of("Body"), font.ref);
+  const glyph = doc.context.register(
+    doc.context.flateStream("1000 0 d0 0 0 800 800 re f"),
+  );
+  const type3 = doc.context.register(
+    doc.context.obj({
+      Type: "Font",
+      Subtype: "Type3",
+      FontBBox: [0, 0, 1000, 1000],
+      FontMatrix: [0.001, 0, 0, 0.001, 0, 0],
+      CharProcs: { A: glyph },
+      Encoding: { Type: "Encoding", Differences: [65, "A"] },
+      FirstChar: 65,
+      LastChar: 65,
+      Widths: [1000],
+      Resources: {},
+    }),
+  );
+  page.node.setFontDictionary(PDFName.of("Glyph"), type3);
+  const group = doc.context.register(
+    doc.context.flateStream(
+      `0 0 12 12 re f q ${components("#204080")} rg 14 0 12 12 re f Q 28 0 12 12 re f`,
+      {
+        Type: "XObject",
+        Subtype: "Form",
+        BBox: [0, 0, 40, 12],
+        Resources: {},
+        Group: { S: "Transparency", CS: "DeviceRGB", I: true },
+      },
+    ),
+  );
+  page.node.setXObject(PDFName.of("Group"), group);
+  page.node.addContentStream(
+    doc.context.register(
+      doc.context.flateStream(`
+q ${components("#ffffff")} rg 0 0 160 100 re f Q
+${colors ? `${components("#000000")} rg ${components("#000000")} RG` : ""}
+4 4 10 10 re f 18 4 10 10 re S
+q ${components("#204080")} rg 4 20 10 10 re f
+q ${components("#804020")} rg 18 20 10 10 re f Q
+32 20 10 10 re f Q 46 20 10 10 re f
+q ${components("#804020")} rg 1 0 0 1 65 5 cm /Group Do Q
+q ${components("#204080")} rg BT /Glyph 18 Tf 5 45 Td (AA) Tj ET Q
+q ${components("#804020")} rg ${components("#204080")} RG
+BT /Body 15 Tf 1 Tr 1 w 45 45 Td (stroke) Tj ET
+BT /Body 15 Tf 2 Tr 1 w 45 65 Td (both) Tj ET Q
+4 80 10 10 re f
+`),
+    ),
+  );
+  return doc.save();
+}
+
+it.each(["soft", "high"] as const)(
+  "%s keeps source colors across restore, groups, Type3 and stroked glyphs",
+  async (contrast) => {
+    const colors = pdfObjectColors({
+      ...defaultTheme,
+      mode: "dark",
+      pdfDarkContrast: contrast,
+    })!;
+    const source = await stateFixture(null);
+    const reference = await stateFixture(colors);
+    for (const scale of [1, 1.75, 3]) {
+      const actual = await render(source.slice(), scale, colors);
+      const expected = await render(reference.slice(), scale);
+      let difference = 0;
+      for (let i = 0; i < actual.length; i++) {
+        difference = Math.max(difference, Math.abs(actual[i] - expected[i]));
+      }
+      expect(difference).toBeLessThanOrEqual(1);
+    }
+  },
+);
+
+it("reuses mapped ink across repeated paints and non-paint instructions", async () => {
+  const doc = await PDFDocument.create();
+  const page = doc.addPage([160, 100]);
+  for (let i = 0; i < 200; i++) {
+    page.drawRectangle({
+      x: i % 150,
+      y: i % 90,
+      width: 2,
+      height: 2,
+      color: rgb(0, 0, 0),
+    });
+  }
+  const palette = pdfObjectColors({ ...defaultTheme, mode: "dark" })!;
+  const mapColor = vi.fn(palette.mapColor);
+  await render(await doc.save(), 1, { ...palette, mapColor });
+  expect(mapColor).toHaveBeenCalledTimes(1);
+  expect(mapColor).toHaveBeenCalledWith("#000000");
+});
 
 it.each(["soft", "high"] as const)(
   "%s renders vectors and glyphs directly in target colors, preserving images and masks",

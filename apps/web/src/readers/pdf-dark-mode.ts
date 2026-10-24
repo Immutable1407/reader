@@ -135,11 +135,11 @@ export function pdfObjectColors(theme: ReaderTheme): PDFObjectColors | null {
     palette = {
       ...pdfDarkPalette(contrast),
       mapColor(color) {
+        const cached = colors.get(color);
+        if (cached) return cached;
         // PDF.js normalizes solid drawing colors to hex. Patterns and images
         // are separate drawing objects and must not be flattened/recolored.
         if (!/^#[0-9a-f]{6}$/i.test(color)) return color;
-        const cached = colors.get(color);
-        if (cached) return cached;
         const rgb = [1, 3, 5].map((offset) =>
           parseInt(color.slice(offset, offset + 2), 16),
         );
