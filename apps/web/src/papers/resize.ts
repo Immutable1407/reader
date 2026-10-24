@@ -4,8 +4,29 @@ import type { PaperColumn } from "@reader/core";
 /** Keyboard step for resize separators, in CSS pixels. */
 export const resizeStep = 16;
 export const detailWidthRange = { min: 280, max: 720 };
-const minWidth = (column: "title" | PaperColumn) =>
-  column === "title" ? 160 : 48;
+type ColumnWidths = Partial<Record<"title" | PaperColumn, number>>;
+
+/** Measure the unwrapped header, including controls and cell padding. */
+export function columnMinimums(root: Element): ColumnWidths {
+  return Object.fromEntries(
+    Array.from(root.querySelectorAll<HTMLElement>("th[data-column]")).map(
+      (cell) => {
+        const heading = cell.querySelector<HTMLElement>(
+          ".paper-column-heading",
+        );
+        const style = getComputedStyle(cell);
+        return [
+          cell.dataset.column,
+          Math.ceil(
+            (heading?.getBoundingClientRect().width ?? 0) +
+              (parseFloat(style.paddingLeft) || 0) +
+              (parseFloat(style.paddingRight) || 0),
+          ),
+        ];
+      },
+    ),
+  );
+}
 
 /**
  * Follows a horizontal drag from a resize handle until release. The page keeps
@@ -37,29 +58,55 @@ export function dragHorizontally(
 }
 
 /**
- * Moves the boundary between two adjacent columns by dx. The table fills its
- * width while both neighbouring widths are saved explicitly. The last column
- * can grow into horizontal scroll space without changing the menu column.
+ * Move a boundary by growing the column opposite the drag direction and
+ * compressing columns in that direction, nearest first. Stop when they reach
+ * their minimums; only rightward movement may consume trailing spare space.
+ * Both sides contain visible columns in display order.
  */
 export function resizeBoundary(
   widths: Partial<Record<"title" | PaperColumn, number>>,
-  left: "title" | PaperColumn,
-  right: "title" | PaperColumn | undefined,
+  left: readonly ("title" | PaperColumn)[],
+  right: readonly ("title" | PaperColumn)[],
   dx: number,
-): Partial<Record<"title" | PaperColumn, number>> {
-  const l = widths[left] ?? 0;
-  if (!right) {
-    // Fix the measured title too, otherwise its flex width absorbs this drag.
-    return {
-      ...(widths.title !== undefined ? { title: widths.title } : {}),
-      [left]: Math.round(Math.max(minWidth(left), l + dx)),
-    };
-  }
-  const r = widths[right] ?? 0;
-  const moved = Math.round(
-    Math.min(Math.max(dx, minWidth(left) - l), r - minWidth(right)),
+  minimums: ColumnWidths,
+  spareWidth = 0,
+): { widths: ColumnWidths; spareWidth: number } {
+  const minWidth = (column: "title" | PaperColumn) => minimums[column] ?? 0;
+  const forward = dx >= 0;
+  const shrinking = forward ? right : [...left].reverse();
+  const growing = forward ? left.at(-1) : right[0];
+  const widthOf = (column: "title" | PaperColumn) =>
+    widths[column] ?? minWidth(column);
+  const available = shrinking.reduce(
+    (sum, column) => sum + Math.max(0, widthOf(column) - minWidth(column)),
+    forward ? Math.max(0, spareWidth) : 0,
   );
-  return { [left]: l + moved, [right]: r - moved };
+  const moved = Math.min(available, Math.abs(Math.round(dx)));
+  const next: Partial<Record<"title" | PaperColumn, number>> = {};
+  if (growing) next[growing] = widthOf(growing) + moved;
+  let remaining = moved;
+  for (const column of shrinking) {
+    const width = widthOf(column);
+    const taken = Math.min(remaining, Math.max(0, width - minWidth(column)));
+    next[column] = width - taken;
+    remaining -= taken;
+    if (remaining <= 0) break;
+  }
+  // Freeze a flexible title when using or releasing trailing spare space.
+  // If the title itself was resized, its new width in `next` takes precedence.
+  const changedWidths = {
+    ...((remaining > 0 || !right.length) && widths.title !== undefined
+      ? { title: widths.title }
+      : {}),
+    ...next,
+  };
+  return {
+    widths: changedWidths,
+    spareWidth: Math.max(
+      0,
+      spareWidth + (!growing ? moved : forward ? -remaining : 0),
+    ),
+  };
 }
 
 export const clampDetailWidth = (width: number) =>

@@ -548,9 +548,19 @@ const fakeWidths = (widths: Record<string, number>) =>
   vi
     .spyOn(Element.prototype, "getBoundingClientRect")
     .mockImplementation(function (this: Element) {
+      if (this.classList.contains("paper-column-heading")) {
+        const column = this.closest<HTMLElement>("th")?.dataset.column;
+        return {
+          width: widths[`minimum:${column}`] ?? (column === "title" ? 160 : 48),
+        } as DOMRect;
+      }
       const key =
         (this as HTMLElement).dataset?.column ??
-        (this.classList.contains("paper-detail") ? "detail" : "");
+        (this.classList.contains("paper-detail")
+          ? "detail"
+          : this.getAttribute("aria-hidden") === "true"
+            ? "filler"
+            : "");
       return { width: widths[key] ?? 0 } as DOMRect;
     });
 
@@ -1444,12 +1454,18 @@ it.each([
           papers: {
             layout: "table",
             columns: ["authors", "year"],
+            columnWidths: { title: 400 },
             columnOrder: columnOrder as ("title" | "authors" | "year")[],
           },
         },
       }),
     );
-    const rects = fakeWidths({ title: 400, authors: 160, year: 64 });
+    const rects = fakeWidths({
+      title: 400,
+      authors: 160,
+      year: 64,
+      filler: 100,
+    });
     try {
       const edge = host.querySelector<HTMLElement>(
         '[aria-label="调整标题列宽度"]',
@@ -1462,6 +1478,10 @@ it.each([
       ).toBe("416px");
       expect(
         host.querySelector<HTMLTableElement>(".paper-table table")!.style.width,
+      ).toBe("100%");
+      expect(
+        host.querySelector<HTMLTableElement>(".paper-table table")!.style
+          .minWidth,
       ).toBe(columnOrder[2] === "title" ? "672px" : "656px");
       expect(api.saveLibraryPreferences).not.toHaveBeenCalled();
       await press(edge!, "pointerup", 416);
@@ -1532,7 +1552,7 @@ it("hides and restores the title from the column picker without losing order or 
   ).toContain("Attention Is All You Need");
 });
 
-it("moves the final metadata boundary even before the title has a saved width", async () => {
+it("stops the final metadata boundary when there is no spare space", async () => {
   await act(async () =>
     useReaderStore.setState({
       libraryPreferences: {
@@ -1550,12 +1570,16 @@ it("moves the final metadata boundary even before the title has a saved width", 
     await press(edge, "pointermove", 664);
     expect(
       host.querySelector<HTMLTableElement>(".paper-table table")!.style.width,
-    ).toBe("696px");
+    ).toBe("100%");
+    expect(
+      host.querySelector<HTMLTableElement>(".paper-table table")!.style
+        .minWidth,
+    ).toBe("656px");
     expect(
       host.querySelector<HTMLElement>('th[data-column="title"]')!.style.width,
     ).toBe("400px");
     await press(edge, "pointerup", 664);
-    expect(prefs().columnWidths).toEqual({ title: 400, year: 104 });
+    expect(prefs().columnWidths).toEqual({ title: 400, year: 64 });
   } finally {
     rects.mockRestore();
   }
@@ -1605,9 +1629,28 @@ it("expands child attachments in both list and table without adding paper select
       },
     }),
   );
-  expect(
-    host.querySelector('tr[data-attachment-row="supp"] td[colspan]'),
-  ).not.toBeNull();
+  for (const configuration of [
+    {},
+    { columnWidths: { title: 360 } },
+    { showTitle: false },
+  ]) {
+    await act(async () =>
+      useReaderStore.setState({
+        libraryPreferences: {
+          mode: "papers",
+          papers: { sort: "title", layout: "table", ...configuration },
+        },
+      }),
+    );
+    const table = host.querySelector<HTMLTableElement>(".paper-table table")!;
+    const columnCount = table.querySelectorAll("thead th").length;
+    for (const cell of table.querySelectorAll<HTMLTableCellElement>(
+      "tr[data-attachment-row] td[colspan]",
+    )) {
+      expect(cell.colSpan).toBe(columnCount);
+    }
+    expect(table.querySelectorAll("tr[data-attachment-row]")).toHaveLength(2);
+  }
 });
 it("expands and collapses attachment children with the keyboard", async () => {
   vi.mocked(api.paperAttachments).mockResolvedValue([supplement]);
@@ -1739,5 +1782,506 @@ it("requires dwell after the final attachment and visible expansion disappear", 
     expect(upload).not.toHaveBeenCalled();
   } finally {
     upload.mockRestore();
+  }
+});
+
+it.each([true, false])(
+  "fills the paper pane after saving widths (showTitle=%s)",
+  async (showTitle) => {
+    await act(async () =>
+      useReaderStore.setState({
+        libraryPreferences: {
+          mode: "papers",
+          papers: {
+            layout: "table",
+            showTitle,
+            columns: ["authors", "year"],
+            columnOrder: ["authors", "title", "year"],
+            columnWidths: { title: 360 },
+          },
+        },
+      }),
+    );
+    const table = host.querySelector<HTMLTableElement>(".paper-table table")!;
+    expect(table.style.width).toBe("100%");
+    expect(table.style.minWidth).toBe(showTitle ? "616px" : "256px");
+    expect(headerColumns()).toEqual(
+      showTitle ? ["authors", "title", "year"] : ["authors", "year"],
+    );
+    expect(prefs().columnWidths).toEqual({ title: 360 });
+    const filler = table.querySelector<HTMLElement>(
+      "thead th[aria-hidden=true]",
+    )!;
+    expect(filler.style.padding).toBe("0px");
+    expect(filler.nextElementSibling).toBe(
+      table.querySelector("thead th:last-child"),
+    );
+    for (const row of table.querySelectorAll("tbody tr")) {
+      expect(row.querySelector("td[aria-hidden=true]")).not.toBeNull();
+      expect(row.children.length).toBe(showTitle ? 5 : 4);
+    }
+  },
+);
+
+it("keeps the default title flexible until a final-column shrink saves its width", async () => {
+  await act(async () =>
+    useReaderStore.setState({
+      libraryPreferences: {
+        mode: "papers",
+        papers: { layout: "table", columns: ["year"] },
+      },
+    }),
+  );
+  const table = host.querySelector<HTMLTableElement>(".paper-table table")!;
+  expect(table.querySelector("th[aria-hidden=true]")).toBeNull();
+  expect(
+    table.querySelector<HTMLElement>('th[data-column="title"]')!.style.width,
+  ).toBe("");
+  const rects = fakeWidths({ title: 400, year: 64 });
+  try {
+    const edge = host.querySelector<HTMLElement>(
+      '[aria-label="调整年份列宽度"]',
+    )!;
+    await press(edge, "pointerdown", 464);
+    await press(edge, "pointermove", 448);
+    expect(table.querySelector("th[aria-hidden=true]")).not.toBeNull();
+    expect(
+      table.querySelector<HTMLElement>('th[data-column="title"]')!.style.width,
+    ).toBe("400px");
+    expect(
+      table.querySelector<HTMLElement>('th[data-column="year"]')!.style.width,
+    ).toBe("48px");
+    expect(api.saveLibraryPreferences).not.toHaveBeenCalled();
+    await press(edge, "pointerup", 448);
+    expect(prefs().columnWidths).toEqual({ title: 400, year: 48 });
+    expect(table.querySelector("th[aria-hidden=true]")).not.toBeNull();
+  } finally {
+    rects.mockRestore();
+  }
+});
+
+it.each([false, true])(
+  "fills space without stretching narrow columns (picking=%s)",
+  async (picking) => {
+    await act(async () => {
+      useReaderStore.setState({
+        libraryPreferences: {
+          mode: "papers",
+          papers: {
+            layout: "table",
+            showTitle: false,
+            columns: ["year", "status"],
+          },
+        },
+      });
+      usePaperUI.setState({ picking });
+    });
+    const table = host.querySelector<HTMLTableElement>(".paper-table table")!;
+    expect(table.style.minWidth).toBe(picking ? "200px" : "168px");
+    expect(
+      table.querySelector<HTMLElement>('th[data-column="year"]')!.style.width,
+    ).toBe("64px");
+    expect(
+      table.querySelector<HTMLElement>('th[data-column="status"]')!.style.width,
+    ).toBe("72px");
+    expect(table.querySelector("th[aria-hidden=true]")).not.toBeNull();
+    expect(table.querySelector("tbody tr")!.children.length).toBe(
+      picking ? 5 : 4,
+    );
+    await act(async () => usePaperUI.getState().setQuery("no-such-paper"));
+    expect(table.querySelector("tbody td")!.getAttribute("colspan")).toBe(
+      picking ? "5" : "4",
+    );
+  },
+);
+
+it("keeps resizing after hiding the last column and persists the expanded width", async () => {
+  await act(async () =>
+    useReaderStore.setState({
+      libraryPreferences: {
+        mode: "papers",
+        papers: {
+          layout: "table",
+          columns: ["authors", "year"],
+          columnWidths: { title: 496, authors: 48 },
+        },
+      },
+    }),
+  );
+  await act(async () =>
+    host.querySelector<HTMLButtonElement>('[aria-label="显示的列"]')!.click(),
+  );
+  await act(async () =>
+    document.querySelector<HTMLElement>('[aria-label="显示年份列"]')!.click(),
+  );
+  expect(headerColumns()).toEqual(["title", "authors"]);
+  expect(host.querySelector('td[data-column="year"]')).toBeNull();
+  vi.mocked(api.saveLibraryPreferences).mockClear();
+  const rects = fakeWidths({ title: 496, authors: 48, filler: 300 });
+  try {
+    const edge = host.querySelector<HTMLElement>(
+      '[aria-label="调整标题列宽度"]',
+    )!;
+    const table = host.querySelector<HTMLTableElement>(".paper-table table")!;
+    await press(edge, "pointerdown", 496);
+    for (const [dx, title, authors] of [
+      [64, 560, 48],
+      [800, 796, 48],
+      [784, 780, 64],
+    ]) {
+      await press(edge, "pointermove", 496 + dx);
+      expect(
+        table.querySelector<HTMLElement>('th[data-column="title"]')!.style
+          .width,
+      ).toBe(`${title}px`);
+      expect(
+        table.querySelector<HTMLElement>('th[data-column="authors"]')!.style
+          .width,
+      ).toBe(`${authors}px`);
+      expect(table.style.minWidth).toBe(`${title + authors + 32}px`);
+      expect(table.style.width).toBe("100%");
+    }
+    expect(api.saveLibraryPreferences).not.toHaveBeenCalled();
+    await press(edge, "pointerup", 1280);
+    expect(prefs().columnWidths).toEqual({ title: 780, authors: 64 });
+    const saved = structuredClone(useReaderStore.getState().libraryPreferences);
+    await act(async () =>
+      useReaderStore.setState({ libraryPreferences: saved }),
+    );
+    expect(
+      table.querySelector<HTMLElement>('th[data-column="title"]')!.style.width,
+    ).toBe("780px");
+  } finally {
+    rects.mockRestore();
+  }
+});
+
+it("compresses visible columns in order when dragging the second boundary", async () => {
+  const widths = { title: 400, authors: 160, year: 64, status: 72, venue: 150 };
+  await act(async () =>
+    useReaderStore.setState({
+      libraryPreferences: {
+        mode: "papers",
+        papers: {
+          layout: "table",
+          columns: ["authors", "year", "status", "venue"],
+          columnOrder: ["title", "authors", "year", "status", "venue"],
+          columnWidths: widths,
+        },
+      },
+    }),
+  );
+  const rects = fakeWidths({ ...widths, filler: 80 });
+  try {
+    const edge = host.querySelector<HTMLElement>(
+      '[aria-label="调整作者列宽度"]',
+    )!;
+    await press(edge, "pointerdown", 560);
+    for (const [dx, year, status, venue] of [
+      [10, 54, 72, 150],
+      [30, 48, 58, 150],
+      [60, 48, 48, 130],
+      [200, 48, 48, 48],
+      [500, 48, 48, 48],
+    ]) {
+      await press(edge, "pointermove", 560 + dx);
+      expect(
+        Number.parseFloat(
+          host.querySelector<HTMLTableElement>(".paper-table table")!.style
+            .minWidth,
+        ),
+      ).toBeLessThanOrEqual(958);
+      for (const [column, width] of Object.entries({
+        title: 400,
+        authors: 160 + Math.min(dx, 222),
+        year,
+        status,
+        venue,
+      })) {
+        expect(
+          host.querySelector<HTMLElement>(`th[data-column="${column}"]`)!.style
+            .width,
+        ).toBe(`${width}px`);
+      }
+    }
+    expect(api.saveLibraryPreferences).not.toHaveBeenCalled();
+    await press(edge, "pointerup", 1060);
+    expect(prefs().columnWidths).toEqual({
+      ...widths,
+      authors: 382,
+      year: 48,
+      status: 48,
+      venue: 48,
+    });
+  } finally {
+    rects.mockRestore();
+  }
+});
+
+it.each(["ArrowRight", "ArrowLeft"])(
+  "uses sequential compression for keyboard resizing with %s",
+  async (key) => {
+    const widths =
+      key === "ArrowRight"
+        ? { title: 400, authors: 160, year: 48, status: 56, venue: 150 }
+        : { title: 200, authors: 48, year: 48, status: 64, venue: 80 };
+    await act(async () =>
+      useReaderStore.setState({
+        libraryPreferences: {
+          mode: "papers",
+          papers: {
+            layout: "table",
+            columns: ["authors", "year", "status", "venue"],
+            columnOrder: ["title", "authors", "year", "status", "venue"],
+            columnWidths: widths,
+          },
+        },
+      }),
+    );
+    const rects = fakeWidths(widths);
+    try {
+      await act(async () =>
+        host
+          .querySelector(
+            key === "ArrowRight"
+              ? '[aria-label="调整作者列宽度"]'
+              : '[aria-label="调整年份列宽度"]',
+          )!
+          .dispatchEvent(new KeyboardEvent("keydown", { key, bubbles: true })),
+      );
+      expect(prefs().columnWidths).toEqual(
+        key === "ArrowRight"
+          ? { ...widths, authors: 176, status: 48, venue: 142 }
+          : { ...widths, title: 184, status: 80 },
+      );
+    } finally {
+      rects.mockRestore();
+    }
+  },
+);
+
+it("compresses columns to the left in nearest-first order and stops at their minimums", async () => {
+  const widths = { title: 200, authors: 80, year: 64, status: 64, venue: 80 };
+  await act(async () =>
+    useReaderStore.setState({
+      libraryPreferences: {
+        mode: "papers",
+        papers: {
+          layout: "table",
+          columns: ["authors", "year", "status", "venue"],
+          columnOrder: ["title", "authors", "year", "status", "venue"],
+          columnWidths: widths,
+        },
+      },
+    }),
+  );
+  const rects = fakeWidths({ ...widths, filler: 80 });
+  try {
+    const edge = host.querySelector<HTMLElement>(
+      '[aria-label="调整状态列宽度"]',
+    )!;
+    await press(edge, "pointerdown", 408);
+    for (const [dx, title, authors, year, status, venue] of [
+      [-8, 200, 80, 64, 56, 88],
+      [-24, 200, 80, 56, 48, 104],
+      [-48, 200, 64, 48, 48, 128],
+      [-80, 184, 48, 48, 48, 160],
+      [-999, 160, 48, 48, 48, 184],
+    ]) {
+      await press(edge, "pointermove", 408 + dx);
+      for (const [column, width] of Object.entries({
+        title,
+        authors,
+        year,
+        status,
+        venue,
+      })) {
+        expect(
+          host.querySelector<HTMLElement>(`th[data-column="${column}"]`)!.style
+            .width,
+        ).toBe(`${width}px`);
+      }
+      expect(
+        host.querySelector<HTMLTableElement>(".paper-table table")!.style
+          .minWidth,
+      ).toBe("520px");
+    }
+    expect(api.saveLibraryPreferences).not.toHaveBeenCalled();
+    await press(edge, "pointerup", -591);
+    expect(prefs().columnWidths).toEqual({
+      title: 160,
+      authors: 48,
+      year: 48,
+      status: 48,
+      venue: 184,
+    });
+  } finally {
+    rects.mockRestore();
+  }
+});
+
+it.each(["right", "left"])(
+  "keeps displaced columns in place when reversing a %s drag",
+  async (direction) => {
+    const widths = { title: 200, authors: 80, year: 64, status: 64, venue: 80 };
+    await act(async () =>
+      useReaderStore.setState({
+        libraryPreferences: {
+          mode: "papers",
+          papers: {
+            layout: "table",
+            columns: ["authors", "year", "status", "venue"],
+            columnOrder: ["title", "authors", "year", "status", "venue"],
+            columnWidths: widths,
+          },
+        },
+      }),
+    );
+    const rects = fakeWidths(widths);
+    try {
+      const edge = host.querySelector<HTMLElement>(
+        direction === "right"
+          ? '[aria-label="调整作者列宽度"]'
+          : '[aria-label="调整状态列宽度"]',
+      )!;
+      const sign = direction === "right" ? 1 : -1;
+      await press(edge, "pointerdown", 400);
+      await press(edge, "pointermove", 400 + sign * 32);
+      await press(edge, "pointermove", 400 + sign * 24);
+      const expected =
+        direction === "right"
+          ? { ...widths, authors: 104, year: 56, status: 48 }
+          : { ...widths, year: 48, status: 56, venue: 104 };
+      for (const [column, width] of Object.entries(expected)) {
+        expect(
+          host.querySelector<HTMLElement>(`th[data-column="${column}"]`)!.style
+            .width,
+        ).toBe(`${width}px`);
+      }
+      await press(edge, "pointerup", 400 + sign * 24);
+      expect(prefs().columnWidths).toEqual(expected);
+    } finally {
+      rects.mockRestore();
+    }
+  },
+);
+
+it("accounts for consumed and released spare space across repeated drag reversals", async () => {
+  await act(async () =>
+    useReaderStore.setState({
+      libraryPreferences: {
+        mode: "papers",
+        papers: {
+          layout: "table",
+          columns: ["authors"],
+          columnWidths: { title: 400, authors: 160 },
+        },
+      },
+    }),
+  );
+  const rects = fakeWidths({ title: 400, authors: 160, filler: 80 });
+  try {
+    const edge = host.querySelector<HTMLElement>(
+      '[aria-label="调整作者列宽度"]',
+    )!;
+    await press(edge, "pointerdown", 560);
+    for (const [dx, width] of [
+      [60, 220],
+      [100, 240],
+      [84, 224],
+      [100, 240],
+      [200, 240],
+    ]) {
+      await press(edge, "pointermove", 560 + dx);
+      expect(
+        host.querySelector<HTMLElement>('th[data-column="authors"]')!.style
+          .width,
+      ).toBe(`${width}px`);
+      expect(
+        Number.parseFloat(
+          host.querySelector<HTMLTableElement>(".paper-table table")!.style
+            .minWidth,
+        ),
+      ).toBeLessThanOrEqual(672);
+    }
+    await press(edge, "pointerup", 760);
+    expect(prefs().columnWidths).toEqual({ title: 400, authors: 240 });
+  } finally {
+    rects.mockRestore();
+  }
+});
+
+it("uses measured header minimums for pointer and keyboard resizing", async () => {
+  const measuredWidths = {
+    title: 200,
+    authors: 160,
+    year: 100,
+    "minimum:title": 42,
+    "minimum:authors": 76,
+    "minimum:year": 68,
+  };
+  const rects = fakeWidths(measuredWidths);
+  try {
+    await act(async () =>
+      useReaderStore.setState({
+        libraryPreferences: {
+          mode: "papers",
+          papers: {
+            layout: "table",
+            columns: ["authors", "year"],
+            columnWidths: { title: 200, authors: 160, year: 100 },
+          },
+        },
+      }),
+    );
+    const edge = host.querySelector<HTMLElement>(
+      '[aria-label="调整标题列宽度"]',
+    )!;
+    await press(edge, "pointerdown", 200);
+    await press(edge, "pointermove", 1000);
+    await press(edge, "pointerup", 1000);
+    expect(prefs().columnWidths).toEqual({ title: 316, authors: 76, year: 68 });
+    Object.assign(measuredWidths, prefs().columnWidths);
+    await act(async () =>
+      edge.dispatchEvent(
+        new KeyboardEvent("keydown", {
+          key: "ArrowLeft",
+          bubbles: true,
+        }),
+      ),
+    );
+    expect(prefs().columnWidths).toEqual({
+      title: 300,
+      authors: 92,
+      year: 68,
+    });
+  } finally {
+    rects.mockRestore();
+  }
+});
+
+it("fits saved narrow widths to the complete header without overwriting preferences", async () => {
+  const rects = fakeWidths({ "minimum:authors": 92, "minimum:title": 42 });
+  try {
+    await act(async () =>
+      useReaderStore.setState({
+        libraryPreferences: {
+          mode: "papers",
+          papers: {
+            layout: "table",
+            columns: ["authors"],
+            columnWidths: { title: 42, authors: 48 },
+          },
+        },
+      }),
+    );
+    const heading = host.querySelector<HTMLElement>(
+      'th[data-column="authors"]',
+    )!;
+    expect(heading.style.width).toBe("92px");
+    expect(heading.querySelector(".truncate")).toBeNull();
+    expect(prefs().columnWidths?.authors).toBe(48);
+  } finally {
+    rects.mockRestore();
   }
 });

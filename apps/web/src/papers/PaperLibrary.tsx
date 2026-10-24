@@ -8,6 +8,7 @@ import {
   Suspense,
   lazy,
   useEffect,
+  useLayoutEffect,
   useMemo,
   useRef,
   useState,
@@ -147,6 +148,7 @@ import {
   detailWidthRange,
   dragHorizontally,
   resizeBoundary,
+  columnMinimums,
   resizeStep,
 } from "./resize";
 
@@ -384,15 +386,47 @@ export function PaperLibrary({
   const [draftWidths, setDraftWidths] =
     useState<Partial<Record<TableColumn, number>>>();
   const [draftDetail, setDraftDetail] = useState<number>();
+  const [minimumWidths, setMinimumWidths] = useState<
+    Partial<Record<TableColumn, number>>
+  >({});
+  const visibleColumnKey = columnControls.visible.join(",");
+  useLayoutEffect(() => {
+    const root = listRef.current;
+    if (loading || !table || !root) return;
+    const measure = () => {
+      const measured = columnMinimums(root);
+      setMinimumWidths((previous) =>
+        JSON.stringify(previous) === JSON.stringify(measured)
+          ? previous
+          : measured,
+      );
+    };
+    measure();
+    const observer = new ResizeObserver(measure);
+    root
+      .querySelectorAll(".paper-column-heading")
+      .forEach((heading) => observer.observe(heading));
+    return () => observer.disconnect();
+  }, [loading, table, visibleColumnKey]);
   const columnWidths = {
     ...defaultColumnWidths,
     ...prefs.columnWidths,
     ...draftWidths,
   };
+  for (const column of columnControls.visible) {
+    const width = columnWidths[column];
+    if (width !== undefined)
+      columnWidths[column] = Math.max(width, minimumWidths[column] ?? 0);
+  }
   const tableWidth = columnControls.visible.reduce(
-    (sum, c) => sum + (columnWidths[c] ?? 160),
+    (sum, c) => sum + (columnWidths[c] ?? Math.max(160, minimumWidths[c] ?? 0)),
     32 + (picking ? 32 : 0),
   );
+  // Once the title has an explicit width, spare space belongs to a blank
+  // column so resizing any boundary (including the last) stays under the pointer.
+  const fillTableSpace =
+    columnWidths.title !== undefined ||
+    !columnControls.visible.includes("title");
   const detailWidth = draftDetail ?? prefs.detailWidth;
   const saveColumnWidths = (next: Partial<Record<TableColumn, number>>) =>
     void savePaperPreferences((p) => ({
@@ -406,35 +440,64 @@ export function PaperLibrary({
           [],
       ).map((th) => [th.dataset.column, th.getBoundingClientRect().width]),
     );
+  const spareTableWidth = (cell: Element) =>
+    cell
+      .closest("tr")
+      ?.querySelector<HTMLElement>('th[aria-hidden="true"]')
+      ?.getBoundingClientRect().width ?? 0;
   const resizeColumn = (
     e: ReactPointerEvent<HTMLElement>,
-    left: "title" | PaperColumn,
-    right: TableColumn | undefined,
+    left: TableColumn[],
+    right: TableColumn[],
   ) => {
-    const start = headerWidths(e.currentTarget);
-    let next: Partial<Record<TableColumn, number>> = {};
+    const minimums = columnMinimums(e.currentTarget.closest("tr")!);
+    let current = headerWidths(e.currentTarget);
+    let spareWidth = spareTableWidth(e.currentTarget);
+    let previous = 0;
+    let changedWidths: Partial<Record<TableColumn, number>> = {};
     dragHorizontally(
       e,
       (dx) => {
-        next = resizeBoundary(start, left, right, dx);
-        setDraftWidths(next);
+        // Reverse from the current layout instead of replaying the drag from
+        // pointerdown, so columns already pushed aside do not snap back.
+        const position = Math.round(dx);
+        const result = resizeBoundary(
+          current,
+          left,
+          right,
+          position - previous,
+          minimums,
+          spareWidth,
+        );
+        previous = position;
+        spareWidth = result.spareWidth;
+        current = { ...current, ...result.widths };
+        changedWidths = { ...changedWidths, ...result.widths };
+        setDraftWidths(changedWidths);
       },
       () => {
-        if (Object.keys(next).length) saveColumnWidths(next);
+        if (Object.keys(changedWidths).length) saveColumnWidths(changedWidths);
         setDraftWidths(undefined);
       },
     );
   };
   const nudgeColumn = (
     e: ReactKeyboardEvent<HTMLElement>,
-    left: "title" | PaperColumn,
-    right: TableColumn | undefined,
+    left: TableColumn[],
+    right: TableColumn[],
   ) => {
     const dx = { ArrowLeft: -resizeStep, ArrowRight: resizeStep }[e.key];
     if (!dx) return;
     e.preventDefault();
     saveColumnWidths(
-      resizeBoundary(headerWidths(e.currentTarget), left, right, dx),
+      resizeBoundary(
+        headerWidths(e.currentTarget),
+        left,
+        right,
+        dx,
+        columnMinimums(e.currentTarget.closest("tr")!),
+        spareTableWidth(e.currentTarget),
+      ).widths,
     );
   };
   const saveDetailWidth = (width: number) =>
@@ -612,6 +675,7 @@ export function PaperLibrary({
     <Fragment key={doc.id}>
       <PaperRow
         columns={tableColumns}
+        fillTableSpace={fillTableSpace}
         expanded={expandedAttachments.has(doc.id)}
         onToggleAttachments={() => toggleAttachments(doc.id)}
         doc={doc}
@@ -660,7 +724,11 @@ export function PaperLibrary({
       {!picking && expandedAttachments.has(doc.id) && (
         <AttachmentRows
           doc={doc}
-          colSpan={tableColumns ? tableColumns.length + 1 : undefined}
+          colSpan={
+            tableColumns
+              ? tableColumns.length + 1 + (fillTableSpace ? 1 : 0)
+              : undefined
+          }
           openDocument={openDocument}
         />
       )}
@@ -1035,13 +1103,7 @@ export function PaperLibrary({
                   <Table
                     {...columnControls.target()}
                     style={{
-                      // Keep the title flexible until first resized; afterwards
-                      // the table follows saved widths rather than redistributing them.
-                      width:
-                        columnWidths.title !== undefined ||
-                        !columnControls.visible.includes("title")
-                          ? tableWidth
-                          : undefined,
+                      width: "100%",
                       minWidth: tableWidth,
                     }}
                   >
@@ -1050,7 +1112,8 @@ export function PaperLibrary({
                       <TableRow>
                         {picking && <TableHead className="w-8" />}
                         {columnControls.visible.map((c, i, order) => {
-                          const next = order[i + 1];
+                          const left = order.slice(0, i + 1);
+                          const right = order.slice(i + 1);
                           const sortKey = columnSort[c];
                           const active = sort === sortKey;
                           const descending =
@@ -1082,8 +1145,19 @@ export function PaperLibrary({
                                     c,
                                     false,
                                     <>
-                                      {c === "title" ? "标题" : columnLabels[c]}
-                                      {active && <Arrow />}
+                                      <span className="shrink-0 whitespace-nowrap">
+                                        {c === "title"
+                                          ? "标题"
+                                          : columnLabels[c]}
+                                      </span>
+                                      {sortKey && (
+                                        <Arrow
+                                          className={
+                                            active ? undefined : "invisible"
+                                          }
+                                          aria-hidden="true"
+                                        />
+                                      )}
                                     </>,
                                     sortKey ? () => sortBy(sortKey) : undefined,
                                   )
@@ -1095,12 +1169,20 @@ export function PaperLibrary({
                                 aria-label={`调整${c === "title" ? "标题" : columnLabels[c]}列宽度`}
                                 tabIndex={0}
                                 className="paper-column-resizer"
-                                onPointerDown={(e) => resizeColumn(e, c, next)}
-                                onKeyDown={(e) => nudgeColumn(e, c, next)}
+                                onPointerDown={(e) =>
+                                  resizeColumn(e, left, right)
+                                }
+                                onKeyDown={(e) => nudgeColumn(e, left, right)}
                               />
                             </TableHead>
                           );
                         })}
+                        {fillTableSpace && (
+                          <TableHead
+                            aria-hidden="true"
+                            style={{ padding: 0 }}
+                          />
+                        )}
                         <TableHead className="w-8" />
                       </TableRow>
                     </TableHeader>
@@ -1114,6 +1196,7 @@ export function PaperLibrary({
                             colSpan={
                               columnControls.visible.length +
                               1 +
+                              (fillTableSpace ? 1 : 0) +
                               (picking ? 1 : 0)
                             }
                           >
@@ -1362,6 +1445,7 @@ function PaperRow({
   journalRankConfig,
   journalRankRefresh,
   columns,
+  fillTableSpace,
   dragIds,
   onActivate,
   onOpen,
@@ -1381,6 +1465,7 @@ function PaperRow({
   journalRankRefresh: number;
   /** Table columns; the row renders as a list card without them. */
   columns?: TableColumn[];
+  fillTableSpace: boolean;
   dragIds: () => string[];
   onActivate: (e: React.MouseEvent | React.KeyboardEvent) => void;
   onOpen: () => void;
@@ -1668,6 +1753,9 @@ function PaperRow({
                   {cell(column)}
                 </TableCell>
               ),
+            )}
+            {fillTableSpace && (
+              <TableCell aria-hidden="true" style={{ padding: 0 }} />
             )}
             <TableCell className="w-8">
               {dropHint}

@@ -2795,6 +2795,7 @@ body[data-resizing] * {
   user-select: none;
 }
 .paper-table-sort.paper-table-sort {
+  justify-content: flex-start;
   gap: 2px;
   padding-inline: 6px;
   color: inherit;
@@ -3651,14 +3652,11 @@ textarea.paper-note-input {
 .paper-column-heading {
   display: flex;
   align-items: center;
-  min-width: 0;
+  width: max-content;
+  white-space: nowrap;
 }
 .paper-column-heading > :last-child {
-  min-width: 0;
-  max-width: 100%;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
+  flex-shrink: 0;
 }
 .paper-column-grip.paper-column-grip {
   width: 16px;
