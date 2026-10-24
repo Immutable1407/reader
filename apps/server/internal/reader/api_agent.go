@@ -171,12 +171,12 @@ func (a apiAgentAdapter) Stream(ctx context.Context, req GenerateRequest, emit f
 		}
 		completion.Tools = capability.Tools == "passed"
 		completion.Vision = capability.Vision
-		if req.Input.Chat.SessionID != "" {
+		if req.Input.Chat.SessionID != "" || req.Input.Chat.WebSearch {
 			return streamPiChat(ctx, a.conn, completion, req.Input, emit)
 		}
 		return streamAPIDocumentChat(ctx, a.conn, completion, req.Input, emit)
 	}
-	if a.task == taskChat && req.Input.Chat != nil && req.Input.Chat.SessionID != "" {
+	if a.task == taskChat && req.Input.Chat != nil && (req.Input.Chat.SessionID != "" || req.Input.Chat.WebSearch) {
 		return streamPiChat(ctx, a.conn, completion, req.Input, emit)
 	}
 	return streamCompletion(ctx, a.conn, completion, req.Input, emit)

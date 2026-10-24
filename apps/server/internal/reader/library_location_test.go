@@ -29,7 +29,7 @@ func migrationSource(t *testing.T) string {
 	if err := s.DB.Close(); err != nil {
 		t.Fatal(err)
 	}
-	for name, content := range map[string]string{"papers/paper.pdf": "pdf bytes", "books/book.epub": "epub bytes", "cache/analysis.md": "analysis", "server.json": "stale token", "ai-work/transient": "temporary"} {
+	for name, content := range map[string]string{"papers/paper.pdf": "pdf bytes", "books/book.epub": "epub bytes", "cache/analysis.md": "analysis", "attachments/supplement": "attachment bytes", "server.json": "stale token", "ai-work/transient": "temporary"} {
 		if err := os.WriteFile(filepath.Join(root, name), []byte(content), 0600); err != nil {
 			t.Fatal(err)
 		}
@@ -46,6 +46,10 @@ func TestCopyLibraryPreservesSourceAndDatabase(t *testing.T) {
 		b, err := os.ReadFile(filepath.Join(root, "papers/paper.pdf"))
 		if err != nil || string(b) != "pdf bytes" {
 			t.Fatal(string(b), err)
+		}
+		b, err = os.ReadFile(filepath.Join(root, "attachments/supplement"))
+		if err != nil || string(b) != "attachment bytes" {
+			t.Fatal("attachment migration", string(b), err)
 		}
 		s, err := OpenStore(root)
 		if err != nil {

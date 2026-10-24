@@ -1,0 +1,254 @@
+import { useEffect, useId, useRef, useState } from "react";
+import type { WebSearchConfig } from "@reader/core";
+import { Button } from "@reader/ui/components/button";
+import { Checkbox } from "@reader/ui/components/checkbox";
+import { Input } from "@reader/ui/components/input";
+import {
+  Select,
+  SelectTrigger,
+  SelectValue,
+  SelectContent,
+  SelectItem,
+} from "@reader/ui/components/select";
+
+const defaultURL = "https://api.deepseek.com";
+const defaults: WebSearchConfig = {
+  cliEnabled: false,
+  provider: "",
+  url: defaultURL,
+  hasKey: false,
+};
+const normalizeURL = (url: string) =>
+  url.trim().replace(/\/+$/, "") || defaultURL;
+
+export function WebSearchSettings({
+  value,
+  disabled,
+  onSave,
+}: {
+  value?: WebSearchConfig;
+  disabled: boolean;
+  onSave: (value: WebSearchConfig) => Promise<boolean>;
+}) {
+  const id = useId();
+  const saved = useRef(value ?? defaults);
+  const queue = useRef(Promise.resolve());
+  const cliPending = useRef(0),
+    providerPending = useRef(0);
+  const [cliEnabled, setCLIEnabled] = useState(value?.cliEnabled ?? false);
+  const [provider, setProvider] = useState(value?.provider ?? "");
+  const [url, setURL] = useState(value?.url || defaultURL);
+  const [key, setKey] = useState("");
+  const [error, setError] = useState("");
+  const [pending, setPending] = useState(0);
+  const previousURL = useRef(value?.url || defaultURL);
+  useEffect(() => {
+    saved.current = value ?? defaults;
+  }, [value]);
+  useEffect(() => {
+    if (!cliPending.current) setCLIEnabled(value?.cliEnabled ?? false);
+  }, [value?.cliEnabled]);
+  useEffect(() => {
+    if (!providerPending.current) setProvider(value?.provider ?? "");
+  }, [value?.provider]);
+  useEffect(() => {
+    const next = value?.url || defaultURL,
+      previous = previousURL.current;
+    setURL((draft) =>
+      normalizeURL(draft) === normalizeURL(previous) ? next : draft,
+    );
+    previousURL.current = next;
+  }, [value?.url]);
+
+  // Serialize patches against the last accepted configuration, so a blur save
+  // and a checkbox click cannot overwrite one another or reuse a stale key.
+  const persist = (change: (latest: WebSearchConfig) => WebSearchConfig) => {
+    setPending((n) => n + 1);
+    const task = queue.current.then(async () => {
+      const next = change(saved.current);
+      let ok = false;
+      try {
+        ok = await onSave(next);
+      } catch {
+        /* The parent normally reports details. */
+      }
+      if (ok) {
+        saved.current = {
+          ...next,
+          key: undefined,
+          hasKey: !!next.key || next.hasKey,
+        };
+        setError("");
+      } else setError("联网设置保存失败，请重试。");
+      setPending((n) => n - 1);
+      return ok;
+    });
+    queue.current = task.then(() => {});
+    return task;
+  };
+  const saveCLI = (checked: boolean) => {
+    setCLIEnabled(checked);
+    cliPending.current++;
+    void persist((latest) => ({ ...latest, cliEnabled: checked })).then(() => {
+      if (!--cliPending.current) setCLIEnabled(saved.current.cliEnabled);
+    });
+  };
+  const saveProvider = (next: WebSearchConfig["provider"]) => {
+    setProvider(next);
+    providerPending.current++;
+    void persist((latest) => ({ ...latest, provider: next })).then(() => {
+      if (!--providerPending.current) setProvider(saved.current.provider);
+    });
+  };
+  const addressChanged =
+    normalizeURL(url) !== normalizeURL(value?.url || defaultURL);
+  const needsNewKey = !!value?.hasKey && addressChanged && !key.trim();
+  const saveAPI = () => {
+    const endpoint = normalizeURL(url),
+      secret = key.trim();
+    if (needsNewKey || (!addressChanged && !secret)) return;
+    void persist((latest) => ({
+      ...latest,
+      url: endpoint,
+      key: secret || undefined,
+      hasKey: !secret && latest.hasKey && normalizeURL(latest.url) === endpoint,
+    })).then((ok) => {
+      if (ok) {
+        setKey((current) => (current.trim() === secret ? "" : current));
+        setURL((current) =>
+          normalizeURL(current) === endpoint ? endpoint : current,
+        );
+      }
+    });
+  };
+  return (
+    <section
+      className="mt-5 border-t pt-5"
+      aria-labelledby={`${id}-title`}
+      aria-busy={pending > 0}
+    >
+      <h3 id={`${id}-title`} className="text-sm font-medium">
+        联网搜索
+      </h3>
+      <div className="mt-3 space-y-3">
+        <label className="flex items-center gap-2 text-sm">
+          <Checkbox
+            checked={cliEnabled}
+            disabled={disabled}
+            onCheckedChange={(checked) => saveCLI(checked === true)}
+          />
+          允许 CLI 原生联网搜索
+        </label>
+        <p className="text-xs leading-5 text-muted-foreground">
+          目前支持 Codex，使用 CLI 自身的联网能力。
+        </p>
+        <div className="space-y-2">
+          <label id={`${id}-provider`} className="text-sm">
+            搜索 API
+          </label>
+          <Select
+            value={provider || "off"}
+            disabled={disabled}
+            onValueChange={(next) => {
+              if (next === "off" || next === "deepseek")
+                saveProvider(next === "off" ? "" : next);
+            }}
+          >
+            <SelectTrigger
+              aria-labelledby={`${id}-provider`}
+              className="w-full"
+            >
+              <SelectValue>{provider ? "DeepSeek" : "关闭"}</SelectValue>
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="off">关闭</SelectItem>
+              <SelectItem value="deepseek">DeepSeek</SelectItem>
+            </SelectContent>
+          </Select>
+        </div>
+        {provider && (
+          <>
+            <div className="space-y-2">
+              <label htmlFor={`${id}-url`} className="text-sm">
+                搜索 API 地址
+              </label>
+              <Input
+                id={`${id}-url`}
+                value={url}
+                disabled={disabled}
+                onChange={(event) => setURL(event.target.value)}
+                onBlur={saveAPI}
+                onKeyDown={(event) => {
+                  if (event.key === "Enter") event.currentTarget.blur();
+                }}
+                autoComplete="off"
+                spellCheck={false}
+                placeholder={defaultURL}
+              />
+            </div>
+            <div className="space-y-2">
+              <label htmlFor={`${id}-key`} className="text-sm">
+                搜索 API Key
+              </label>
+              <Input
+                id={`${id}-key`}
+                type="password"
+                value={key}
+                disabled={disabled}
+                onChange={(event) => setKey(event.target.value)}
+                onBlur={saveAPI}
+                onKeyDown={(event) => {
+                  if (event.key === "Enter") event.currentTarget.blur();
+                }}
+                autoComplete="off"
+                placeholder={
+                  value?.hasKey && !addressChanged
+                    ? "已保存，留空保持不变"
+                    : "填写此搜索服务的 API Key"
+                }
+              />
+            </div>
+            <p className="text-xs leading-5 text-muted-foreground">
+              {needsNewKey
+                ? "地址已更改，填写此服务的 API Key 后自动保存。"
+                : !value?.hasKey && !key
+                  ? "填写搜索 API Key 后自动启用。"
+                  : "支持 DeepSeek Search / Fetch 协议，聊天模型与搜索服务分别配置。"}
+            </p>
+          </>
+        )}
+        {value?.hasKey && (
+          <div className="flex justify-end">
+            <Button
+              type="button"
+              variant="ghost"
+              size="sm"
+              disabled={disabled}
+              onClick={() => {
+                setKey("");
+                setProvider("");
+                providerPending.current++;
+                void persist((latest) => ({
+                  ...latest,
+                  provider: "",
+                  key: undefined,
+                  hasKey: false,
+                })).then(() => {
+                  if (!--providerPending.current)
+                    setProvider(saved.current.provider);
+                });
+              }}
+            >
+              移除搜索密钥
+            </Button>
+          </div>
+        )}
+        {error && (
+          <p role="alert" className="text-xs text-destructive">
+            {error}
+          </p>
+        )}
+      </div>
+    </section>
+  );
+}

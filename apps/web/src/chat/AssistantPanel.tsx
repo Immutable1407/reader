@@ -1,3 +1,4 @@
+import { ToolActivities } from "./ToolActivities";
 import { lazy, Suspense, useSyncExternalStore, type ReactNode } from "react";
 import { ArrowDown, BookOpen, LoaderCircle } from "lucide-react";
 import { ProviderGlyph } from "../ProviderIdentity";
@@ -117,6 +118,10 @@ export function AssistantPanel({
                 data-message-id={message?.id}
                 className={`chat-message ${assistant ? "assistant" : "user"}`}
               >
+                <ToolActivities
+                  tools={answer?.tools ?? message?.tools}
+                  sources={message?.webSources}
+                />
                 {waiting && (
                   <div
                     className="chat-waiting"

@@ -61,7 +61,7 @@ func runPersistentDocumentProcess() {
 			if url != "" {
 				servers["reader_document"] = map[string]any{"enabled": true, "url": url}
 			}
-			reply(map[string]any{"config": map[string]any{"mcp_servers": servers, "features": map[string]bool{}, "model_context_window": 64000}})
+			reply(map[string]any{"config": map[string]any{"mcp_servers": servers, "features": map[string]bool{}, "model_context_window": 64000, "web_search": "disabled"}})
 		case "thread/start":
 			save(nativeState{})
 			reply(map[string]any{"thread": map[string]any{"id": thread, "ephemeral": false}, "model": "test"})

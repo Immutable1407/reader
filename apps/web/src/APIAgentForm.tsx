@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useId, useState } from "react";
 import type { APIConnection } from "@reader/core";
 import { Button } from "@reader/ui/components/button";
 import { Input } from "@reader/ui/components/input";
@@ -11,7 +11,7 @@ import {
   SelectItem,
 } from "@reader/ui/components/select";
 const protocols = {
-  auto: "中转站的非官方api默认使用openai协议",
+  auto: "默认使用 OpenAI 格式",
   openai: "OpenAI Chat Completions",
   anthropic: "Anthropic Messages",
 } as const;
@@ -38,6 +38,7 @@ export function APIAgentForm({
   );
   const [key, setKey] = useState("");
   const [saving, setSaving] = useState(false);
+  const id = useId();
   useEffect(() => setURL(connection.url || DEFAULT_API_URL), [connection.url]);
   const changed =
     url.trim() !== connection.url ||
@@ -66,26 +67,31 @@ export function APIAgentForm({
   };
   return (
     <form
-      className="mt-3 flex flex-col gap-2"
+      className="mt-3 grid grid-cols-[auto_minmax(0,1fr)] items-center gap-x-4 gap-y-2"
       onSubmit={(event) => {
         event.preventDefault();
         if (changed) void save();
       }}
     >
+      <label htmlFor={`${id}-url`} className="text-sm">
+        Base URL
+      </label>
       <Input
-        aria-label="API 地址"
+        id={`${id}-url`}
+        aria-label="Base URL"
         autoComplete="off"
         spellCheck={false}
         value={url}
         disabled={disabled || saving}
         onChange={(event) => setURL(event.target.value)}
       />
+      <span className="text-sm">API 格式</span>
       <Select
         value={protocol}
         disabled={disabled || saving}
         onValueChange={(value) => value && setProtocol(value)}
       >
-        <SelectTrigger aria-label="API 协议">
+        <SelectTrigger aria-label="API 格式" className="w-full">
           <SelectValue>{protocols[protocol]}</SelectValue>
         </SelectTrigger>
         <SelectContent>
@@ -96,8 +102,12 @@ export function APIAgentForm({
           ))}
         </SelectContent>
       </Select>
+      <label htmlFor={`${id}-key`} className="text-sm">
+        API Key
+      </label>
       <div className="flex gap-2">
         <Input
+          id={`${id}-key`}
           aria-label="API Key"
           type="password"
           autoComplete="off"

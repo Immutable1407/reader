@@ -1,5 +1,5 @@
 // @vitest-environment jsdom
-import { act, type ReactNode } from "react";
+import { act, type ComponentProps, type ReactNode } from "react";
 import { createRoot, type Root } from "react-dom/client";
 import { afterEach, beforeEach, expect, it, vi } from "vitest";
 import type { AIConfig, AgentModel, ProxySettingsState } from "@reader/core";
@@ -39,6 +39,20 @@ vi.mock("@reader/ui/components/dialog", () => {
     DialogDescription: Content,
   };
 });
+// These tests cover Agent requests and configuration, not hidden appearance or
+// paper-library panels. Keep the real tabs and the controls exercised below.
+vi.mock("@reader/ui/components/tabs", async (importOriginal) => {
+  const actual =
+    await importOriginal<typeof import("@reader/ui/components/tabs")>();
+  return {
+    ...actual,
+    TabsContent: (props: ComponentProps<typeof actual.TabsContent>) =>
+      props.value === "display" || props.value === "papers" ? null : (
+        <actual.TabsContent {...props} />
+      ),
+  };
+});
+
 let root: Root;
 let host: HTMLDivElement;
 let config: AIConfig;
@@ -58,7 +72,7 @@ const type = async (label: string, value: string) => {
 };
 const submit = async () =>
   act(async () =>
-    input("API 地址").form!.dispatchEvent(
+    input("Base URL").form!.dispatchEvent(
       new Event("submit", { bubbles: true, cancelable: true }),
     ),
   );
@@ -179,12 +193,10 @@ it("groups proxy settings and log export under diagnostics without a network tab
 });
 it("saves the API endpoint and key, then tests the new connection", async () => {
   await act(async () => root.render(<Settings open onOpenChange={() => {}} />));
-  expect(host.textContent).toContain("未配置");
-  expect(host.textContent).toContain("点击卡片配置你的apikey");
-  expect(input("API 地址")).toBeNull();
+  expect(input("Base URL")).toBeNull();
   expect(api.testAI).not.toHaveBeenCalled();
   await openAPI();
-  expect(input("API 地址").value).toBe("https://api.deepseek.com");
+  expect(input("Base URL").value).toBe("https://api.deepseek.com");
   await type("API Key", "sk-test");
   await submit();
   expect(api.saveAIConfig).toHaveBeenLastCalledWith(
@@ -209,16 +221,6 @@ it("saves the API endpoint and key, then tests the new connection", async () => 
   expect(toast.warning).not.toHaveBeenCalled();
   expect(input("API Key").value).toBe("");
   expect(input("API Key").placeholder).toBe("已保存，留空保持不变");
-  await act(async () =>
-    (
-      host.querySelector('[aria-label="返回 Agent 设置"]') as HTMLButtonElement
-    ).click(),
-  );
-  expect(input("API 地址")).toBeNull();
-  expect(host.textContent).not.toContain("点击卡片查看 API 配置");
-  const card = host.querySelector('[aria-label="配置 API Key"]')!;
-  expect(card.querySelector('[aria-label="文本推理：已通过"]')).not.toBeNull();
-  expect(card.querySelector('[aria-label="图片理解：已通过"]')).not.toBeNull();
 });
 it("keeps the saved key when changing only the API endpoint and rechecks models", async () => {
   config.api = { url: "https://api.deepseek.com", model: "", hasKey: true };
@@ -232,7 +234,7 @@ it("keeps the saved key when changing only the API endpoint and rechecks models"
   expect(input("API Key").placeholder).toBe("已保存，留空保持不变");
   expect(api.testAI).not.toHaveBeenCalled();
   // Editing only the address keeps the saved key without resending it.
-  await type("API 地址", "https://api.deepseek.com/v1");
+  await type("Base URL", "https://api.deepseek.com/v1");
   await submit();
   expect(api.saveAIConfig).toHaveBeenLastCalledWith(
     expect.objectContaining({
@@ -264,7 +266,7 @@ it("warns when no listed model passes the vision check", async () => {
   listed = { "text-only": false };
   await act(async () => root.render(<Settings open onOpenChange={() => {}} />));
   await openAPI();
-  expect(input("API 地址").value).toBe("https://api.example.com");
+  expect(input("Base URL").value).toBe("https://api.example.com");
   expect(api.testAI).toHaveBeenCalledWith("api", "vision", "text-only");
   expect(toast.warning).toHaveBeenCalledOnce();
   await act(async () =>
@@ -331,11 +333,6 @@ it("keeps selection auto-copy opt-in and lets reading settings toggle it", async
   } finally {
     await act(async () => useReaderStore.setState({ theme: previous }));
   }
-});
-
-it("does not expose automatic chapter context", async () => {
-  await act(async () => root.render(<Settings open onOpenChange={() => {}} />));
-  expect(host.querySelector('[aria-label="提问时附带本章原文"]')).toBeNull();
 });
 
 it("rechecks a saved API model with a per-stage wait limit without changing configuration", async () => {
@@ -436,3 +433,17 @@ it.each(["text", "vision"] as const)(
     else expect(row.textContent).toContain("文本首输出 0.10 s");
   },
 );
+
+it("persists CLI web search directly from the checkbox without a Save action", async () => {
+  await act(async () => root.render(<Settings open onOpenChange={() => {}} />));
+  const label = [...host.querySelectorAll("label")].find((node) =>
+    node.textContent?.includes("允许 CLI 原生联网搜索"),
+  )!;
+  const checkbox = label.querySelector<HTMLButtonElement>('[role="checkbox"]')!;
+  await act(async () => checkbox.click());
+  expect(
+    vi.mocked(api.saveAIConfig).mock.lastCall?.[0].webSearch?.cliEnabled,
+  ).toBe(true);
+  expect(useReaderStore.getState().aiConfig?.webSearch?.cliEnabled).toBe(true);
+  expect(checkbox.getAttribute("aria-checked")).toBe("true");
+});

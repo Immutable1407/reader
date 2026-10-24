@@ -89,7 +89,7 @@ export function ImportPaperDialog({
     );
   return (
     <Dialog open={open} onOpenChange={(next) => !busy && onOpenChange(next)}>
-      <DialogContent className="sm:max-w-md">
+      <DialogContent data-tour="import-dialog" className="sm:max-w-md">
         <DialogHeader>
           <DialogTitle>导入论文</DialogTitle>
           <DialogDescription>

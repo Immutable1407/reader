@@ -1,5 +1,7 @@
+import type { ToolActivity } from "@reader/core";
 /** Decoded frozen wire contract. No provider-native events enter the renderer. */
 export type ChatStreamEvent =
+  | { event: "tool"; data: ToolActivity }
   | {
       event: "activity";
       data: {
@@ -26,6 +28,7 @@ export class ChatStreamError extends Error {
 const known = new Set([
   "status",
   "activity",
+  "tool",
   "delta",
   "reasoning",
   "draft",
@@ -54,22 +57,35 @@ export function decodeFrame(frame: string): ChatStreamEvent | undefined {
   if (!parsed || typeof parsed !== "object")
     throw new ChatStreamError("AI 事件数据无效", "protocol");
   const valid =
-    event === "activity"
-      ? ["indexing", "reading", "writing"].includes(String(parsed.phase)) &&
-        typeof parsed.message === "string" &&
-        (parsed.tool === undefined || typeof parsed.tool === "string")
-      : event === "draft"
-        ? typeof parsed.text === "string" && typeof parsed.reset === "boolean"
-        : event === "delta" || event === "reasoning"
-          ? typeof parsed.text === "string"
-          : event === "fallback"
-            ? typeof parsed.message === "string"
-            : event === "error"
-              ? typeof parsed.error === "string"
-              : event === "done"
-                ? parsed.ok === true
-                : parsed.status === "reading" ||
-                  parsed.status === "reading-image";
+    event === "tool"
+      ? typeof parsed.id === "string" &&
+        parsed.id.length <= 160 &&
+        ["search", "web", "tool"].includes(String(parsed.kind)) &&
+        typeof parsed.tool === "string" &&
+        typeof parsed.title === "string" &&
+        ["running", "completed", "failed", "cancelled"].includes(
+          String(parsed.status),
+        ) &&
+        typeof parsed.startedAt === "string" &&
+        ["target", "url", "detail", "finishedAt"].every(
+          (k) => parsed[k] === undefined || typeof parsed[k] === "string",
+        )
+      : event === "activity"
+        ? ["indexing", "reading", "writing"].includes(String(parsed.phase)) &&
+          typeof parsed.message === "string" &&
+          (parsed.tool === undefined || typeof parsed.tool === "string")
+        : event === "draft"
+          ? typeof parsed.text === "string" && typeof parsed.reset === "boolean"
+          : event === "delta" || event === "reasoning"
+            ? typeof parsed.text === "string"
+            : event === "fallback"
+              ? typeof parsed.message === "string"
+              : event === "error"
+                ? typeof parsed.error === "string"
+                : event === "done"
+                  ? parsed.ok === true
+                  : parsed.status === "reading" ||
+                    parsed.status === "reading-image";
   if (!valid)
     throw new ChatStreamError("AI 事件字段无效，完成状态未确认", "protocol");
   return { event, data: parsed } as ChatStreamEvent;

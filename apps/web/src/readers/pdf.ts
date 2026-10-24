@@ -1,3 +1,4 @@
+import { readPDFOutline } from "./pdf-outline";
 import { PDFFigureLinks } from "./pdf-figure-links";
 import { selectionContext } from "./selection-context";
 import { selectionAnchor, isSelectionToolbar } from "./selection-anchor";
@@ -277,47 +278,7 @@ export class PDFReaderAdapter implements ReaderAdapter {
     else this.events.location(this.location, 1 / this.pdf.numPages);
   }
   async getTOC(): Promise<TOCItem[]> {
-    if (!this.pdf) return [];
-    const outline = await this.pdf.getOutline();
-    const map = async (
-      items: NonNullable<typeof outline>,
-      prefix = "",
-    ): Promise<TOCItem[]> =>
-      Promise.all(
-        items.map(async (item, i) => {
-          const children = await map(item.items, `${prefix}${i}-`);
-          // A grouping entry without its own target opens its first child.
-          const first = children[0]?.location;
-          let page = first?.type === "pdf" ? first.page : 1;
-          let dest = item.dest;
-          try {
-            if (typeof dest === "string")
-              dest = await this.pdf!.getDestination(dest);
-            if (Array.isArray(dest)) {
-              page =
-                typeof dest[0] === "number"
-                  ? dest[0] + 1
-                  : (await this.pdf!.getPageIndex(dest[0])) + 1;
-            }
-          } catch {
-            /* broken outline entry keeps a safe page */
-          }
-          return {
-            id: `${prefix}${i}`,
-            label: item.title,
-            location: { type: "pdf" as const, page },
-            children,
-          };
-        }),
-      );
-    return outline?.length
-      ? map(outline)
-      : Array.from({ length: this.pdf.numPages }, (_, i) => ({
-          id: `page-${i + 1}`,
-          label: `第 ${i + 1} 页`,
-          location: { type: "pdf", page: i + 1 },
-          children: [],
-        }));
+    return this.pdf ? readPDFOutline(this.pdf) : [];
   }
   getPageCount() {
     return this.pdf?.numPages ?? 0;

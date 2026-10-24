@@ -70,7 +70,7 @@ export function MergeDialog({
         <DialogHeader>
           <DialogTitle>合并 {group.length} 个版本</DialogTitle>
           <DialogDescription>
-            保留所选版本的文件和标题。其余版本的分类和星标并入，缺少的论文信息和论文笔记一并补上；之后它们移到回收站，批注和对话仍在原文件上，可随时恢复。
+            保留所选版本的文件和标题。其余版本的分类、星标和附件并入，缺少的论文信息和论文笔记一并补上；之后它们移到回收站，批注和对话仍在原文件上，可随时恢复。
           </DialogDescription>
         </DialogHeader>
         <RadioGroup
