@@ -15,7 +15,10 @@ import {
   libraryDirectory,
   migrateLibrary,
   stopLibraryServer,
+  saveLibraryDirectory,
+  validateLibraryDirectory,
 } from "./library-location";
+import { startLibraryRecoveryServer } from "./library-recovery-server";
 import { randomBytes } from "node:crypto";
 import { homedir } from "node:os";
 import { agentPath } from "./agent-path";
@@ -66,8 +69,16 @@ let restartRequested = false;
 let proxySettings: ProxySettingsService;
 let activeLibrary: string | undefined;
 let choosingLibrary = false;
+let libraryWarning = "";
+let recoveryServer:
+  Awaited<ReturnType<typeof startLibraryRecoveryServer>> | undefined;
 let pendingLibraryMove:
-  { destination: string; resolve: (moved: boolean) => void } | undefined;
+  | {
+      destination: string;
+      existing?: boolean;
+      resolve: (moved: boolean) => void;
+    }
+  | undefined;
 const root = resolve(__dirname, "../..");
 function bundledBinary(name: "neoread-server" | "neoread") {
   const file = process.platform === "win32" ? `${name}.exe` : name;
@@ -285,7 +296,7 @@ app.on("second-instance", (_event, argv) => {
 const pendingFiles: string[] = [];
 app.on("open-file", (event, path) => {
   event.preventDefault();
-  if (serverURL)
+  if (serverURL && !recoveryServer)
     void importPaths([path]).catch((e) =>
       dialog.showErrorBox("导入失败", e.message),
     );
@@ -334,8 +345,24 @@ app
     await session.defaultSession.setProxy(
       electronProxyConfiguration(proxySettings.activeSettings),
     );
-    activeLibrary = await libraryDirectory(app.getPath("userData"));
-    const url = await startServer();
+    try {
+      activeLibrary = await libraryDirectory(app.getPath("userData"));
+    } catch (error) {
+      libraryWarning = (error as Error).message;
+      diagnostics.logs.record("desktop", {
+        level: "warn",
+        event: "library.unavailable",
+        detail: libraryWarning,
+      });
+      recoveryServer = await startLibraryRecoveryServer(
+        app.isPackaged
+          ? join(process.resourcesPath, "web")
+          : join(root, "web", "dist"),
+      );
+    }
+    const url = recoveryServer
+      ? (serverURL = recoveryServer.url)
+      : await startServer();
     session.defaultSession.setPermissionRequestHandler(
       (contents, permission, callback, details) => {
         // Only NeoRead's own page may list installed fonts, for the
@@ -353,11 +380,13 @@ app
         );
       },
     );
-    const preferences: unknown = await fetch(`${url}/api/settings`, {
-      headers: { Authorization: `Bearer ${serverToken}` },
-    })
-      .then((r) => (r.ok ? r.json() : {}))
-      .catch(() => ({}));
+    const preferences: unknown = recoveryServer
+      ? {}
+      : await fetch(`${url}/api/settings`, {
+          headers: { Authorization: `Bearer ${serverToken}` },
+        })
+          .then((r) => (r.ok ? r.json() : {}))
+          .catch(() => ({}));
     diagnostics.setSettings(preferences);
     const appearance =
       typeof preferences === "object" &&
@@ -462,20 +491,28 @@ app
           updateService?.stop();
           proxySettings?.stop();
           try {
-            await migrateLibrary(
-              app.getPath("userData"),
-              activeLibrary!,
-              move.destination,
-              serverBinary(),
-              async () => {
-                if (child) await stopLibraryServer(child);
-              },
-            );
+            if (move.existing) {
+              if (child) await stopLibraryServer(child);
+              await validateLibraryDirectory(move.destination, serverBinary());
+              await saveLibraryDirectory(
+                app.getPath("userData"),
+                move.destination,
+              );
+            } else
+              await migrateLibrary(
+                app.getPath("userData"),
+                activeLibrary!,
+                move.destination,
+                serverBinary(),
+                async () => {
+                  if (child) await stopLibraryServer(child);
+                },
+              );
             move.resolve(true);
           } catch (error) {
             await dialog.showMessageBox(window!, {
               type: "error",
-              message: "书库迁移失败",
+              message: move.existing ? "打开书库失败" : "书库迁移失败",
               detail: `${(error as Error).message}\n原书库已保留，将重新打开原来的位置。`,
               buttons: ["重新打开 NeoRead"],
             });
@@ -538,11 +575,51 @@ app
     };
     ipcMain.handle("neoread:library-location", (event) => {
       settingsSender(event);
-      return activeLibrary;
+      return activeLibrary || "";
+    });
+    ipcMain.handle("neoread:library-warning", (event) => {
+      settingsSender(event);
+      return libraryWarning;
+    });
+    ipcMain.handle("neoread:import-library", async (event) => {
+      settingsSender(event);
+      if (choosingLibrary || closing || restartRequested) return false;
+      choosingLibrary = true;
+      try {
+        const selected = await dialog.showOpenDialog(window!, {
+          title:
+            "选择已有书库（包含 neoread.sqlite 或 reader.sqlite 的文件夹）",
+          properties: ["openDirectory"],
+        });
+        if (selected.canceled || !selected.filePaths[0]) return false;
+        const destination = await realpath(selected.filePaths[0]);
+        const current = activeLibrary
+          ? await realpath(activeLibrary).catch(() => undefined)
+          : undefined;
+        if (destination === current) return false;
+        await validateLibraryDirectory(destination, serverBinary());
+        const confirmed = await dialog.showMessageBox(window!, {
+          type: "question",
+          message: "导入已有书库并重启 NeoRead？",
+          detail: `书库位置：${destination}\n将直接打开此书库，不复制或合并数据。当前书库保留。`,
+          buttons: ["打开并重启", "取消"],
+          defaultId: 0,
+          cancelId: 1,
+        });
+        if (confirmed.response !== 0 || closing || quitting) return false;
+        return await new Promise<boolean>((resolve) => {
+          pendingLibraryMove = { destination, existing: true, resolve };
+          restartRequested = true;
+          app.quit();
+        });
+      } finally {
+        choosingLibrary = false;
+      }
     });
     ipcMain.handle("neoread:move-library", async (event) => {
       settingsSender(event);
-      if (choosingLibrary || closing || restartRequested) return false;
+      if (libraryWarning || choosingLibrary || closing || restartRequested)
+        return false;
       choosingLibrary = true;
       try {
         const selected = await dialog.showOpenDialog(window!, {
@@ -805,8 +882,10 @@ app
         await importPaths(paths, library, true, folder);
       },
     );
-    await window.loadURL(`${url}/#token=${serverToken}`);
-    if (migration)
+    await window.loadURL(
+      `${url}/${recoveryServer ? "?libraryRecovery=1" : ""}#token=${serverToken}`,
+    );
+    if (migration && !recoveryServer)
       await promptLegacyCleanup(
         window,
         serverBinary(),
@@ -814,7 +893,8 @@ app
         app.getPath("userData"),
         migration,
       );
-    if (pendingFiles.length) await importPaths(pendingFiles.splice(0));
+    if (!recoveryServer && pendingFiles.length)
+      await importPaths(pendingFiles.splice(0));
     updateService = await startUpdateService(window);
     ipcMain.handle("neoread:check-updates", (event) => {
       if (
@@ -853,6 +933,7 @@ app.on("before-quit", (event) => {
   diagnostics?.record("desktop.stopping");
   updateService?.stop();
   proxySettings?.stop();
+  recoveryServer?.stop();
   child?.kill();
 });
 for (const signal of ["SIGINT", "SIGTERM"] as const)
