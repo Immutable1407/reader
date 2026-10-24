@@ -41,6 +41,11 @@ func main() {
 	shutdownOnStdin := flag.Bool("shutdown-on-stdin", false, "shut down when the desktop closes stdin")
 	flag.Parse()
 	if *legacySource != "" || *legacyCleanup != "" {
+		if *logs == "" {
+			*logs = filepath.Join(*data, ".migration-logs")
+		}
+		recorder, _ := diagnostics.New(*logs, *session)
+		slog.SetDefault(recorder.Logger())
 		var state *neoread.ReaderMigration
 		var err error
 		if *legacySource != "" {
@@ -49,10 +54,12 @@ func main() {
 			state, err = neoread.CleanupReaderData(*legacyDirectory, *data, *legacyCleanup)
 		}
 		if err != nil {
-			log.Fatal(err)
+			fmt.Fprintln(os.Stderr, err)
+			os.Exit(1)
 		}
 		if err = json.NewEncoder(os.Stdout).Encode(state); err != nil {
-			log.Fatal(err)
+			fmt.Fprintln(os.Stderr, err)
+			os.Exit(1)
 		}
 		return
 	}

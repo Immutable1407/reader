@@ -18,6 +18,11 @@ let ipc: EventEmitter;
 let handlers: Map<string, (...args: any[]) => any>;
 let migrate: ReturnType<typeof vi.fn>;
 let stop: ReturnType<typeof vi.fn>;
+let legacyMigrate: ReturnType<typeof vi.fn>;
+let diagnostics: {
+  record: ReturnType<typeof vi.fn>;
+  failure: ReturnType<typeof vi.fn>;
+};
 let showMessageBox: ReturnType<typeof vi.fn>;
 let showOpenDialog: ReturnType<typeof vi.fn>;
 const event = () => ({
@@ -127,8 +132,10 @@ beforeEach(async () => {
     migrateLibrary: migrate,
     stopLibraryServer: stop,
   }));
+  legacyMigrate = vi.fn().mockResolvedValue({ status: "not-needed" });
   vi.doMock("./legacy-data", () => ({
-    migrateReaderData: async () => ({ status: "not-needed" }),
+    migrateReaderData: legacyMigrate,
+    ReaderMigrationError: class extends Error {},
     promptLegacyCleanup: async () => {},
   }));
   vi.doMock("./agent-path", () => ({ agentPath: async () => "/bin" }));
@@ -145,13 +152,17 @@ beforeEach(async () => {
   vi.doMock("./update-service", () => ({
     startUpdateService: async () => ({ stop() {} }),
   }));
+  diagnostics = {
+    record: vi.fn(),
+    failure: vi.fn().mockResolvedValue(undefined),
+  };
   vi.doMock("./diagnostic-service", () => ({
     startDiagnosticService: () => ({
       directory: "/logs",
       logs: { secrets: [], sessionId: "test", record: vi.fn() },
-      record: vi.fn(),
+      ...diagnostics,
+      finishMigration() {},
       setSettings() {},
-      failure: vi.fn(),
     }),
   }));
   vi.doMock("./clipboard", () => ({ writeClipboardText: vi.fn() }));
@@ -280,3 +291,20 @@ it.each(["/destination?question", "/parent?question/destination"])(
     expect(showOpenDialog).toHaveBeenCalledTimes(2);
   },
 );
+
+it("offers diagnostic export when legacy migration fails before opening the library", async () => {
+  vi.resetModules();
+  diagnostics.record.mockClear();
+  diagnostics.failure.mockClear();
+  const error = new Error("migration failed");
+  legacyMigrate.mockRejectedValueOnce(error);
+  const request = vi.mocked(fetch);
+  request.mockClear();
+  await import("./index");
+  await vi.waitFor(() => expect(diagnostics.failure).toHaveBeenCalledOnce());
+  expect(diagnostics.record).toHaveBeenCalledWith(
+    "desktop.start_failed",
+    error,
+  );
+  expect(request).not.toHaveBeenCalled();
+});

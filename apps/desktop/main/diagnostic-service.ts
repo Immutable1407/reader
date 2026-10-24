@@ -24,9 +24,11 @@ export function startDiagnosticService(
   getWindow: () => BrowserWindow | undefined,
   getLibrary: () => string | undefined = () =>
     join(app.getPath("userData"), "library"),
+  migrating = false,
 ) {
   const directory = join(app.getPath("userData"), "logs");
-  const logs = new DiagnosticLogs(directory);
+  const migrationDirectory = join(app.getPath("userData"), ".migration-logs");
+  const logs = new DiagnosticLogs(migrating ? migrationDirectory : directory);
   let settings: Record<string, unknown> = {};
   let exporting: Promise<boolean> | undefined;
   let failurePromise: Promise<void> | undefined;
@@ -79,6 +81,7 @@ export function startDiagnosticService(
             timezone: Intl.DateTimeFormat().resolvedOptions().timeZone,
           },
           settings,
+          [directory, migrationDirectory],
         );
         await rename(output, selected.filePath);
         record("diagnostics.export_finish");
@@ -193,7 +196,12 @@ export function startDiagnosticService(
   };
   return {
     logs,
-    directory,
+    get directory() {
+      return logs.directory;
+    },
+    finishMigration() {
+      logs.directory = directory;
+    },
     export: exportBundle,
     record,
     setSettings(value: unknown) {

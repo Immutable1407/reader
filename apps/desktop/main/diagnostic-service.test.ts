@@ -174,3 +174,53 @@ it("exports only the active library's failure files, including after startup fai
     rmSync(mocks.directory, { recursive: true, force: true });
   }
 });
+
+it("exports migration logs before a library exists and retains them after log activation", async () => {
+  mocks.directory = mkdtempSync(
+    join(tmpdir(), "neoread-migration-diagnostics-"),
+  );
+  const originalWarn = console.warn,
+    originalError = console.error;
+  const listeners = process.listeners("uncaughtExceptionMonitor");
+  const service = startDiagnosticService(
+    () => undefined,
+    () => undefined,
+    true,
+  );
+  try {
+    expect(service.directory).toBe(join(mocks.directory, ".migration-logs"));
+    service.record("migration.failed", new Error("PRIVATE_DOCUMENT_SENTINEL"));
+    for (const activated of [false, true]) {
+      if (activated) {
+        service.finishMigration();
+        expect(service.directory).toBe(join(mocks.directory, "logs"));
+        service.record("server.ready");
+      }
+      const output = join(
+        mocks.directory,
+        activated ? "after.zip" : "failed.zip",
+      );
+      mocks.save.mockResolvedValue({ canceled: false, filePath: output });
+      expect(await service.export()).toBe(true);
+      const content = execFileSync(
+        "python3",
+        [
+          "-c",
+          "import zipfile,sys; z=zipfile.ZipFile(sys.argv[1]); assert z.testzip() is None; print('\\n'.join(z.read(n).decode() for n in z.namelist() if n.endswith('.jsonl')))",
+          output,
+        ],
+        { encoding: "utf8" },
+      );
+      expect(content).toContain("migration.failed");
+      expect(content).not.toContain("PRIVATE_DOCUMENT_SENTINEL");
+      if (activated) expect(content).toContain("server.ready");
+    }
+  } finally {
+    console.warn = originalWarn;
+    console.error = originalError;
+    for (const listener of process.listeners("uncaughtExceptionMonitor"))
+      if (!listeners.includes(listener))
+        process.removeListener("uncaughtExceptionMonitor", listener);
+    rmSync(mocks.directory, { recursive: true, force: true });
+  }
+});

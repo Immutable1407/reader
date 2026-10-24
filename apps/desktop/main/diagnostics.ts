@@ -37,7 +37,7 @@ export class DiagnosticLogs {
   private lastPrune = 0;
   private fallback: string[] = [];
   constructor(
-    readonly directory: string,
+    public directory: string,
     readonly secrets: string[] = [],
   ) {}
   record(
@@ -137,6 +137,7 @@ export class DiagnosticLogs {
     library: string | undefined,
     environment: unknown,
     settings: unknown,
+    additionalDirectories: string[] = [],
   ) {
     const zip = new ZipFile();
     const files: Array<{ name: string; bytes: number; modified: string }> = [];
@@ -241,6 +242,9 @@ export class DiagnosticLogs {
       }
     };
     addDirectory(this.directory, "logs/");
+    for (const [index, directory] of additionalDirectories.entries())
+      if (directory !== this.directory)
+        addDirectory(directory, `startup-logs/${index}/`);
     if (library) {
       const cache = join(library, "cache");
       try {

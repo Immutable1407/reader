@@ -10,12 +10,14 @@ import (
 	"fmt"
 	"io"
 	"io/fs"
+	"log/slog"
 	"os"
 	"path/filepath"
 	"regexp"
 	"runtime"
 	"sort"
 	"strings"
+	"syscall"
 	"time"
 
 	"github.com/gofrs/flock"
@@ -191,7 +193,7 @@ func lockOldLibrary(path string) (func(), error) {
 func migrationExcluded(rel string) bool {
 	first := strings.Split(filepath.ToSlash(rel), "/")[0]
 	switch first {
-	case "migrations.json", ".migration.lock", migrationStage, "Cache", "Code Cache", "GPUCache", "DawnCache", "DawnGraphiteCache", "DawnWebGPUCache", "Crashpad", "SingletonLock", "SingletonCookie", "SingletonSocket":
+	case ".migration-logs", "migrations.json", ".migration.lock", migrationStage, "Cache", "Code Cache", "GPUCache", "DawnCache", "DawnGraphiteCache", "DawnWebGPUCache", "Crashpad", "SingletonLock", "SingletonCookie", "SingletonSocket":
 		return true
 	}
 	switch filepath.Base(rel) {
@@ -458,7 +460,27 @@ func validateMigrationState(source, target string, state *ReaderMigration) error
 
 // MigrateReaderData runs before any new library or renderer is opened. Its fixed
 // event ID is intentionally independent of the installed application version.
-func MigrateReaderData(source, target string) (*ReaderMigration, error) {
+func MigrateReaderData(source, target string) (result *ReaderMigration, failure error) {
+	started := time.Now()
+	phase := "prepare"
+	stageEvent := func(next string) { phase = next; slog.Info("migration.stage", "phase", phase) }
+	stageEvent(phase)
+	defer func() {
+		if failure != nil {
+			reason := "operation_failed"
+			switch {
+			case errors.Is(failure, syscall.ENOSPC):
+				reason = "no_space"
+			case errors.Is(failure, os.ErrPermission):
+				reason = "permission_denied"
+			case errors.Is(failure, os.ErrNotExist):
+				reason = "not_found"
+			}
+			slog.Error("migration.failed", "phase", phase, "reasonCode", reason, "durationMs", time.Since(started).Milliseconds())
+		} else {
+			slog.Info("migration.finish", "status", result.Status, "durationMs", time.Since(started).Milliseconds())
+		}
+	}()
 	if err := os.MkdirAll(target, 0700); err != nil {
 		return nil, err
 	}
@@ -548,6 +570,7 @@ func MigrateReaderData(source, target string) (*ReaderMigration, error) {
 	if err != nil {
 		return nil, err
 	}
+	stageEvent("lock_source")
 	unlock, err := lockReaderLibraries(source, state.SourceLibrary)
 	if err != nil {
 		return nil, err
@@ -571,6 +594,7 @@ func MigrateReaderData(source, target string) (*ReaderMigration, error) {
 		if err = os.WriteFile(filepath.Join(stage, "owner"), []byte(state.ID), 0600); err != nil {
 			return nil, err
 		}
+		stageEvent("copy_app")
 		var sourceBytes int64
 		state.SourceHash, sourceBytes, err = treeDigest(source)
 		if err != nil {
@@ -591,6 +615,7 @@ func MigrateReaderData(source, target string) (*ReaderMigration, error) {
 		}
 		copiedLib := filepath.Join(stage, "app", "library")
 		if state.External {
+			stageEvent("copy_external_library")
 			ext := externalStage(state)
 			if pathExists(state.Library) {
 				return nil, fmt.Errorf("目标书库已存在，未覆盖：%s", state.Library)
@@ -631,6 +656,7 @@ func MigrateReaderData(source, target string) (*ReaderMigration, error) {
 			rel, _ := filepath.Rel(source, state.SourceLibrary)
 			copiedLib = filepath.Join(stage, "app", rel)
 		}
+		stageEvent("convert_database")
 		if pathExists(copiedLib) {
 			if err = convertLegacyDatabase(copiedLib, state.SourceLibrary, state.Library); err != nil {
 				return nil, err
@@ -643,6 +669,7 @@ func MigrateReaderData(source, target string) (*ReaderMigration, error) {
 				return nil, err
 			}
 		}
+		stageEvent("verify_copy")
 		if err = atomicMigrationJSON(filepath.Join(stage, "app", "library-location.json"), map[string]string{"directory": state.Library}); err != nil {
 			return nil, err
 		}
@@ -682,6 +709,7 @@ func MigrateReaderData(source, target string) (*ReaderMigration, error) {
 			return nil, err
 		}
 	}
+	stageEvent("activate")
 	if err = checkStageOwner(stage, state.ID); err != nil {
 		return nil, err
 	}

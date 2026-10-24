@@ -36,6 +36,7 @@ import { startUpdateService } from "./update-service";
 import { devIsolation } from "./dev-isolation";
 import {
   migrateReaderData,
+  ReaderMigrationError,
   promptLegacyCleanup,
   type ReaderMigration,
 } from "./legacy-data";
@@ -294,17 +295,20 @@ app
   .whenReady()
   .then(async () => {
     if (!primary) return;
+    diagnostics = startDiagnosticService(
+      () => window,
+      () => activeLibrary,
+      app.isPackaged,
+    );
     let migration: ReaderMigration | undefined;
     if (app.isPackaged)
       migration = await migrateReaderData(
         serverBinary(),
         app.getPath("appData"),
         app.getPath("userData"),
+        diagnostics,
       );
-    diagnostics = startDiagnosticService(
-      () => window,
-      () => activeLibrary,
-    );
+    diagnostics.finishMigration();
     ipcMain.on("neoread:diagnostic-event", (event, value) =>
       diagnostics!.receive(event, value),
     );
@@ -825,8 +829,11 @@ app
     diagnostics?.record("desktop.start_failed", error);
     if (diagnostics)
       await diagnostics.failure(
-        "无法打开 NeoRead",
-        "可导出启动日志供开发者排查，然后退出重试。",
+        error instanceof ReaderMigrationError
+          ? "Reader 数据迁移未完成"
+          : "无法打开 NeoRead",
+        (error instanceof ReaderMigrationError ? `${error.message}\n\n` : "") +
+          "可导出启动日志供开发者排查，然后退出重试。",
       );
     else dialog.showErrorBox("无法打开 NeoRead", String(error));
     flushed = true;

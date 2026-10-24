@@ -1,10 +1,13 @@
 package neoread
 
 import (
+	"bytes"
 	"database/sql"
 	"encoding/json"
+	"log/slog"
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 
 	"github.com/gofrs/flock"
@@ -466,5 +469,56 @@ func TestReaderMigrationRejectsIncompleteVerifiedAndCompletedRecords(t *testing.
 		if _, err = MigrateReaderData(old, current); err == nil {
 			t.Fatal("accepted incomplete state", status)
 		}
+	}
+}
+
+func TestReaderMigrationKeepsStartupDiagnosticsSeparate(t *testing.T) {
+	old, current, _ := legacyFixture(t, false)
+	for _, root := range []string{old, current} {
+		if err := os.MkdirAll(filepath.Join(root, ".migration-logs"), 0700); err != nil {
+			t.Fatal(err)
+		}
+		if err := os.WriteFile(filepath.Join(root, ".migration-logs", "desktop-session.jsonl"), []byte(root), 0600); err != nil {
+			t.Fatal(err)
+		}
+	}
+	var output bytes.Buffer
+	previous := slog.Default()
+	slog.SetDefault(slog.New(slog.NewJSONHandler(&output, nil)))
+	defer slog.SetDefault(previous)
+	state, err := MigrateReaderData(old, current)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, included := state.Entries[".migration-logs"]; included {
+		t.Fatal("startup logs included in activation")
+	}
+	data, err := os.ReadFile(filepath.Join(current, ".migration-logs", "desktop-session.jsonl"))
+	if err != nil || string(data) != current {
+		t.Fatal("startup logs overwritten", err)
+	}
+	if !strings.Contains(output.String(), "migration.finish") {
+		t.Fatal(output.String())
+	}
+}
+
+func TestReaderMigrationLogsFailurePhaseWithoutSourceContent(t *testing.T) {
+	old, current, lib := legacyFixture(t, false)
+	if err := os.WriteFile(filepath.Join(lib, "reader.sqlite"), []byte("PRIVATE_DOCUMENT_SENTINEL"), 0600); err != nil {
+		t.Fatal(err)
+	}
+	var output bytes.Buffer
+	previous := slog.Default()
+	slog.SetDefault(slog.New(slog.NewJSONHandler(&output, nil)))
+	defer slog.SetDefault(previous)
+	if _, err := MigrateReaderData(old, current); err == nil {
+		t.Fatal("accepted corrupt database")
+	}
+	log := output.String()
+	if !strings.Contains(log, `"msg":"migration.failed","phase":"convert_database"`) {
+		t.Fatal(log)
+	}
+	if strings.Contains(log, "PRIVATE_DOCUMENT_SENTINEL") || strings.Contains(log, old) {
+		t.Fatal("private source in logs")
 	}
 }
