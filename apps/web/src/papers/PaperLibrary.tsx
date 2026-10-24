@@ -418,7 +418,7 @@ export function PaperLibrary({
       ?.getBoundingClientRect().width ?? 0;
   const resizeColumn = (
     e: ReactPointerEvent<HTMLElement>,
-    left: "title" | PaperColumn,
+    left: TableColumn[],
     right: TableColumn[],
   ) => {
     const start = headerWidths(e.currentTarget);
@@ -438,7 +438,7 @@ export function PaperLibrary({
   };
   const nudgeColumn = (
     e: ReactKeyboardEvent<HTMLElement>,
-    left: "title" | PaperColumn,
+    left: TableColumn[],
     right: TableColumn[],
   ) => {
     const dx = { ArrowLeft: -resizeStep, ArrowRight: resizeStep }[e.key];
@@ -1066,6 +1066,7 @@ export function PaperLibrary({
                       <TableRow>
                         {picking && <TableHead className="w-8" />}
                         {columnControls.visible.map((c, i, order) => {
+                          const left = order.slice(0, i + 1);
                           const right = order.slice(i + 1);
                           const sortKey = columnSort[c];
                           const active = sort === sortKey;
@@ -1111,8 +1112,10 @@ export function PaperLibrary({
                                 aria-label={`调整${c === "title" ? "标题" : columnLabels[c]}列宽度`}
                                 tabIndex={0}
                                 className="paper-column-resizer"
-                                onPointerDown={(e) => resizeColumn(e, c, right)}
-                                onKeyDown={(e) => nudgeColumn(e, c, right)}
+                                onPointerDown={(e) =>
+                                  resizeColumn(e, left, right)
+                                }
+                                onKeyDown={(e) => nudgeColumn(e, left, right)}
                               />
                             </TableHead>
                           );

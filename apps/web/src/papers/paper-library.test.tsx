@@ -2004,8 +2004,50 @@ it("compresses visible columns in order when dragging the second boundary", asyn
   }
 });
 
-it("uses the same sequential compression for keyboard resizing", async () => {
-  const widths = { title: 400, authors: 160, year: 48, status: 56, venue: 150 };
+it.each(["ArrowRight", "ArrowLeft"])(
+  "uses sequential compression for keyboard resizing with %s",
+  async (key) => {
+    const widths =
+      key === "ArrowRight"
+        ? { title: 400, authors: 160, year: 48, status: 56, venue: 150 }
+        : { title: 200, authors: 48, year: 48, status: 64, venue: 80 };
+    await act(async () =>
+      useReaderStore.setState({
+        libraryPreferences: {
+          mode: "papers",
+          papers: {
+            layout: "table",
+            columns: ["authors", "year", "status", "venue"],
+            columnOrder: ["title", "authors", "year", "status", "venue"],
+            columnWidths: widths,
+          },
+        },
+      }),
+    );
+    const rects = fakeWidths(widths);
+    try {
+      await act(async () =>
+        host
+          .querySelector(
+            key === "ArrowRight"
+              ? '[aria-label="调整作者列宽度"]'
+              : '[aria-label="调整年份列宽度"]',
+          )!
+          .dispatchEvent(new KeyboardEvent("keydown", { key, bubbles: true })),
+      );
+      expect(prefs().columnWidths).toEqual(
+        key === "ArrowRight"
+          ? { ...widths, authors: 176, status: 48, venue: 142 }
+          : { ...widths, title: 184, status: 80 },
+      );
+    } finally {
+      rects.mockRestore();
+    }
+  },
+);
+
+it("compresses columns to the left in nearest-first order and stops at their minimums", async () => {
+  const widths = { title: 200, authors: 80, year: 64, status: 64, venue: 80 };
   await act(async () =>
     useReaderStore.setState({
       libraryPreferences: {
@@ -2019,21 +2061,42 @@ it("uses the same sequential compression for keyboard resizing", async () => {
       },
     }),
   );
-  const rects = fakeWidths(widths);
+  const rects = fakeWidths({ ...widths, filler: 80 });
   try {
-    await act(async () =>
-      host
-        .querySelector('[aria-label="调整作者列宽度"]')!
-        .dispatchEvent(
-          new KeyboardEvent("keydown", { key: "ArrowRight", bubbles: true }),
-        ),
-    );
-    expect(prefs().columnWidths).toEqual({
-      ...widths,
-      authors: 176,
-      status: 48,
-      venue: 142,
-    });
+    const edge = host.querySelector<HTMLElement>(
+      '[aria-label="调整状态列宽度"]',
+    )!;
+    await press(edge, "pointerdown", 408);
+    for (const [dx, title, authors, year, status, venue] of [
+      [-8, 200, 80, 64, 56, 88],
+      [-24, 200, 80, 56, 48, 104],
+      [-48, 200, 64, 48, 48, 128],
+      [-80, 184, 48, 48, 48, 160],
+      [-999, 160, 48, 48, 48, 184],
+      [20, 200, 80, 64, 84, 60],
+      [-12, 200, 80, 64, 52, 92],
+    ]) {
+      await press(edge, "pointermove", 408 + dx);
+      for (const [column, width] of Object.entries({
+        title,
+        authors,
+        year,
+        status,
+        venue,
+      })) {
+        expect(
+          host.querySelector<HTMLElement>(`th[data-column="${column}"]`)!.style
+            .width,
+        ).toBe(`${width}px`);
+      }
+      expect(
+        host.querySelector<HTMLTableElement>(".paper-table table")!.style
+          .minWidth,
+      ).toBe("520px");
+    }
+    expect(api.saveLibraryPreferences).not.toHaveBeenCalled();
+    await press(edge, "pointerup", 396);
+    expect(prefs().columnWidths).toEqual({ ...widths, status: 52, venue: 92 });
   } finally {
     rects.mockRestore();
   }

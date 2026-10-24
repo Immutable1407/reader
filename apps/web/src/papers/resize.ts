@@ -37,42 +37,40 @@ export function dragHorizontally(
 }
 
 /**
- * Move a column's right edge, compressing the visible columns to its right in
- * display order. Each keeps its minimum width; remaining growth consumes spare
- * table space and stops when that is exhausted. Moving left gives space back
- * to the immediate right neighbour.
+ * Move a boundary by growing the column opposite the drag direction and
+ * compressing columns in that direction, nearest first. Stop when they reach
+ * their minimums; only rightward movement may consume trailing spare space.
+ * Both sides contain visible columns in display order.
  */
 export function resizeBoundary(
   widths: Partial<Record<"title" | PaperColumn, number>>,
-  left: "title" | PaperColumn,
+  left: readonly ("title" | PaperColumn)[],
   right: readonly ("title" | PaperColumn)[],
   dx: number,
   spareWidth = 0,
 ): Partial<Record<"title" | PaperColumn, number>> {
-  const l = widths[left] ?? minWidth(left);
-  const available = right.reduce(
-    (sum, column) =>
-      sum +
-      Math.max(0, (widths[column] ?? minWidth(column)) - minWidth(column)),
-    Math.max(0, spareWidth),
+  const forward = dx >= 0;
+  const shrinking = forward ? right : [...left].reverse();
+  const growing = forward ? left.at(-1) : right[0];
+  const widthOf = (column: "title" | PaperColumn) =>
+    widths[column] ?? minWidth(column);
+  const available = shrinking.reduce(
+    (sum, column) => sum + Math.max(0, widthOf(column) - minWidth(column)),
+    forward ? Math.max(0, spareWidth) : 0,
   );
-  const moved = Math.min(
-    available,
-    Math.max(Math.round(dx), minWidth(left) - l),
-  );
-  const next: Partial<Record<"title" | PaperColumn, number>> = {
-    [left]: l + moved,
-  };
+  const moved = Math.min(available, Math.abs(Math.round(dx)));
+  const next: Partial<Record<"title" | PaperColumn, number>> = {};
+  if (growing) next[growing] = widthOf(growing) + moved;
   let remaining = moved;
-  for (const column of right) {
-    const width = widths[column] ?? minWidth(column);
+  for (const column of shrinking) {
+    const width = widthOf(column);
     const taken = Math.min(remaining, Math.max(0, width - minWidth(column)));
     next[column] = width - taken;
     remaining -= taken;
     if (remaining <= 0) break;
   }
-  // Freeze the measured title when total width changes, so its flex sizing
-  // cannot absorb the drag. A resized title in `next` takes precedence.
+  // Freeze a flexible title when using or releasing trailing spare space.
+  // If the title itself was resized, its new width in `next` takes precedence.
   return {
     ...((remaining > 0 || !right.length) && widths.title !== undefined
       ? { title: widths.title }
