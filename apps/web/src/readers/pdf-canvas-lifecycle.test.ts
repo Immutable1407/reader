@@ -73,13 +73,41 @@ function start(view: InstanceType<typeof Base>, wrapper: HTMLElement) {
     cancel: vi.fn(),
   };
   view.pdfPage = { render: () => task };
+  const finished = vi.fn();
   const done = view._drawCanvas(
     {},
     cancellation(canvas, prevCanvas).bind(view),
-    vi.fn(),
+    finished,
   );
-  return { canvas, task, resolve, reject, done };
+  return { canvas, task, resolve, reject, done, finished };
 }
+
+it.each(["completion", "failure"])(
+  "ignores a superseded task's queued %s while a new theme is rendering",
+  async (outcome) => {
+    const { view, wrapper, old } = setup();
+    const previous = start(view, wrapper);
+    // A settled render promise can still have a queued continuation when the
+    // viewer cancels that task and starts a replacement in the same turn.
+    if (outcome === "completion") previous.resolve();
+    else previous.reject(new Error("obsolete render failure"));
+    previous.task.onError?.(new Cancelled());
+    view.pageColors = { ...view.pageColors, background: "#000000" };
+    const replacement = start(view, wrapper);
+    view.renderingState = 1;
+    await previous.done;
+    expect(previous.finished).not.toHaveBeenCalled();
+    expect(wrapper.firstChild).toBe(old);
+    expect(old.width).toBe(160);
+    expect(view.canvas).toBe(replacement.canvas);
+    expect(view.renderTask).toBe(replacement.task);
+    expect(view.renderingState).toBe(1);
+    replacement.resolve();
+    await replacement.done;
+    expect(replacement.finished).toHaveBeenCalledOnce();
+    expect(wrapper.firstChild).toBe(replacement.canvas);
+  },
+);
 
 it("keeps the last completed frame through partial drawing and swaps only on completion", async () => {
   const { view, wrapper, old } = setup();
