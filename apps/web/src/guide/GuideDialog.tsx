@@ -7,6 +7,7 @@ import {
   Star,
   MessageSquare,
   Keyboard,
+  MousePointerClick,
 } from "lucide-react";
 import { Button } from "@reader/ui/components/button";
 import {
@@ -27,7 +28,6 @@ import { SceneCanvas } from "./SceneCanvas";
 import { scenes } from "./scenes";
 import {
   guideTopics,
-  onboardingPages,
   type GuideAction,
   type GuidePage,
   type GuideTopic,
@@ -78,51 +78,6 @@ const arrowKeys =
     if (event.key === "ArrowLeft") back();
     if (event.key === "ArrowRight") next();
   };
-
-/** The first-run walkthrough of every onboarding topic. */
-export function OnboardingDialog({
-  open,
-  onFinish,
-}: {
-  open: boolean;
-  onFinish: () => void;
-}) {
-  const pages = onboardingPages();
-  const [index, setIndex] = useState(0);
-  const page = pages[index];
-  const last = index === pages.length - 1;
-  const back = () => setIndex((i) => Math.max(0, i - 1));
-  const next = () => (last ? onFinish() : setIndex(index + 1));
-  return (
-    <Dialog
-      open={open}
-      disablePointerDismissal
-      onOpenChange={(_, details) => details.cancel()}
-    >
-      <DialogContent
-        className="guide-dialog sm:max-w-2xl"
-        showCloseButton={false}
-        onKeyDown={arrowKeys(back, () => !last && next())}
-      >
-        <GuideStepView page={page} />
-        <DialogFooter className="guide-footer">
-          <Dots count={pages.length} current={index} />
-          <span className="sr-only" aria-live="polite">
-            第 {index + 1} 步，共 {pages.length} 步
-          </span>
-          {index > 0 && (
-            <Button variant="outline" onClick={back}>
-              上一步
-            </Button>
-          )}
-          <Button autoFocus onClick={next}>
-            {last ? "开始使用" : "下一步"}
-          </Button>
-        </DialogFooter>
-      </DialogContent>
-    </Dialog>
-  );
-}
 
 function TopicPanel({
   topic,
@@ -180,12 +135,15 @@ export function GuideDialog({
   topic,
   onTopicChange,
   onAction,
+  onStartTour,
 }: {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   topic: string;
   onTopicChange: (topic: string) => void;
   onAction: (action: GuideAction) => void;
+  /** Runs the first-run tour again. */
+  onStartTour?: () => void;
 }) {
   const index = Math.max(
     0,
@@ -216,6 +174,16 @@ export function GuideDialog({
                 </TabsTrigger>
               ))}
             </TabsList>
+            {onStartTour && (
+              <Button
+                variant="ghost"
+                className="mt-2 h-9 w-full justify-start px-2 font-normal"
+                onClick={onStartTour}
+              >
+                <MousePointerClick />
+                重新开始新手引导
+              </Button>
+            )}
           </div>
           <TabsContent value="shortcuts" className="min-w-0">
             <ShortcutPanel />

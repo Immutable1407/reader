@@ -27,7 +27,7 @@ it("persists a relay protocol override while retaining its saved key", async () 
     );
     await act(async () =>
       (
-        host.querySelector('[aria-label="API 协议"]') as HTMLButtonElement
+        host.querySelector('[aria-label="API 格式"]') as HTMLButtonElement
       ).click(),
     );
     const option = Array.from(

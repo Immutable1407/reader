@@ -2,16 +2,13 @@ import { useEffect, useRef, useState } from "react";
 import { api } from "@reader/api";
 import type { GuidePreferences } from "@reader/core";
 import { toast } from "sonner";
-import {
-  GuideDialog,
-  OnboardingDialog,
-  ReleaseNotesDialog,
-} from "./GuideDialog";
+import { GuideDialog, ReleaseNotesDialog } from "./GuideDialog";
 import { guideLaunch, type ReleaseItem } from "./releases";
 import { guideTopics, type GuideAction } from "./topics";
+import { GuidedTour } from "./tour/GuidedTour";
 
 /**
- * Shows the onboarding on first launch, release notes after each
+ * Shows the guided tour on first launch, release notes after each
  * update, and the guide whenever it is opened.
  */
 export function GuideHost({
@@ -66,7 +63,7 @@ export function GuideHost({
   };
   return (
     <>
-      <OnboardingDialog open={onboarding} onFinish={finishOnboarding} />
+      <GuidedTour open={onboarding} onFinish={finishOnboarding} />
       <ReleaseNotesDialog
         open={!!release}
         version={version}
@@ -86,6 +83,10 @@ export function GuideHost({
         onAction={(action) => {
           onOpenChange(false);
           onAction(action);
+        }}
+        onStartTour={() => {
+          onOpenChange(false);
+          setOnboarding(true);
         }}
       />
     </>

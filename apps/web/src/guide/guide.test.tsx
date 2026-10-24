@@ -13,7 +13,7 @@ import {
   stillTime,
 } from "./canvas";
 import { scenes } from "./scenes";
-import { guideTopics, onboardingPages } from "./topics";
+import { guideTopics } from "./topics";
 import { guideLaunch, releaseNotes } from "./releases";
 import { GuideHost } from "./GuideHost";
 
@@ -77,25 +77,6 @@ describe("guide launch", () => {
 });
 
 describe("guide content", () => {
-  it("walks through agent, models, import and reading in order", () => {
-    const pages = onboardingPages();
-    expect([...new Set(pages.map((p) => p.topic.id))]).toEqual([
-      "agent",
-      "models",
-      "import",
-      "reading",
-    ]);
-    expect(pages.map((p) => p.step.scene)).toEqual([
-      "detect",
-      "login",
-      "api",
-      "models",
-      "link",
-      "pdf",
-      "modes",
-      "assistant",
-    ]);
-  });
   it("uses unique ids and existing scenes", () => {
     const steps = guideTopics.flatMap((t) => t.steps);
     expect(new Set(steps.map((s) => s.id)).size).toBe(steps.length);
@@ -185,36 +166,36 @@ describe("guide host", () => {
       (b) => b.textContent === label,
     )!;
 
-  it("walks a new user through every onboarding step and remembers it", async () => {
+  it("starts the guided tour for a new user and remembers a skip", async () => {
+    const frames: FrameRequestCallback[] = [];
+    vi.mocked(requestAnimationFrame).mockImplementation((callback) => {
+      frames.push(callback);
+      return frames.length;
+    });
+    const flush = () =>
+      act(async () => {
+        for (const callback of frames.splice(0)) callback(0);
+      });
     vi.mocked(api.guidePreferences).mockResolvedValue({});
     await render(false);
-    expect(document.querySelector('[data-slot="dialog-close"]')).toBeNull();
-    expect(button("跳过")).toBeUndefined();
-    await act(async () => {
-      button("下一步").dispatchEvent(
-        new KeyboardEvent("keydown", { key: "Escape", bubbles: true }),
-      );
-      const backdrop = document.querySelector('[data-slot="dialog-overlay"]')!;
-      backdrop.dispatchEvent(
-        new MouseEvent("pointerdown", { bubbles: true, button: 0 }),
-      );
-      backdrop.dispatchEvent(
-        new MouseEvent("pointerup", { bubbles: true, button: 0 }),
-      );
-      backdrop.dispatchEvent(
-        new MouseEvent("click", { bubbles: true, button: 0 }),
-      );
-    });
-    expect(document.querySelector('[role="dialog"]')).not.toBeNull();
+    await flush();
+    expect(document.querySelector(".tour-card")?.textContent).toContain(
+      "欢迎使用 Reader",
+    );
+    await act(async () => button("开始").click());
+    await flush();
+    expect(document.querySelector(".tour-card")?.textContent).not.toContain(
+      "欢迎使用 Reader",
+    );
     expect(api.saveGuidePreferences).not.toHaveBeenCalled();
-    const pages = onboardingPages();
-    for (const page of pages.slice(0, -1)) {
-      expect(document.body.textContent).toContain(page.step.title);
-      await act(async () => button("下一步").click());
-      expect(api.saveGuidePreferences).not.toHaveBeenCalled();
-    }
-    expect(document.body.textContent).toContain(pages.at(-1)!.step.title);
-    await act(async () => button("开始使用").click());
+    await act(async () => button("跳过引导").click());
+    expect(document.body.textContent).toContain("不建议跳过新手引导哦！");
+    await act(async () => button("好的，认真学习！").click());
+    expect(document.querySelector(".tour")).not.toBeNull();
+    expect(api.saveGuidePreferences).not.toHaveBeenCalled();
+    await act(async () => button("跳过引导").click());
+    await act(async () => button("我是老用户～").click());
+    expect(document.querySelector(".tour")).toBeNull();
     expect(api.saveGuidePreferences).toHaveBeenCalledWith({
       onboarded: true,
       seenVersion: "9.9.9",
