@@ -213,6 +213,21 @@ describe("tour steps", () => {
     );
     expect(at(index("modes"), { library: "paper" }).id).toBe("open");
   });
+  it("points at the prepared example paper for the reading demonstration", () => {
+    const libraryTarget = '[data-paper-id="example"]';
+    const view = at(index("open"), {
+      library: "paper",
+      examplePaper: true,
+      libraryTarget,
+    }).view;
+    expect(view?.body).toContain("Attention Is All You Need");
+    expect(view?.body).toContain("已完成解析和中文翻译");
+    expect(view?.click).toEqual([libraryTarget]);
+    expect(view?.pointer).toMatchObject({
+      gesture: "double",
+      target: libraryTarget,
+    });
+  });
   it("only lets the import dialog be closed", () => {
     const view = at(index("import-dialog"), { importDialog: true }).view;
     expect(view?.click).toEqual([

@@ -51,6 +51,19 @@ describe("guide launch", () => {
   it("onboards a new library", () => {
     expect(guideLaunch({}, version, false)).toEqual({ kind: "onboarding" });
   });
+  it("onboards a newly seeded library despite its example document", () => {
+    const preferences = { exampleDocumentId: "example", onboarded: false };
+    expect(guideLaunch(preferences, version, true)).toEqual({
+      kind: "onboarding",
+    });
+    expect(
+      guideLaunch(
+        { ...preferences, onboarded: true, seenVersion: version },
+        version,
+        true,
+      ),
+    ).toEqual({ kind: "none" });
+  });
   it("shows release notes instead to libraries from before the guide", () => {
     expect(guideLaunch({}, version, true)).toMatchObject({ kind: "release" });
   });

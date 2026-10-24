@@ -22,6 +22,8 @@ export interface TourState {
   importDialog: boolean;
   /** Documents added since the tour started. */
   imported: number;
+  examplePaper?: boolean;
+  libraryTarget?: string;
   /** The library lists a document to open: a paper row or a book card. */
   library?: "paper" | "book";
   reading: boolean;
@@ -325,11 +327,13 @@ export const tourSteps: TourStep[] = [
       body:
         s.library === "book"
           ? "点击封面开始阅读。"
-          : "**双击论文**开始阅读。导入后的解析和翻译会在后台继续。",
-      click: [libraryItem],
+          : s.examplePaper
+            ? "**双击示例论文 Attention Is All You Need** 开始阅读。这篇论文已完成解析和中文翻译，可以直接体验阅读功能。"
+            : "**双击论文**开始阅读。论文解析完成后即可打开，翻译会在后台继续。",
+      click: [s.libraryTarget ?? libraryItem],
       pointer: {
         gesture: s.library === "book" ? "click" : "double",
-        target: libraryItem,
+        target: s.libraryTarget ?? libraryItem,
       },
       act: true,
     }),

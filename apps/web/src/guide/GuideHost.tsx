@@ -63,7 +63,11 @@ export function GuideHost({
   };
   return (
     <>
-      <GuidedTour open={onboarding} onFinish={finishOnboarding} />
+      <GuidedTour
+        open={onboarding}
+        onFinish={finishOnboarding}
+        exampleDocumentId={preferences.current.exampleDocumentId}
+      />
       <ReleaseNotesDialog
         open={!!release}
         version={version}
