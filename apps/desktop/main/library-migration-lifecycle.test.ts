@@ -18,11 +18,17 @@ let ipc: EventEmitter;
 let handlers: Map<string, (...args: any[]) => any>;
 let migrate: ReturnType<typeof vi.fn>;
 let stop: ReturnType<typeof vi.fn>;
+let serverSpawn: ReturnType<typeof vi.fn>;
+let libraryDirectory: ReturnType<typeof vi.fn>;
 let legacyMigrate: ReturnType<typeof vi.fn>;
 let diagnostics: {
   record: ReturnType<typeof vi.fn>;
   failure: ReturnType<typeof vi.fn>;
 };
+let validate: ReturnType<typeof vi.fn>;
+let saveLocation: ReturnType<typeof vi.fn>;
+let recoveryStart: ReturnType<typeof vi.fn>;
+let loadURL = vi.fn<(url: string) => void>();
 let showMessageBox: ReturnType<typeof vi.fn>;
 let showOpenDialog: ReturnType<typeof vi.fn>;
 const event = () => ({
@@ -31,8 +37,17 @@ const event = () => ({
 });
 const move = () => handlers.get("neoread:move-library")!(event());
 
-beforeEach(async () => {
+beforeEach(async ({ task }) => {
   vi.resetModules();
+  loadURL = vi.fn();
+  validate = vi.fn().mockResolvedValue(undefined);
+  saveLocation = vi.fn().mockResolvedValue(undefined);
+  recoveryStart = vi
+    .fn()
+    .mockResolvedValue({ url: "http://127.0.0.1:1234", stop: vi.fn() });
+  vi.doMock("./library-recovery-server", () => ({
+    startLibraryRecoveryServer: recoveryStart,
+  }));
   handlers = new Map();
   ipc = Object.assign(new EventEmitter(), {
     handle: (name: string, fn: (...args: any[]) => any) =>
@@ -79,7 +94,9 @@ beforeEach(async () => {
       isDestroyed() {
         return this.destroyed;
       }
-      async loadURL() {}
+      async loadURL(url: string) {
+        loadURL(url);
+      }
       close() {
         let prevented = false;
         this.emit("close", {
@@ -94,23 +111,22 @@ beforeEach(async () => {
       }
     },
   }));
-  vi.doMock("node:child_process", () => ({
-    spawn: () => {
-      const child = Object.assign(new EventEmitter(), {
-        stdin: new PassThrough(),
-        stdout: new PassThrough(),
-        stderr: new PassThrough(),
-        kill: vi.fn(),
-      });
-      queueMicrotask(() =>
-        child.stdout.write('{"url":"http://127.0.0.1:1234"}\n'),
-      );
-      return child;
-    },
-  }));
+  serverSpawn = vi.fn(() => {
+    const child = Object.assign(new EventEmitter(), {
+      stdin: new PassThrough(),
+      stdout: new PassThrough(),
+      stderr: new PassThrough(),
+      kill: vi.fn(),
+    });
+    queueMicrotask(() =>
+      child.stdout.write('{"url":"http://127.0.0.1:1234"}\n'),
+    );
+    return child;
+  });
+  vi.doMock("node:child_process", () => ({ spawn: serverSpawn }));
   vi.doMock("node:fs/promises", () => ({
     readFile: vi.fn(),
-    realpath: async (path: string) => path,
+    realpath: vi.fn(async (path: string) => path),
     lstat: async () => {
       throw Object.assign(new Error("absent"), { code: "ENOENT" });
     },
@@ -127,8 +143,15 @@ beforeEach(async () => {
       await shutdown();
     },
   );
+  libraryDirectory = vi.fn(async () => {
+    if (task.name.startsWith("recovery:"))
+      throw new Error("无法访问书库（ENOENT）");
+    return "/old/library";
+  });
   vi.doMock("./library-location", () => ({
-    libraryDirectory: async () => "/old/library",
+    libraryDirectory,
+    validateLibraryDirectory: validate,
+    saveLibraryDirectory: saveLocation,
     migrateLibrary: migrate,
     stopLibraryServer: stop,
   }));
@@ -307,4 +330,99 @@ it("offers diagnostic export when legacy migration fails before opening the libr
     error,
   );
   expect(request).not.toHaveBeenCalled();
+});
+
+it("waits for Reader migration before choosing or opening the library", async () => {
+  vi.resetModules();
+  serverSpawn.mockClear();
+  libraryDirectory.mockClear();
+  legacyMigrate.mockClear();
+  let finish!: (state: { status: string }) => void;
+  legacyMigrate.mockImplementationOnce(
+    () =>
+      new Promise((resolve) => {
+        finish = resolve;
+      }),
+  );
+  await import("./index");
+  await vi.waitFor(() => expect(legacyMigrate).toHaveBeenCalledOnce());
+  expect(libraryDirectory).not.toHaveBeenCalled();
+  expect(serverSpawn).not.toHaveBeenCalled();
+  libraryDirectory.mockResolvedValue("/migrated/library");
+  finish({ status: "completed" });
+  await vi.waitFor(() => expect(serverSpawn).toHaveBeenCalledOnce());
+  expect(serverSpawn.mock.calls[0][1]).toEqual(
+    expect.arrayContaining(["--data", "/migrated/library"]),
+  );
+});
+
+const importLibrary = () => handlers.get("neoread:import-library")!(event());
+it("validates an imported library before shutdown and saves only after flush", async () => {
+  const result = importLibrary();
+  await vi.waitFor(() =>
+    expect(window.webContents.send).toHaveBeenCalledWith("neoread:flush"),
+  );
+  expect(validate).toHaveBeenCalledOnce();
+  expect(saveLocation).not.toHaveBeenCalled();
+  ipc.emit("neoread:flushed", event(), null);
+  expect(await result).toBe(true);
+  expect(stop).toHaveBeenCalledOnce();
+  expect(validate).toHaveBeenCalledTimes(2);
+  expect(saveLocation).toHaveBeenCalledWith("/userdata", "/destination");
+  expect(migrate).not.toHaveBeenCalled();
+  expect(app.relaunch).toHaveBeenCalledOnce();
+});
+it("keeps the original configuration when import validation fails", async () => {
+  validate.mockRejectedValueOnce(new Error("不是有效的书库"));
+  await expect(importLibrary()).rejects.toThrow("不是有效的书库");
+  expect(saveLocation).not.toHaveBeenCalled();
+  expect(stop).not.toHaveBeenCalled();
+  expect(app.relaunch).not.toHaveBeenCalled();
+});
+it("keeps the original configuration when imported library changes before switching", async () => {
+  validate
+    .mockResolvedValueOnce(undefined)
+    .mockRejectedValueOnce(new Error("书库已被其他实例打开"));
+  const result = importLibrary();
+  await vi.waitFor(() =>
+    expect(window.webContents.send).toHaveBeenCalledWith("neoread:flush"),
+  );
+  ipc.emit("neoread:flushed", event(), null);
+  expect(await result).toBe(false);
+  expect(saveLocation).not.toHaveBeenCalled();
+});
+it("recovery: opens settings without starting a library and can import an existing library", async () => {
+  expect(recoveryStart).toHaveBeenCalledOnce();
+  expect(loadURL).toHaveBeenCalledWith(
+    expect.stringContaining("?libraryRecovery=1"),
+  );
+  expect(fetch).not.toHaveBeenCalled();
+  expect(handlers.get("neoread:library-warning")!(event())).toContain("ENOENT");
+  expect(await move()).toBe(false);
+  const result = importLibrary();
+  await vi.waitFor(() =>
+    expect(window.webContents.send).toHaveBeenCalledWith("neoread:flush"),
+  );
+  ipc.emit("neoread:flushed", event(), null);
+  expect(await result).toBe(true);
+  expect(stop).not.toHaveBeenCalled();
+  expect(saveLocation).toHaveBeenCalledWith("/userdata", "/destination");
+  expect(app.relaunch).toHaveBeenCalledOnce();
+});
+it("recovery: restart retries without replacing the saved library", () => {
+  handlers.get("neoread:restart")!(event());
+  ipc.emit("neoread:flushed", event(), null);
+  expect(saveLocation).not.toHaveBeenCalled();
+  expect(app.relaunch).toHaveBeenCalledOnce();
+});
+
+it("can select a replacement when the active library directory has disappeared", async () => {
+  const { realpath } = await import("node:fs/promises");
+  vi.mocked(realpath)
+    .mockResolvedValueOnce("/destination")
+    .mockRejectedValueOnce(new Error("ENOENT"));
+  showMessageBox.mockResolvedValueOnce({ response: 1 });
+  expect(await importLibrary()).toBe(false);
+  expect(validate).toHaveBeenCalledWith("/destination", expect.any(String));
+  expect(saveLocation).not.toHaveBeenCalled();
 });

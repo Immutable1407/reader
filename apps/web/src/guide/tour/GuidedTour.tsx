@@ -65,11 +65,17 @@ function readState(
   startCount: number,
   acknowledged: ReadonlySet<string>,
   method?: string,
+  exampleDocumentId?: string,
 ): TourState {
   const q = (selector: string) => document.querySelector(selector);
   const { aiConfig, documents, active } = useReaderStore.getState();
   const section = q('[data-tour="agent-section"]');
-  const item = q(libraryItem);
+  const exampleSelector =
+    exampleDocumentId && /^[a-f0-9]{32}$/.test(exampleDocumentId)
+      ? `[data-paper-id="${exampleDocumentId}"]`
+      : undefined;
+  const example = exampleSelector ? q(exampleSelector) : null;
+  const item = shown(example) ? example : q(libraryItem);
   const assistant = q('[data-tour="assistant"]') as HTMLElement | null;
   return {
     settings: !!q(open("settings")),
@@ -89,6 +95,8 @@ function readState(
     sidebar: !!rectOf(q('[data-tour="open-settings"]')),
     importDialog: !!q(open("import-dialog")),
     imported: Math.max(0, documents.length - startCount),
+    examplePaper: shown(example),
+    libraryTarget: shown(example) ? exampleSelector : libraryItem,
     library: rectOf(item)
       ? item!.matches(".book-card")
         ? "book"
@@ -248,10 +256,12 @@ export function GuidedTour({
   open: running,
   onFinish,
   steps = tourSteps,
+  exampleDocumentId,
 }: {
   open: boolean;
   onFinish: () => void;
   steps?: TourStep[];
+  exampleDocumentId?: string;
 }) {
   const [root, setRoot] = useState<HTMLElement | null>(null);
   const [layout, setLayout] = useState<Layout | null>(null);
@@ -312,6 +322,7 @@ export function GuidedTour({
         startCount,
         acknowledgedRef.current,
         methodRef.current,
+        exampleDocumentId,
       );
       index = resolveStep(steps, index, state);
       if (index >= steps.length) {
@@ -344,7 +355,7 @@ export function GuidedTour({
     };
     frame = requestAnimationFrame(tick);
     return () => cancelAnimationFrame(frame);
-  }, [running, steps]);
+  }, [running, steps, exampleDocumentId]);
 
   useEffect(() => {
     if (!running) {

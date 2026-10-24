@@ -39,7 +39,14 @@ func main() {
 	legacyCleanup := flag.String("cleanup-reader-data", "", "keep or delete the migrated Reader application data")
 	legacyDirectory := flag.String("reader-data", "", "legacy application data directory for cleanup")
 	shutdownOnStdin := flag.Bool("shutdown-on-stdin", false, "shut down when the desktop closes stdin")
+	checkLibrary := flag.Bool("check-library", false, "validate an existing library and exit")
 	flag.Parse()
+	if *checkLibrary {
+		if err := neoread.ValidateLibrary(*data); err != nil {
+			log.Fatal(err)
+		}
+		return
+	}
 	if *legacySource != "" || *legacyCleanup != "" {
 		if *logs == "" {
 			*logs = filepath.Join(*data, ".migration-logs")
@@ -93,7 +100,7 @@ func main() {
 		log.Fatal(err)
 	}
 	defer unlock()
-	store, err := neoread.OpenStore(root)
+	store, err := neoread.OpenLibrary(root)
 	if err != nil {
 		log.Fatal(err)
 	}

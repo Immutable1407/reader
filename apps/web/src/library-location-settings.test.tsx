@@ -60,3 +60,30 @@ it("shows errors and allows retry without changing the displayed location", asyn
   expect(host.textContent).toContain("/current/library");
   expect(host.querySelector("button")!.disabled).toBe(false);
 });
+
+it("lets recovery import a library while migration stays disabled, and reports invalid selections", async () => {
+  const importLibrary = vi
+    .fn()
+    .mockRejectedValue(new Error("所选目录不是有效的 NeoRead 书库"));
+  vi.stubGlobal("neoreadDesktop", {
+    platform: "darwin",
+    libraryLocation: async () => "",
+    moveLibrary: vi.fn(),
+    importLibrary,
+  });
+  await act(async () => root.render(<LibraryLocationSettings open recovery />));
+  const buttons = Array.from(host.querySelectorAll("button"));
+  expect(
+    buttons.find((b) => b.textContent?.includes("更改位置"))!.disabled,
+  ).toBe(true);
+  const importButton = buttons.find((b) =>
+    b.textContent?.includes("导入书库"),
+  )!;
+  expect(importButton.disabled).toBe(false);
+  await act(async () => importButton.click());
+  expect(importLibrary).toHaveBeenCalledOnce();
+  expect(host.querySelector('[role="alert"]')?.textContent).toContain(
+    "不是有效的 NeoRead 书库",
+  );
+  expect(importButton.disabled).toBe(false);
+});

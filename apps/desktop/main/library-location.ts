@@ -1,8 +1,16 @@
 import { execFile, type ChildProcess } from "node:child_process";
 import { promisify } from "node:util";
-import { readFile, writeFile, rename, rm, stat } from "node:fs/promises";
+import {
+  readFile,
+  writeFile,
+  rename,
+  rm,
+  stat,
+  access,
+} from "node:fs/promises";
 import { isAbsolute, join } from "node:path";
 import { randomUUID } from "node:crypto";
+import { constants } from "node:fs";
 const execute = promisify(execFile);
 
 export async function libraryDirectory(userData: string): Promise<string> {
@@ -21,15 +29,13 @@ export async function libraryDirectory(userData: string): Promise<string> {
   if (typeof directory !== "string" || !isAbsolute(directory))
     throw new Error("保存的书库位置无效，请检查 library-location.json。");
   try {
-    const database = await stat(join(directory, "neoread.sqlite")).catch(
-      (error: NodeJS.ErrnoException) => {
-        if (error.code !== "ENOENT") throw error;
-        return stat(join(directory, "reader.sqlite"));
-      },
-    );
-    if (!database.isFile()) throw new Error();
-  } catch {
-    throw new Error("无法访问已设置的书库，请连接存储设备并确认目录仍然存在。");
+    await access(directory, constants.R_OK | constants.W_OK);
+    const database = await existingDatabase(directory);
+    await access(database, constants.R_OK | constants.W_OK);
+    if (!(await stat(database)).isFile()) throw new Error();
+  } catch (cause) {
+    const code = (cause as NodeJS.ErrnoException).code || "INVALID_DATABASE";
+    throw new Error(`无法访问已设置的书库（${code}）：${directory}`, { cause });
   }
   return directory;
 }
@@ -85,6 +91,13 @@ export async function migrateLibrary(
     const failure = error as Error & { stderr?: string };
     throw new Error(failure.stderr?.trim() || failure.message);
   }
+  await saveLibraryDirectory(userData, destination);
+}
+
+export async function saveLibraryDirectory(
+  userData: string,
+  destination: string,
+) {
   const temporary = join(userData, `library-location.${randomUUID()}.tmp`);
   try {
     await writeFile(
@@ -96,4 +109,37 @@ export async function migrateLibrary(
   } finally {
     await rm(temporary, { force: true });
   }
+}
+
+export async function validateLibraryDirectory(
+  directory: string,
+  binary: string,
+) {
+  if (!isAbsolute(directory) || directory.includes("?"))
+    throw new Error("请选择有效的绝对路径，书库路径不能包含 ?。");
+  await access(directory, constants.R_OK | constants.W_OK);
+  await access(
+    await existingDatabase(directory),
+    constants.R_OK | constants.W_OK,
+  );
+  try {
+    await execute(binary, ["--data", directory, "--check-library"], {
+      windowsHide: true,
+      maxBuffer: 64 * 1024,
+    });
+  } catch (error) {
+    const failure = error as Error & { stderr?: string };
+    throw new Error(failure.stderr?.trim() || failure.message);
+  }
+}
+
+async function existingDatabase(directory: string) {
+  const current = join(directory, "neoread.sqlite");
+  try {
+    await stat(current);
+    return current;
+  } catch (error) {
+    if ((error as NodeJS.ErrnoException).code !== "ENOENT") throw error;
+  }
+  return join(directory, "reader.sqlite");
 }

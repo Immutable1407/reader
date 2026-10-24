@@ -226,6 +226,8 @@ export interface LibraryPreferences {
 }
 /** First-run guide and release notes, stored with the library. */
 export interface GuidePreferences {
+  /** Bundled paper installed only when this library was first created. */
+  exampleDocumentId?: string;
   /** The full onboarding was finished or skipped. */
   onboarded?: boolean;
   /** The app version whose release notes were last handled. */
