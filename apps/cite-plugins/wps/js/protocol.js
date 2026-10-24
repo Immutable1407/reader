@@ -67,7 +67,18 @@
     return (op && op.error) || "";
   }
 
-  const api = { createTransport, runCommand, UNREACHABLE };
+  async function bootstrap(pathname) {
+    const match = /^\/wps\/([a-f0-9]{64})\//.exec(String(pathname || ""));
+    const key = match ? match[1] : "";
+    if (!/^[a-f0-9]{64}$/.test(key))
+      throw new Error("请在 NeoRead 设置中重新安装 WPS 插件");
+    const reply = await createTransport(key)("/v1/cite/bootstrap", {});
+    if (!/^[a-f0-9]{64}$/.test(reply.credential || ""))
+      throw new Error("WPS 插件认证失败，请重启 NeoRead");
+    return createTransport(reply.credential);
+  }
+
+  const api = { createTransport, runCommand, bootstrap, UNREACHABLE };
   root.ReaderCiteProtocol = api;
   if (typeof module === "object" && module.exports) module.exports = api;
 })(typeof globalThis === "object" ? globalThis : this);

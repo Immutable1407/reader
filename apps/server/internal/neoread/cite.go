@@ -6,7 +6,6 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"html"
 	"io"
 	"net/http"
 	"os"
@@ -67,11 +66,12 @@ func (t *citeTransaction) close() { t.once.Do(func() { close(t.done) }) }
 
 type citeBroker struct {
 	// plugins is the directory with the add-in files (`wps/`).
-	plugins     string
-	mu          sync.Mutex
-	subscribers map[chan citeEvent]struct{}
-	current     *citeTransaction
-	secret      string
+	plugins       string
+	mu            sync.Mutex
+	subscribers   map[chan citeEvent]struct{}
+	current       *citeTransaction
+	secret        string
+	bootstrapPath string
 }
 
 // SetCiteCredential writes a fresh credential for the word processor plugins.
@@ -95,6 +95,7 @@ func (s *Server) SetCiteCredential(path string) error {
 	}
 	s.cite.mu.Lock()
 	s.cite.secret = secret
+	s.cite.bootstrapPath = filepath.Join(filepath.Dir(path), "cite-wps-key")
 	s.cite.mu.Unlock()
 	return nil
 }
@@ -384,7 +385,28 @@ func (s *Server) citeComplete(w http.ResponseWriter, r *http.Request) {
 	w.WriteHeader(204)
 }
 
-const citeCredentialSlot = "{{READER_CITE_CREDENTIAL}}"
+func validCiteBootstrapKey(path, provided string) bool {
+	if len(provided) != 64 {
+		return false
+	}
+	key, err := os.ReadFile(path)
+	return err == nil && len(key) == 64 && subtle.ConstantTimeCompare(key, []byte(provided)) == 1
+}
+
+// citeBootstrap exchanges the user-private installation key for the rotating
+// runtime credential. Add-in assets never embed either secret.
+func (s *Server) citeBootstrap(w http.ResponseWriter, r *http.Request) {
+	s.cite.mu.Lock()
+	path, secret := s.cite.bootstrapPath, s.cite.secret
+	s.cite.mu.Unlock()
+	provided := strings.TrimPrefix(r.Header.Get("Authorization"), "Bearer ")
+	if !validCiteBootstrapKey(path, provided) || secret == "" {
+		fail(w, 401, "请在 NeoRead 设置中重新安装 WPS 插件")
+		return
+	}
+	w.Header().Set("Cache-Control", "no-store")
+	respond(w, 200, map[string]string{"credential": secret})
+}
 
 // SetCitePlugins sets the directory that holds the word processor add-ins.
 func (s *Server) SetCitePlugins(dir string) { s.cite.plugins = dir }
@@ -392,6 +414,18 @@ func (s *Server) SetCitePlugins(dir string) { s.cite.plugins = dir }
 // citeWPSFile serves the WPS add-in. WPS loads it from this port at startup,
 // so the page shares an origin with the citation endpoints and needs no proxy.
 func (s *Server) citeWPSFile(w http.ResponseWriter, r *http.Request) {
+	// WPS loads a private capability URL installed in the user's configuration.
+	// Never reflect that URL or log it: diagnosticHTTP records route patterns.
+	w.Header().Set("Referrer-Policy", "no-referrer")
+	w.Header().Set("Cache-Control", "no-store")
+	s.cite.mu.Lock()
+	pathToKey := s.cite.bootstrapPath
+	s.cite.mu.Unlock()
+	if !validCiteBootstrapKey(pathToKey, r.PathValue("key")) {
+		fail(w, 401, "请在 NeoRead 设置中重新安装 WPS 插件")
+		return
+	}
+
 	name := r.PathValue("file")
 	if name == "" {
 		name = "index.html"
@@ -415,12 +449,6 @@ func (s *Server) citeWPSFile(w http.ResponseWriter, r *http.Request) {
 	}
 	if contentType == "" {
 		contentType = "application/octet-stream"
-	}
-	if name == "index.html" {
-		s.cite.mu.Lock()
-		secret := s.cite.secret
-		s.cite.mu.Unlock()
-		data = bytes.ReplaceAll(data, []byte(citeCredentialSlot), []byte(html.EscapeString(secret)))
 	}
 	w.Header().Set("Content-Type", contentType)
 	w.Header().Set("Cache-Control", "no-store")

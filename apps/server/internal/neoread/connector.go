@@ -84,10 +84,12 @@ func (s *Server) ConnectorHandler() http.Handler {
 	mux.HandleFunc("GET /v1/folders", s.connectorFolders)
 	mux.HandleFunc("GET /v1/labels", s.connectorLabels)
 	mux.HandleFunc("POST /v1/import", s.connectorImport)
+	mux.HandleFunc("POST /v1/cite/bootstrap", s.citeBootstrap)
 	mux.HandleFunc("POST /v1/cite/execCommand", s.citeExecCommand)
 	mux.HandleFunc("POST /v1/cite/respond", s.citeRespond)
 	mux.HandleFunc("POST /v1/cite/next", s.citeNext)
-	mux.HandleFunc("GET /wps/{file...}", s.citeWPSFile)
+	mux.HandleFunc("GET /wps/{key}/{file...}", s.citeWPSFile)
+	mux.HandleFunc("GET /wps/{$}", s.citeWPSFile)
 	return s.diagnosticHTTP(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		host, port, err := net.SplitHostPort(r.Host)
 		if err != nil || host != "127.0.0.1" || port != ConnectorPort {
@@ -117,7 +119,9 @@ func (s *Server) ConnectorHandler() http.Handler {
 			return
 		}
 		if strings.HasPrefix(r.URL.Path, "/wps/") {
-			// Static add-in files; the page itself carries the credential.
+			// The resource handler validates the private installation key.
+		} else if r.URL.Path == "/v1/cite/bootstrap" {
+			// This handler authenticates with the private installation key.
 		} else if strings.HasPrefix(r.URL.Path, "/v1/cite/") {
 			// Word macros send no Origin; the plugins read a separate credential.
 			if !s.citeAuthorized(r) {

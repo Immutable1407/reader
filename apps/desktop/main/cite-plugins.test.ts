@@ -1,4 +1,4 @@
-import { mkdir, mkdtemp, readFile, writeFile } from "node:fs/promises";
+import { mkdir, mkdtemp, readFile, stat, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { describe, expect, it, vi } from "vitest";
@@ -31,24 +31,28 @@ async function setup(platform: NodeJS.Platform) {
   return { root, options };
 }
 
+const bootstrapKey = "a".repeat(64);
+
 describe("WPS registration", () => {
   it("adds one entry and keeps other add-ins", () => {
     const xml =
       '<?xml version="1.0" encoding="UTF-8"?>\n<jsplugins>\n  <jsplugin name="wps-zotero" type="wps" url="http://127.0.0.1:3889/" version="1"/>\n</jsplugins>';
-    const once = registerWPS(xml, "publish");
-    const twice = registerWPS(once, "publish");
+    const once = registerWPS(xml, "publish", bootstrapKey);
+    const twice = registerWPS(once, "publish", bootstrapKey);
     expect(twice).toBe(once);
     expect(once.match(/name="reader-cite"/g)).toHaveLength(1);
-    expect(once).toContain('url="http://127.0.0.1:17841/wps/"');
+    expect(once).toContain(
+      'url="http://127.0.0.1:17841/wps/' + bootstrapKey + '/"',
+    );
     expect(once).toContain('name="wps-zotero"');
     expect(unregisterWPS(once)).toBe(xml);
   });
 
   it("creates a file and rejects unknown formats", () => {
-    expect(registerWPS("", "jsplugins")).toMatch(
+    expect(registerWPS("", "jsplugins", bootstrapKey)).toMatch(
       /<jsplugins>\n {2}<jsplugin name="reader-cite"/,
     );
-    expect(() => registerWPS("<other/>", "jsplugins")).toThrow();
+    expect(() => registerWPS("<other/>", "jsplugins", bootstrapKey)).toThrow();
   });
 });
 
@@ -98,7 +102,22 @@ describe("installing", () => {
       'name="reader-cite"',
     );
     expect((await citePluginStatus(options))[1].installed).toBe(true);
+    const keyPath = join(options.appData, "Reader", "cite-wps-key");
+    const key = await readFile(keyPath, "utf8");
+    expect(key).toMatch(/^[a-f0-9]{64}$/);
+    const registered = await readFile(join(folder, "publish.xml"), "utf8");
+    expect(registered).toContain("/wps/" + key + "/");
+
+    if (process.platform !== "win32") {
+      expect((await stat(keyPath)).mode & 0o777).toBe(0o600);
+      expect((await stat(join(folder, "publish.xml"))).mode & 0o777).toBe(
+        0o600,
+      );
+    }
+    await installCitePlugin("wps", options);
+    expect(await readFile(keyPath, "utf8")).toBe(key);
     await uninstallCitePlugin("wps", options);
+    await expect(readFile(keyPath)).rejects.toThrow();
     expect((await citePluginStatus(options))[1].installed).toBe(false);
   });
 

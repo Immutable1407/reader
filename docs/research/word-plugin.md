@@ -118,7 +118,7 @@ POST /v1/cite/next        {transaction}                 → 收到 Document.wait
 
 - 设置页提供“安装 Word 插件”“安装 WPS 插件”，安装、卸载、升级由 Reader 完成，并检测 Word/WPS 是否正在运行。
 - 位置：Word Windows `%APPDATA%\Microsoft\Word\STARTUP`；Word macOS `~/Library/Group Containers/UBF8T346G9.Office/User Content/Startup/Word/`，另放 AppleScript 到 `~/Library/Application Scripts/com.microsoft.Word/`；WPS 写入 `jsaddons` 的注册 XML，入口为 `http://127.0.0.1:17841/wps/`。
-- 鉴权：VBA 请求不带 Origin，不能沿用扩展的来源校验。占用 17841 端口的 Reader 进程每次启动生成新凭据，写入固定位置 `<用户配置目录>/Reader/cite-credential`（0600），Word 端每次请求时读取（Windows 由 VBA 读，macOS 由 AppleScript 读）。开发版和正式版共用这个位置，因为只有占用端口的进程会写。WPS 页面由 Reader 提供，提供时把凭据写进页面；`/v1/cite/*` 只额外接受 `http://127.0.0.1:17841` 同源请求。
+- 鉴权：VBA 请求不带 Origin，不能沿用扩展的来源校验。占用 17841 端口的 Reader 进程每次启动生成新凭据，写入固定位置 `<用户配置目录>/Reader/cite-credential`（0600），Word 端每次请求时读取（Windows 由 VBA 读，macOS 由 AppleScript 读）。开发版和正式版共用这个位置，因为只有占用端口的进程会写。WPS 安装程序将用户专属随机密钥保存到 `Reader/cite-wps-key` 和该用户的登记文件。服务端校验 `/wps/<安装密钥>/` 路径中的密钥才提供资源；页面通过认证的 `POST /v1/cite/bootstrap` 获取当前运行令牌，不再把令牌写入 HTML。密钥文件和登记文件在 Unix 上限制为 0600，Windows 依赖当前用户 AppData 的 ACL；资源禁止缓存并设置 `Referrer-Policy: no-referrer`，日志只记录路由模板；`/v1/cite/*` 只额外接受 `http://127.0.0.1:17841` 同源请求。
 - 文档内容（引注文本、域代码）只在本机传递，不联网。
 - 不复制 Zotero（AGPL）和 WPS-Zotero（GPL-3.0）的代码，只参考公开协议与文档格式独立实现。
 

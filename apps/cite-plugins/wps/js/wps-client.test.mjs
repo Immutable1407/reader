@@ -1,5 +1,5 @@
 import { createRequire } from "node:module";
-import { expect, it } from "vitest";
+import { expect, it, vi } from "vitest";
 
 const require = createRequire(import.meta.url);
 const { runCommand } = require("./protocol.js");
@@ -325,4 +325,39 @@ it("runs a command until Reader completes it and reports errors", async () => {
     transaction: "t",
     error: "插件版本过旧，请在 Reader 设置中重新安装",
   });
+});
+
+it("bootstraps with a private installation path and uses only the runtime credential for commands", async () => {
+  const key = "a".repeat(64);
+  const token = "b".repeat(64);
+  const fetchMock = vi
+    .fn()
+    .mockResolvedValueOnce({
+      ok: true,
+      json: async () => ({ credential: token }),
+    })
+    .mockResolvedValueOnce({
+      ok: true,
+      json: async () => ({ op: "Document.complete" }),
+    });
+  vi.stubGlobal("fetch", fetchMock);
+  try {
+    const { bootstrap } = require("./protocol.js");
+    await expect(bootstrap("")).rejects.toThrow("重新安装");
+    expect(fetchMock).not.toHaveBeenCalled();
+    const post = await bootstrap("/wps/" + key + "/index.html");
+    await post("/v1/cite/execCommand", { command: "refresh" });
+    expect(fetchMock.mock.calls[0][0]).toBe("/v1/cite/bootstrap");
+    expect(fetchMock.mock.calls[0][1].headers.Authorization).toBe(
+      "Bearer " + key,
+    );
+    expect(fetchMock.mock.calls[1][1].headers.Authorization).toBe(
+      "Bearer " + token,
+    );
+    expect(fetchMock.mock.calls.every(([url]) => !url.includes(key))).toBe(
+      true,
+    );
+  } finally {
+    vi.unstubAllGlobals();
+  }
 });

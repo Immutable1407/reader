@@ -18,11 +18,6 @@
   };
   let running = false;
 
-  function credential() {
-    const meta = document.querySelector('meta[name="reader-cite"]');
-    return meta ? meta.getAttribute("content") || "" : "";
-  }
-
   function alertUser(message) {
     try {
       root.wps.WpsApplication().ActiveDocument.ActiveWindow.Activate();
@@ -51,13 +46,16 @@
     }
     const doc = root.ReaderCiteWord.createDocument(app);
     running = true;
-    root.ReaderCiteProtocol.runCommand({
-      command,
-      documentId: doc.id(),
-      client: "wps",
-      document: doc,
-      post: root.ReaderCiteProtocol.createTransport(credential(), ""),
-    })
+    root.ReaderCiteProtocol.bootstrap(root.location.pathname)
+      .then((post) =>
+        root.ReaderCiteProtocol.runCommand({
+          command,
+          documentId: doc.id(),
+          client: "wps",
+          document: doc,
+          post,
+        }),
+      )
       .then((error) => {
         if (error) alertUser(error);
       })

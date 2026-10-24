@@ -1,6 +1,8 @@
+import { randomBytes } from "node:crypto";
 import { execFile } from "node:child_process";
 import {
   access,
+  chmod,
   copyFile,
   mkdir,
   readFile,
@@ -81,11 +83,18 @@ function wpsFolder({ platform, home, appData }: CitePluginOptions) {
 const wpsEntry = /\s*<jsplugin\b[^>]*\bname="reader-cite"[^>]*\/>/g;
 
 /** Adds Reader's add-in to a WPS jsaddons XML file, replacing an older entry. */
-export function registerWPS(xml: string, file: "jsplugins" | "publish") {
+export function registerWPS(
+  xml: string,
+  file: "jsplugins" | "publish",
+  key: string,
+) {
+  if (!/^[a-f0-9]{64}$/.test(key))
+    throw new Error("Invalid WPS installation key");
+  const url = WPS_URL + key + "/";
   const entry =
     file === "publish"
-      ? `<jsplugin url="${WPS_URL}" type="wps" enable="enable_dev" install="null" version="${WPS_VERSION}" name="${WPS_NAME}"/>`
-      : `<jsplugin name="${WPS_NAME}" type="wps" url="${WPS_URL}" version="${WPS_VERSION}"/>`;
+      ? `<jsplugin url="${url}" type="wps" enable="enable_dev" install="null" version="${WPS_VERSION}" name="${WPS_NAME}"/>`
+      : `<jsplugin name="${WPS_NAME}" type="wps" url="${url}" version="${WPS_VERSION}"/>`;
   const base = unregisterWPS(
     xml.trim() ||
       '<?xml version="1.0" encoding="UTF-8"?>\n<jsplugins>\n</jsplugins>',
@@ -163,11 +172,21 @@ export async function installCitePlugin(
   }
   const folder = wpsFolder(options);
   if (!folder) throw new Error("当前系统暂不支持 WPS 插件");
-  await mkdir(folder, { recursive: true });
+  const keyPath = join(options.appData, "Reader", "cite-wps-key");
+  await mkdir(dirname(keyPath), { recursive: true, mode: 0o700 });
+  // WPS appends ribbon.xml/index.html; protect the installation base path.
+  let key = await readFile(keyPath, "utf8").catch(() => "");
+  if (!/^[a-f0-9]{64}$/.test(key)) {
+    key = randomBytes(32).toString("hex");
+    await writeFile(keyPath, key, { mode: 0o600 });
+  }
+  await chmod(keyPath, 0o600);
+  await mkdir(folder, { recursive: true, mode: 0o700 });
   for (const file of ["jsplugins", "publish"] as const) {
     const path = join(folder, `${file}.xml`);
     const xml = await readFile(path, "utf8").catch(() => "");
-    await writeFile(path, registerWPS(xml, file));
+    await writeFile(path, registerWPS(xml, file, key), { mode: 0o600 });
+    await chmod(path, 0o600);
   }
 }
 
@@ -195,4 +214,5 @@ export async function uninstallCitePlugin(
     const xml = await readFile(path, "utf8").catch(() => null);
     if (xml !== null) await writeFile(path, unregisterWPS(xml));
   }
+  await rm(join(options.appData, "Reader", "cite-wps-key"), { force: true });
 }

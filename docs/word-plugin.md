@@ -7,9 +7,11 @@
 设置 → 论文库 → Word / WPS 引用插件：
 
 - **Microsoft Word**（Windows、macOS 桌面版）：先退出 Word 再点“安装”。Reader 把 `Reader.dotm` 放进 Word 启动文件夹；macOS 上还会把发请求用的 `ReaderCite.scpt` 编译到 `~/Library/Application Scripts/com.microsoft.Word/`。重新启动 Word 后出现“Reader”选项卡。
-- **WPS 文字**（Windows）：点“安装”后，Reader 在 `%APPDATA%\kingsoft\wps\jsaddons` 的 `jsplugins.xml`、`publish.xml` 中登记加载项，地址为 `http://127.0.0.1:17841/wps/`。WPS 在启动时从 Reader 加载这个页面，所以 **WPS 启动时 Reader 必须已经在运行**，否则本次不会出现“Reader”选项卡。macOS 版 WPS 的加载项目录尚未验证，暂不支持。
+- **WPS 文字**（Windows）：点“安装”后，Reader 在 `%APPDATA%\kingsoft\wps\jsaddons` 的 `jsplugins.xml`、`publish.xml` 中登记加载项，地址为 `http://127.0.0.1:17841/wps/<安装密钥>/`。WPS 在启动时从 Reader 加载这个页面，所以 **WPS 启动时 Reader 必须已经在运行**，否则本次不会出现“Reader”选项卡。macOS 版 WPS 的加载项目录尚未验证，暂不支持。
 
 `Reader.dotm` 需要在装有 Word 的电脑上构建后提交（见 `apps/cite-plugins/README.md`）；没有附带模板的版本会在设置中说明。
+
+旧版 WPS 插件升级后，需要在设置中点击“重新安装”并重启 WPS。安装程序在当前用户的配置目录保存随机引导密钥，并写入该用户的 WPS 登记文件。资源路径和认证交换都校验此密钥；未认证的 `/wps/` 不再提供页面或运行令牌。App 重启后无需重新安装，插件每次操作前获取新的运行令牌。不要分享含密钥的安装地址或登记文件。
 
 ## 使用
 

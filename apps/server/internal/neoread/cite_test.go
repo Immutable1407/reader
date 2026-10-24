@@ -12,6 +12,8 @@ import (
 	"strings"
 	"testing"
 	"time"
+
+	"neoread.local/server/internal/diagnostics"
 )
 
 type citeHarness struct {
@@ -278,7 +280,7 @@ func TestCiteCredentialIsPrivateAndRotates(t *testing.T) {
 	}
 }
 
-func TestCiteServesWPSAddinWithCredential(t *testing.T) {
+func TestCiteServesWPSAddinWithoutCredential(t *testing.T) {
 	h := newCiteHarness(t)
 	dir := t.TempDir()
 	if err := os.MkdirAll(filepath.Join(dir, "wps", "js"), 0o755); err != nil {
@@ -299,11 +301,22 @@ func TestCiteServesWPSAddinWithCredential(t *testing.T) {
 		data, _ := io.ReadAll(response.Body)
 		return response.StatusCode, response.Header.Get("Content-Type"), string(data)
 	}
-	status, kind, body := get("/wps/")
-	if status != 200 || !strings.HasPrefix(kind, "text/html") || !strings.Contains(body, h.secret) {
+	for _, path := range []string{"/wps/", "/wps/" + strings.Repeat("b", 64) + "/index.html"} {
+		status, _, body := get(path)
+		if status != 401 || strings.Contains(body, h.secret) {
+			t.Fatalf("public access: %d", status)
+		}
+	}
+	key := strings.Repeat("a", 64)
+	if err := os.WriteFile(h.server.cite.bootstrapPath, []byte(key), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	base := "/wps/" + key + "/"
+	status, kind, body := get(base + "index.html")
+	if status != 200 || !strings.HasPrefix(kind, "text/html") || strings.Contains(body, h.secret) {
 		t.Fatalf("index: %d %s %s", status, kind, body)
 	}
-	if status, kind, _ := get("/wps/js/main.js"); status != 200 || !strings.HasPrefix(kind, "text/javascript") {
+	if status, kind, _ := get(base + "js/main.js"); status != 200 || !strings.HasPrefix(kind, "text/javascript") {
 		t.Fatalf("script: %d %s", status, kind)
 	}
 	for _, path := range []string{"/wps/../secret.txt", "/wps/%2e%2e/secret.txt", "/wps/missing.js"} {
@@ -357,5 +370,102 @@ func TestCiteAsksIdleClientsToPollAgain(t *testing.T) {
 	}
 	if status, body := h.client("/v1/cite/next", `{"transaction":"gone"}`, h.secret); status != 200 || !strings.Contains(body, "Document.complete") {
 		t.Fatalf("ended transaction: %d %s", status, body)
+	}
+}
+
+// The public page must not be an alternate route around the credential file.
+func TestCiteBootstrapRequiresPrivateInstallationKey(t *testing.T) {
+	h := newCiteHarness(t)
+	bootstrap := "/v1/cite/bootstrap"
+	for _, token := range []string{"", "wrong", h.secret} {
+		if status, body := h.client(bootstrap, "{}", token); status != 401 || strings.Contains(body, h.secret) {
+			t.Fatalf("missing installation key: status %d", status)
+		}
+	}
+	key := strings.Repeat("a", 64)
+	path := h.server.cite.bootstrapPath
+	if err := os.WriteFile(path, []byte(key), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	for _, token := range []string{"", strings.Repeat("b", 64), h.secret} {
+		if status, body := h.client(bootstrap, "{}", token); status != 401 || strings.Contains(body, h.secret) {
+			t.Fatalf("invalid installation key: status %d", status)
+		}
+	}
+	status, body := h.client(bootstrap, "{}", key)
+	if status != 200 || !strings.Contains(body, h.secret) {
+		t.Fatalf("bootstrap: status %d", status)
+	}
+	// Installation key is scoped to bootstrap, not document operations.
+	if status, _ := h.client("/v1/cite/execCommand", "{}", key); status != 401 {
+		t.Fatalf("installation key used as runtime credential: %d", status)
+	}
+	// Runtime rotation does not require reinstalling WPS.
+	if err := h.server.SetCiteCredential(filepath.Join(filepath.Dir(path), "cite-credential")); err != nil {
+		t.Fatal(err)
+	}
+	status, body = h.client(bootstrap, "{}", key)
+	if status != 200 || strings.Contains(body, h.secret) {
+		t.Fatalf("rotation: status %d", status)
+	}
+	if err := os.Remove(path); err != nil {
+		t.Fatal(err)
+	}
+	if status, _ := h.client(bootstrap, "{}", key); status != 401 {
+		t.Fatalf("revocation: %d", status)
+	}
+}
+
+func TestCiteWPSKeyDoesNotEnterDiagnosticsOrReferrers(t *testing.T) {
+	h := newCiteHarness(t)
+	logs, err := diagnostics.New(filepath.Join(h.server.Store.Root, "logs"), "wps-test")
+	if err != nil {
+		t.Fatal(err)
+	}
+	h.server.SetDiagnostics(logs)
+	key := strings.Repeat("c", 64)
+	if err := os.WriteFile(h.server.cite.bootstrapPath, []byte(key), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	dir := t.TempDir()
+	if err := os.MkdirAll(filepath.Join(dir, "wps"), 0o700); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(dir, "wps", "index.html"), []byte("<html></html>"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	h.server.SetCitePlugins(dir)
+	req := httptest.NewRequest("GET", "http://127.0.0.1:"+ConnectorPort+"/wps/"+key+"/index.html", nil)
+	response := httptest.NewRecorder()
+	h.server.ConnectorHandler().ServeHTTP(response, req)
+	if response.Code != 200 || response.Header().Get("Referrer-Policy") != "no-referrer" || response.Header().Get("Cache-Control") != "no-store" {
+		t.Fatalf("resource privacy headers: status %d", response.Code)
+	}
+	if status, _ := h.client("/v1/cite/bootstrap", "{}", key); status != 200 {
+		t.Fatal(status)
+	}
+	entries, err := os.ReadDir(logs.Dir)
+	if err != nil {
+		t.Fatal(err)
+	}
+	found := false
+	for _, entry := range entries {
+		if entry.IsDir() {
+			continue
+		}
+		data, err := os.ReadFile(filepath.Join(logs.Dir, entry.Name()))
+		if err != nil {
+			t.Fatal(err)
+		}
+		text := string(data)
+		if strings.Contains(text, key) || strings.Contains(text, h.secret) {
+			t.Fatal("credentials leaked into diagnostics")
+		}
+		if strings.Contains(text, "http.finish") {
+			found = true
+		}
+	}
+	if !found {
+		t.Fatal("missing HTTP diagnostics")
 	}
 }

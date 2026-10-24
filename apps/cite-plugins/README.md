@@ -5,8 +5,10 @@ document operations Reader sends; formatting, dialogs and the library stay in
 Reader. Design and protocol: `docs/research/word-plugin.md`.
 
 - `wps/` — WPS 文字 JS add-in. Reader serves it from
-  `http://127.0.0.1:17841/wps/` and inserts the local credential into
-  `index.html`. `js/word-document.js` implements the operations on the Word
+  `http://127.0.0.1:17841/wps/<installation-key>/`, authenticated with a
+  random key stored in the current user's configuration. The page exchanges
+  that key at `/v1/cite/bootstrap` for a rotating runtime credential; HTML
+  never embeds credentials. Existing installations need reinstalling once. `js/word-document.js` implements the operations on the Word
   object model and is tested against a fake model in `js/wps-client.test.mjs`.
 - `word/` — Word template for Windows and macOS.
   - `ReaderCite.bas`: the VBA module. Keep it ASCII; write Chinese messages as
