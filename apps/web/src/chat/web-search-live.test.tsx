@@ -11,7 +11,7 @@ type LiveCase = {
   messages: Message[];
   events: { event: string; data: unknown }[];
 };
-const reportPath = process.env.READER_TEST_WEB_REPORT;
+const reportPath = process.env.NEOREAD_TEST_WEB_REPORT;
 const cases: LiveCase[] = reportPath
   ? JSON.parse(readFileSync(reportPath, "utf8"))
   : [];

@@ -26,7 +26,7 @@ Codex 的 `item/started`、`item/completed` 和 `item/mcpToolCall/progress` 经 
 
 文档引用仍按已读证据校验 `[S1]`。外部来源使用 Markdown 链接。能从 Codex 返回结果确定 URL 的原生网页引用会转换为链接；缺少 ID/URL 对应关系时显示“网页引用未解析，见执行记录”，不根据结果顺序猜测来源，也不绕过文档 S 引用校验。
 
-不同 App Server 版本可能只返回查询或动作而不返回结果 URL、标题或正文。此时仅展示实际返回的信息；“打开网页”事件不等于 Reader 取得了网页正文快照。第三方 MCP 的内部多个 HTTP 请求也只有在工具上报进度时才可见。
+不同 App Server 版本可能只返回查询或动作而不返回结果 URL、标题或正文。此时仅展示实际返回的信息；“打开网页”事件不等于 NeoRead 取得了网页正文快照。第三方 MCP 的内部多个 HTTP 请求也只有在工具上报进度时才可见。
 
 ## 请求边界
 
@@ -34,13 +34,13 @@ Codex 的 `item/started`、`item/completed` 和 `item/mcpToolCall/progress` 经 
 
 DeepSeek 只收到必要查询词或指定 URL，不发送整篇文档及聊天历史。Fetch 请求在本机检查协议、凭据、localhost、内网和链路本地 IP，包括 DNS 解析结果；实际网页抓取由 DeepSeek 执行，远端抓取和跳转策略仍由其安全策略负责。Search/Fetch API 目标由用户在设置中明确指定，不跟随 API HTTP 重定向。搜索服务要求 HTTPS，本机兼容服务可使用 HTTP。更改服务地址时必须重新填写 Key；同一地址留空才可保留原 Key，移除密钥同时关闭搜索 API。配置返回值仅含 hasKey，不回传 Key。错误展示不包含原始上游响应体。
 
-Codex 原生搜索请求由 App Server/服务端执行，Reader 收到的是执行通知，无法在每次请求前审核或改写其底层 HTTP 请求。当前授权和只读配置不等于完整进程级网络/文件系统隔离。
+Codex 原生搜索请求由 App Server/服务端执行，NeoRead 收到的是执行通知，无法在每次请求前审核或改写其底层 HTTP 请求。当前授权和只读配置不等于完整进程级网络/文件系统隔离。
 
 ## 验证与人工检查
 
 自动化覆盖配置持久保存、遗漏字段保留、密钥隔离与更换地址保护、CLI 开关约束、模型与搜索服务使用不同地址/Key、IPC 工具生命周期、继承 MCP 的禁用、DeepSeek 请求协议、权限关闭、来源快照保存、截短、预算、内网 URL、重定向、取消和限流；Pi worker 使用本地模型响应替身，不访问商业模型服务。
 
-可选原生 CLI 配置预检：在 `apps/server` 运行 `READER_TEST_CODEX_WEB_PREFLIGHT=1 go test ./internal/reader -run '^TestCodexWebPreflightNative$' -count=1`。只初始化实际安装的 CLI 并核验配置，不启动模型回合或调用 MCP。
+可选原生 CLI 配置预检：在 `apps/server` 运行 `NEOREAD_TEST_CODEX_WEB_PREFLIGHT=1 go test ./internal/neoread -run '^TestCodexWebPreflightNative$' -count=1`。只初始化实际安装的 CLI 并核验配置，不启动模型回合或调用 MCP。
 
 开发预览：启动 Web 开发服务，打开 `/__web-search`。这是合成示例；可切换明暗、执行状态并调整面板宽度，检查展开/收起、链接、长文本换行和减少动态效果。同时展示联网设置表单（只保存当前预览内的合成状态，不会修改实际配置）。项目不使用浏览器自动化进行视觉验收。
 
@@ -61,10 +61,10 @@ Codex 原生搜索请求由 App Server/服务端执行，Reader 收到的是执�
 
 ```sh
 cd apps/server
-READER_TEST_WEB_PROVIDERS=codex,api \
-READER_TEST_DOCUMENT_API_CONFIG="<已有 Reader DeepSeek 连接配置文件>" \
-READER_TEST_WEB_REPORT="<书库以外的报告 JSON 路径>" \
-go test ./internal/reader -run '^TestLiveWebSearchLifecycle$' -count=1 -v -timeout=15m
+NEOREAD_TEST_WEB_PROVIDERS=codex,api \
+NEOREAD_TEST_DOCUMENT_API_CONFIG="<已有 NeoRead DeepSeek 连接配置文件>" \
+NEOREAD_TEST_WEB_REPORT="<书库以外的报告 JSON 路径>" \
+go test ./internal/neoread -run '^TestLiveWebSearchLifecycle$' -count=1 -v -timeout=15m
 ```
 
-随后在仓库根目录使用同一个 `READER_TEST_WEB_REPORT` 运行 `pnpm exec vitest run apps/web/src/chat/web-search-live.test.tsx`。报告排除模型思考内容和认证数据，网页文本仅保留前 400 字节供检查，并通过 `reportTextLimitBytes` 标明报告自身的摘录限制；产品中原始保存的快照不受报告摘录影响。
+随后在仓库根目录使用同一个 `NEOREAD_TEST_WEB_REPORT` 运行 `pnpm exec vitest run apps/web/src/chat/web-search-live.test.tsx`。报告排除模型思考内容和认证数据，网页文本仅保留前 400 字节供检查，并通过 `reportTextLimitBytes` 标明报告自身的摘录限制；产品中原始保存的快照不受报告摘录影响。

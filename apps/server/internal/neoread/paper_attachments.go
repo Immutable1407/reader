@@ -330,7 +330,7 @@ func (s *Server) downloadPaperAttachment(w http.ResponseWriter, r *http.Request)
 		fail(w, 500, "无法读取附件文件")
 		return
 	}
-	// Never render uploaded active content in Reader's authenticated origin.
+	// Never render uploaded active content in NeoRead's authenticated origin.
 	w.Header().Set("Content-Type", "application/octet-stream")
 	w.Header().Set("Content-Disposition", mime.FormatMediaType("attachment", map[string]string{"filename": a.Filename}))
 	w.Header().Set("Cache-Control", "no-store")

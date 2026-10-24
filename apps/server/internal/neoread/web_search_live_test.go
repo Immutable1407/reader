@@ -28,13 +28,13 @@ type liveWebCase struct {
 // Opt in explicitly: these tests call real model/search services using only a
 // public query and an isolated synthetic document. No real library is modified.
 func TestLiveWebSearchLifecycle(t *testing.T) {
-	providers := os.Getenv("READER_TEST_WEB_PROVIDERS")
+	providers := os.Getenv("NEOREAD_TEST_WEB_PROVIDERS")
 	if providers == "" {
-		t.Skip("set READER_TEST_WEB_PROVIDERS=codex,api to authorize real model and search calls")
+		t.Skip("set NEOREAD_TEST_WEB_PROVIDERS=codex,api to authorize real model and search calls")
 	}
 	reports := []liveWebCase{}
 	defer func() {
-		if path := os.Getenv("READER_TEST_WEB_REPORT"); path != "" {
+		if path := os.Getenv("NEOREAD_TEST_WEB_REPORT"); path != "" {
 			data, _ := json.MarshalIndent(reports, "", "  ")
 			if err := os.WriteFile(path, data, 0600); err != nil {
 				t.Error("cannot save sanitized live report")
@@ -48,10 +48,10 @@ func TestLiveWebSearchLifecycle(t *testing.T) {
 		t.Run(provider, func(t *testing.T) {
 			cfg := AIConfig{Primary: provider, Models: map[string]string{}, Capabilities: map[string]Capability{}}
 			if provider == "api" {
-				path := os.Getenv("READER_TEST_DOCUMENT_API_CONFIG")
+				path := os.Getenv("NEOREAD_TEST_DOCUMENT_API_CONFIG")
 				raw, err := os.ReadFile(path)
 				if err != nil {
-					t.Fatal("existing Reader API connection unavailable")
+					t.Fatal("existing NeoRead API connection unavailable")
 				}
 				var stored savedConfig
 				if json.Unmarshal(raw, &stored) != nil || !deepSeekSearchConnection(stored.Config.API) {
@@ -107,12 +107,12 @@ func TestLiveWebSearchLifecycle(t *testing.T) {
 				req.Header.Set("Content-Type", "application/json")
 				res, err := client.Do(req)
 				if err != nil {
-					t.Fatal("isolated Reader request failed", err)
+					t.Fatal("isolated NeoRead request failed", err)
 				}
 				if res.StatusCode >= 400 {
 					defer res.Body.Close()
 					data, _ := io.ReadAll(io.LimitReader(res.Body, 4096))
-					t.Fatalf("Reader returned %d: %s", res.StatusCode, data)
+					t.Fatalf("NeoRead returned %d: %s", res.StatusCode, data)
 				}
 				return res
 			}

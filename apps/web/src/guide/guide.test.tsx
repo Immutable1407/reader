@@ -180,12 +180,12 @@ describe("guide host", () => {
     await render(false);
     await flush();
     expect(document.querySelector(".tour-card")?.textContent).toContain(
-      "欢迎使用 Reader",
+      "欢迎使用 NeoRead",
     );
     await act(async () => button("开始").click());
     await flush();
     expect(document.querySelector(".tour-card")?.textContent).not.toContain(
-      "欢迎使用 Reader",
+      "欢迎使用 NeoRead",
     );
     expect(api.saveGuidePreferences).not.toHaveBeenCalled();
     await act(async () => button("跳过引导").click());

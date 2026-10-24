@@ -54,7 +54,7 @@ func runWebEventsProcess() {
 			emit := func(method string, item any) {
 				encoder.Encode(map[string]any{"method": method, "params": map[string]any{"threadId": "thread", "turnId": "turn", "item": item}})
 			}
-			if mode := os.Getenv("READER_WEB_PHASE_FIXTURE"); mode != "" {
+			if mode := os.Getenv("NEOREAD_WEB_PHASE_FIXTURE"); mode != "" {
 				phase := "commentary"
 				if mode == "legacy" {
 					phase = ""
@@ -69,7 +69,7 @@ func runWebEventsProcess() {
 				emit("item/started", map[string]any{"id": "read", "type": "webSearch", "query": "", "action": map[string]string{"type": "openPage", "url": "https://example.com/docs"}})
 				emit("item/completed", map[string]any{"id": "read", "type": "webSearch", "query": "", "action": map[string]string{"type": "openPage", "url": "https://example.com/docs"}})
 			}
-			if os.Getenv("READER_WEB_PHASE_FIXTURE") != "legacy" {
+			if os.Getenv("NEOREAD_WEB_PHASE_FIXTURE") != "legacy" {
 				emit("item/started", map[string]any{"id": "answer", "type": "agentMessage", "phase": "final_answer"})
 				encoder.Encode(map[string]any{"method": "item/agentMessage/delta", "params": map[string]string{"threadId": "thread", "turnId": "turn", "itemId": "answer", "delta": "See [Official docs](https://example.com/docs)."}})
 				emit("item/completed", map[string]any{"id": "answer", "type": "agentMessage", "phase": "final_answer", "text": "See [Official docs](https://example.com/docs)."})
@@ -124,7 +124,7 @@ func TestCodexOfflineIPCDoesNotExposeSearch(t *testing.T) {
 
 // This probe initializes the installed CLI only; it never starts a model turn.
 func TestCodexWebPreflightNative(t *testing.T) {
-	if os.Getenv("READER_TEST_CODEX_WEB_PREFLIGHT") != "1" {
+	if os.Getenv("NEOREAD_TEST_CODEX_WEB_PREFLIGHT") != "1" {
 		t.Skip("opt-in native CLI configuration check")
 	}
 	for _, enabled := range []bool{false, true} {
@@ -150,7 +150,7 @@ func TestCodexWebPreflightNative(t *testing.T) {
 
 func TestCodexWebChatDropsCommentary(t *testing.T) {
 	fakeAgent(t, "codex", "web-events")
-	t.Setenv("READER_WEB_PHASE_FIXTURE", "commentary")
+	t.Setenv("NEOREAD_WEB_PHASE_FIXTURE", "commentary")
 	s := testServer(t)
 	text, err := invokeCLI(t.Context(), s.Store.Root, "codex", "test", AIInput{Prompt: "question", Chat: &chatInput{WebSearch: true}}, nil)
 	if err != nil {
@@ -162,7 +162,7 @@ func TestCodexWebChatDropsCommentary(t *testing.T) {
 }
 func TestCodexWebSearchInvalidatesOldCandidate(t *testing.T) {
 	fakeAgent(t, "codex", "web-events")
-	t.Setenv("READER_WEB_PHASE_FIXTURE", "legacy")
+	t.Setenv("NEOREAD_WEB_PHASE_FIXTURE", "legacy")
 	session, err := isolatedDocumentCodex(t.Context(), t.TempDir(), "test", "", "", true)
 	if err != nil {
 		t.Fatal(err)

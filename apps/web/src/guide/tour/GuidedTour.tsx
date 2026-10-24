@@ -198,8 +198,8 @@ const skipLabel = "跳过引导";
 
 async function openLink(url: string) {
   try {
-    if (window.readerDesktop?.openExternal)
-      await window.readerDesktop.openExternal(url);
+    if (window.neoreadDesktop?.openExternal)
+      await window.neoreadDesktop.openExternal(url);
     else {
       const opened = window.open(url, "_blank");
       if (!opened) throw new Error("无法打开浏览器，请允许弹出窗口后重试。");

@@ -7,7 +7,7 @@ import (
 
 var nativeWebSourceID = regexp.MustCompile(`^turn[0-9]+(?:search|view|fetch)[0-9]+$`)
 
-// Native web ids are a different namespace from Reader's validated S citations.
+// Native web ids are a different namespace from NeoRead's validated S citations.
 // Resolve only ids actually returned with a public URL; never guess by result order.
 func (c *chatInput) rememberNativeWebSource(id, url string) {
 	if !nativeWebSourceID.MatchString(id) {
