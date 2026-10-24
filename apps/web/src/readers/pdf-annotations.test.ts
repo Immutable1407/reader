@@ -83,7 +83,11 @@ it("opens all overlapping records at the clicked line and removes only deleted m
     ids: ["highlight", "note", "underline"],
     anchor: { x: 100, top: 120, bottom: 160 },
   });
+  const retained = host.querySelector('[data-annotation-id="note"]');
+  const retainedRect = retained!.firstElementChild;
   layer.setAnnotations([annotation("note", "note")]);
+  expect(host.querySelector('[data-annotation-id="note"]')).toBe(retained);
+  expect(retained!.firstElementChild).toBe(retainedRect);
   expect(host.querySelectorAll(".neoread-highlight")).toHaveLength(2);
   expect(host.querySelector('[data-annotation-id="highlight"]')).toBeNull();
   // A PDF.js page rerender must not resurrect a deleted annotation.
@@ -125,7 +129,7 @@ it("composites overlapping rectangles once per annotation, including on hover an
     pointer("pointermove");
     assertSingleComposite("0.48");
     layer.paint();
-    assertSingleComposite("0.32");
+    assertSingleComposite("0.48");
     expect(host.querySelectorAll(".neoread-annotation")).toHaveLength(1);
     layer.setAnnotations([]);
     expect(host.querySelector(".neoread-annotation")).toBeNull();
@@ -265,5 +269,252 @@ it("gives annotation clicks priority over block focus, including after repaint",
     expect(activate).toHaveBeenCalledTimes(1);
   } finally {
     await act(async () => blocks.destroy());
+  }
+});
+
+it("preserves group, rectangle identities and hover without DOM writes for equivalent data", () => {
+  pointer("pointermove");
+  const groups = [...host.querySelectorAll(".neoread-annotation")];
+  const rects = [...host.querySelectorAll(".neoread-highlight")];
+  const observer = new MutationObserver(() => {});
+  observer.observe(host, { subtree: true, childList: true, attributes: true });
+  try {
+    layer.paint();
+    layer.setAnnotations([
+      annotation("highlight"),
+      annotation("note", "note"),
+      annotation("underline", "underline"),
+    ]);
+    expect(observer.takeRecords()).toHaveLength(0);
+    groups.forEach((group, i) =>
+      expect(host.querySelectorAll(".neoread-annotation")[i]).toBe(group),
+    );
+    rects.forEach((rect, i) =>
+      expect(host.querySelectorAll(".neoread-highlight")[i]).toBe(rect),
+    );
+    expect(host.querySelectorAll("[data-hovered]")).toHaveLength(6);
+  } finally {
+    observer.disconnect();
+  }
+});
+
+it("updates in-place color, kind and geometry while leaving another page untouched", () => {
+  const page2 = document.createElement("div");
+  page2.className = "page";
+  page2.dataset.pageNumber = "2";
+  host.append(page2);
+  const first = annotation("first");
+  const second = annotation("second");
+  if (first.location.type !== "pdf" || second.location.type !== "pdf")
+    throw new Error("Expected PDF locations");
+  second.location.page = 2;
+  layer.setAnnotations([first, second]);
+  const group = host.querySelector<HTMLElement>(".neoread-annotation")!;
+  const rect = group.firstElementChild as HTMLElement;
+  const other = page2.firstElementChild!;
+  const otherRect = other.firstElementChild!;
+  const observer = new MutationObserver(() => {});
+  observer.observe(page2, { subtree: true, childList: true, attributes: true });
+  try {
+    first.color = "#123456";
+    first.kind = "underline";
+    first.location.rects![0].x = 0.25;
+    first.location.rects![0].y = 0.3;
+    first.location.rects![0].width = 0.4;
+    first.location.rects![0].height = 0.1;
+    first.location.rects!.pop();
+    layer.setAnnotations([first, second]);
+    expect(host.querySelector(".neoread-annotation")).toBe(group);
+    expect(group.firstElementChild).toBe(rect);
+    expect(group.children).toHaveLength(1);
+    expect(group.style.getPropertyValue("--annotation-color")).toBe("#123456");
+    expect(rect.dataset).toMatchObject({
+      annotationId: "first",
+      kind: "underline",
+    });
+    expect([
+      rect.style.left,
+      rect.style.top,
+      rect.style.width,
+      rect.style.height,
+    ]).toEqual(["25%", "30%", "40%", "10%"]);
+    first.color = "";
+    first.location.rects!.push({ x: 0, y: 0, width: 1, height: 1 });
+    layer.paint();
+    expect(group.style.getPropertyValue("--annotation-color")).toBe("#facc15");
+    expect(group.children).toHaveLength(2);
+    expect(group.firstElementChild).toBe(rect);
+    layer.setAnnotations([second]);
+    expect(group.isConnected).toBe(false);
+    expect(page2.firstElementChild).toBe(other);
+    expect(other.firstElementChild).toBe(otherRect);
+    expect(observer.takeRecords()).toHaveLength(0);
+    layer.paint();
+    expect(host.querySelector('[data-annotation-id="first"]')).toBeNull();
+  } finally {
+    observer.disconnect();
+  }
+});
+
+it.each(["reset", "replace", "detach"] as const)(
+  "restores current annotations after a page %s",
+  (operation) => {
+    const current = annotation("current");
+    layer.setAnnotations([current, annotation("removed")]);
+    const oldPage = host.firstElementChild!;
+    const oldGroup = oldPage.querySelector(".neoread-annotation")!;
+    let page = oldPage;
+    if (operation === "reset") {
+      oldPage.replaceChildren();
+    } else {
+      page = document.createElement("div");
+      page.className = "page";
+      (page as HTMLElement).dataset.pageNumber = "1";
+      if (operation === "replace") oldPage.replaceWith(page);
+      else {
+        oldPage.remove();
+        layer.paint();
+      }
+    }
+    current.color = "#112233";
+    layer.setAnnotations([current]);
+    if (operation === "detach") host.append(page);
+    layer.paint();
+    const group = page.querySelector<HTMLElement>(".neoread-annotation")!;
+    expect(group).not.toBeNull();
+    expect(group).not.toBe(oldGroup);
+    expect(group.style.getPropertyValue("--annotation-color")).toBe("#112233");
+    expect(page.querySelectorAll(".neoread-highlight")).toHaveLength(2);
+    expect(page.querySelector('[data-annotation-id="removed"]')).toBeNull();
+    layer.paint();
+    expect(page.querySelector(".neoread-annotation")).toBe(group);
+  },
+);
+
+it("removes marks with empty geometry or bookmark kind and restores later geometry", () => {
+  const mark = annotation("changing");
+  if (mark.location.type !== "pdf") throw new Error("Expected PDF location");
+  layer.setAnnotations([mark]);
+  mark.location.rects = [];
+  layer.paint();
+  expect(host.querySelector(".neoread-annotation")).toBeNull();
+  mark.location.rects = [{ x: 0, y: 0, width: 1, height: 1 }];
+  layer.paint();
+  expect(host.querySelectorAll(".neoread-highlight")).toHaveLength(1);
+  mark.kind = "bookmark";
+  layer.paint();
+  expect(host.querySelector(".neoread-annotation")).toBeNull();
+});
+
+it("reconciles a reattached page against changes made while it was detached", () => {
+  const page = host.firstElementChild!;
+  const retained = page.querySelector('[data-annotation-id="note"]');
+  page.remove();
+  layer.setAnnotations([annotation("note", "note")]);
+  host.append(page);
+  layer.paint();
+  expect(page.querySelectorAll(".neoread-annotation")).toHaveLength(1);
+  expect(page.querySelector('[data-annotation-id="note"]')).toBe(retained);
+  expect(page.querySelector('[data-annotation-id="highlight"]')).toBeNull();
+  expect(page.querySelector('[data-annotation-id="underline"]')).toBeNull();
+});
+
+it("reorders overlapping colors without replacing groups or moving an unchanged order", () => {
+  const first = annotation("first");
+  const second = annotation("second");
+  second.color = "#123456";
+  layer.setAnnotations([first, second]);
+  const page = host.firstElementChild!;
+  const [firstGroup, secondGroup] = [
+    ...page.querySelectorAll(".neoread-annotation"),
+  ];
+  const firstRect = firstGroup.firstElementChild;
+  const secondRect = secondGroup.firstElementChild;
+  pointer("pointermove");
+  layer.setAnnotations([second, first]);
+  const reordered = [...page.querySelectorAll(".neoread-annotation")];
+  expect(reordered[0]).toBe(secondGroup);
+  expect(reordered[1]).toBe(firstGroup);
+  expect(firstGroup.firstElementChild).toBe(firstRect);
+  expect(secondGroup.firstElementChild).toBe(secondRect);
+  expect(host.querySelectorAll("[data-hovered]")).toHaveLength(4);
+  const observer = new MutationObserver(() => {});
+  observer.observe(page, { childList: true, subtree: true, attributes: true });
+  try {
+    layer.paint();
+    layer.setAnnotations([second, first]);
+    expect(observer.takeRecords()).toHaveLength(0);
+  } finally {
+    observer.disconnect();
+  }
+});
+
+it("does not rewrite percentages rounded by CSS serialization on equivalent paints", () => {
+  const mark = annotation("fractional");
+  if (mark.location.type !== "pdf") throw new Error("Expected PDF location");
+  mark.location.rects = [
+    {
+      x: 0.1 + 0.2,
+      y: 1 / 3,
+      width: 0.1 + 0.2,
+      height: 1 / 7,
+    },
+  ];
+  layer.setAnnotations([mark]);
+  const rect = host.querySelector<HTMLElement>(".neoread-highlight")!;
+  const originalStyle = rect.style.cssText;
+  const observer = new MutationObserver(() => {});
+  observer.observe(host, { subtree: true, attributes: true, childList: true });
+  try {
+    layer.paint();
+    layer.setAnnotations([JSON.parse(JSON.stringify(mark))]);
+    expect(rect.style.cssText).toBe(originalStyle);
+    expect(observer.takeRecords()).toHaveLength(0);
+    mark.location.rects[0].x = 0.4;
+    layer.setAnnotations([mark]);
+    expect(rect.style.left).toBe("40%");
+    observer.takeRecords();
+    layer.paint();
+    expect(observer.takeRecords()).toHaveLength(0);
+  } finally {
+    observer.disconnect();
+  }
+});
+
+it("skips setters when the browser serializes a percentage with fewer digits", () => {
+  const descriptor = Object.getOwnPropertyDescriptor(
+    CSSStyleDeclaration.prototype,
+    "left",
+  )!;
+  const setter = vi
+    .spyOn(CSSStyleDeclaration.prototype, "left", "set")
+    .mockImplementation(function (this: CSSStyleDeclaration, value: string) {
+      descriptor.set!.call(
+        this,
+        value.endsWith("%")
+          ? Number.parseFloat(value).toPrecision(6) + "%"
+          : value,
+      );
+    });
+  try {
+    const mark = annotation("rounded");
+    if (mark.location.type !== "pdf") throw new Error("Expected PDF location");
+    mark.location.rects![0].x = 0.1 + 0.2;
+    layer.setAnnotations([mark]);
+    const rect = host.querySelector<HTMLElement>(".neoread-highlight")!;
+    expect(Number.parseFloat(rect.style.left)).toBe(30);
+    setter.mockClear();
+    layer.paint();
+    layer.setAnnotations([JSON.parse(JSON.stringify(mark))]);
+    expect(setter).not.toHaveBeenCalled();
+    mark.location.rects![0].x = 0.4;
+    layer.setAnnotations([mark]);
+    expect(setter).toHaveBeenCalledTimes(1);
+    expect(Number.parseFloat(rect.style.left)).toBe(40);
+    setter.mockClear();
+    layer.paint();
+    expect(setter).not.toHaveBeenCalled();
+  } finally {
+    setter.mockRestore();
   }
 });
