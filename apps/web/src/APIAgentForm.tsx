@@ -1,7 +1,7 @@
 import { useEffect, useId, useState } from "react";
-import type { APIConnection } from "@reader/core";
-import { Button } from "@reader/ui/components/button";
-import { Input } from "@reader/ui/components/input";
+import type { APIConnection } from "@neoread/core";
+import { Button } from "@neoread/ui/components/button";
+import { Input } from "@neoread/ui/components/input";
 
 import {
   Select,
@@ -9,7 +9,7 @@ import {
   SelectValue,
   SelectContent,
   SelectItem,
-} from "@reader/ui/components/select";
+} from "@neoread/ui/components/select";
 const protocols = {
   auto: "默认使用 OpenAI 格式",
   openai: "OpenAI Chat Completions",

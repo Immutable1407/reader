@@ -33,7 +33,7 @@ test("SDK worker bridges only registered tools and resumes accepted history", as
       { delta: {}, finish_reason: hasTool ? "stop" : "tool_calls" },
     ])
       res.write(
-        `data: ${JSON.stringify({ id: "completion", object: "chat.completion.chunk", model: "reader-test", choices: [{ index: 0, ...choice }] })}\n\n`,
+        `data: ${JSON.stringify({ id: "completion", object: "chat.completion.chunk", model: "neoread-test", choices: [{ index: 0, ...choice }] })}\n\n`,
       );
     res.end("data: [DONE]\n\n");
   });
@@ -47,9 +47,9 @@ test("SDK worker bridges only registered tools and resumes accepted history", as
     prompt: "读原文",
     system: "只读当前论文",
     model: {
-      id: "reader-test",
-      name: "reader-test",
-      provider: "reader",
+      id: "neoread-test",
+      name: "neoread-test",
+      provider: "neoread",
       api: "openai-completions",
       baseUrl: `http://127.0.0.1:${address.port}/v1`,
       reasoning: false,
@@ -215,7 +215,7 @@ test.each(["truncated", "anthropic"])(
           model: {
             id: "test",
             name: "test",
-            provider: "reader",
+            provider: "neoread",
             api:
               mode === "anthropic"
                 ? "anthropic-messages"

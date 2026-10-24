@@ -1,5 +1,5 @@
 import { create } from "zustand";
-import type { SmartCategory, TagBoard } from "@reader/core";
+import type { SmartCategory, TagBoard } from "@neoread/core";
 import type { PaperView } from "./model";
 
 /** Session state shared by the paper sidebar, list and detail panel. */

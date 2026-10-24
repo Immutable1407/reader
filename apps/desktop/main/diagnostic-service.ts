@@ -16,17 +16,19 @@ import { DiagnosticLogs, diagnosticSettings } from "./diagnostics";
 import {
   diagnosticError,
   validateDiagnosticEvent,
-} from "../../../packages/reader-core/src/diagnostics";
+} from "../../../packages/neoread-core/src/diagnostics";
 
-declare const READER_BUILD_COMMIT: string;
+declare const NEOREAD_BUILD_COMMIT: string;
 
 export function startDiagnosticService(
   getWindow: () => BrowserWindow | undefined,
   getLibrary: () => string | undefined = () =>
     join(app.getPath("userData"), "library"),
+  migrating = false,
 ) {
   const directory = join(app.getPath("userData"), "logs");
-  const logs = new DiagnosticLogs(directory);
+  const migrationDirectory = join(app.getPath("userData"), ".migration-logs");
+  const logs = new DiagnosticLogs(migrating ? migrationDirectory : directory);
   let settings: Record<string, unknown> = {};
   let exporting: Promise<boolean> | undefined;
   let failurePromise: Promise<void> | undefined;
@@ -41,7 +43,7 @@ export function startDiagnosticService(
       const window = getWindow();
       const options = {
         title: "导出诊断包",
-        defaultPath: `Reader-diagnostics-${new Date().toISOString().replace(/[:.]/g, "-")}.zip`,
+        defaultPath: `NeoRead-diagnostics-${new Date().toISOString().replace(/[:.]/g, "-")}.zip`,
         filters: [{ name: "诊断包", extensions: ["zip"] }],
       };
       const selected =
@@ -55,7 +57,7 @@ export function startDiagnosticService(
       let temporary: string | undefined;
       try {
         temporary = await mkdtemp(
-          join(dirname(selected.filePath), ".reader-diagnostics-"),
+          join(dirname(selected.filePath), ".neoread-diagnostics-"),
         );
         const output = join(temporary, "bundle.zip");
         const result = await logs.export(
@@ -65,8 +67,8 @@ export function startDiagnosticService(
             mode: "desktop",
             appVersion: version,
             buildCommit:
-              typeof READER_BUILD_COMMIT === "string"
-                ? READER_BUILD_COMMIT
+              typeof NEOREAD_BUILD_COMMIT === "string"
+                ? NEOREAD_BUILD_COMMIT
                 : "unknown",
             packaged: app.isPackaged,
             platform: platform(),
@@ -79,6 +81,7 @@ export function startDiagnosticService(
             timezone: Intl.DateTimeFormat().resolvedOptions().timeZone,
           },
           settings,
+          [directory, migrationDirectory],
         );
         await rename(output, selected.filePath);
         record("diagnostics.export_finish");
@@ -193,7 +196,12 @@ export function startDiagnosticService(
   };
   return {
     logs,
-    directory,
+    get directory() {
+      return logs.directory;
+    },
+    finishMigration() {
+      logs.directory = directory;
+    },
     export: exportBundle,
     record,
     setSettings(value: unknown) {

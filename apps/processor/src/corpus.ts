@@ -1,4 +1,4 @@
-// Fill only pages missing from Reader's existing parsed original text.
+// Fill only pages missing from NeoRead's existing parsed original text.
 import { DOMMatrix, ImageData, Path2D } from "@napi-rs/canvas";
 import { readFile, writeFile } from "node:fs/promises";
 import { parseArgs } from "node:util";

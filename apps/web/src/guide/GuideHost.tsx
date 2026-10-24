@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from "react";
-import { api } from "@reader/api";
-import type { GuidePreferences } from "@reader/core";
+import { api } from "@neoread/api";
+import type { GuidePreferences } from "@neoread/core";
 import { toast } from "sonner";
 import { GuideDialog, ReleaseNotesDialog } from "./GuideDialog";
 import { guideLaunch, type ReleaseItem } from "./releases";

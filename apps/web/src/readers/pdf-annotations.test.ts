@@ -2,7 +2,7 @@
 import { afterEach, beforeEach, expect, it, vi } from "vitest";
 import { act } from "react";
 import { PDFBlockOverlay } from "./pdf-blocks";
-import type { Annotation, PDFBlock } from "@reader/core";
+import type { Annotation, PDFBlock } from "@neoread/core";
 import { PDFAnnotationLayer } from "./pdf-annotations";
 import { readFileSync } from "node:fs";
 
@@ -84,17 +84,17 @@ it("opens all overlapping records at the clicked line and removes only deleted m
     anchor: { x: 100, top: 120, bottom: 160 },
   });
   layer.setAnnotations([annotation("note", "note")]);
-  expect(host.querySelectorAll(".reader-highlight")).toHaveLength(2);
+  expect(host.querySelectorAll(".neoread-highlight")).toHaveLength(2);
   expect(host.querySelector('[data-annotation-id="highlight"]')).toBeNull();
   // A PDF.js page rerender must not resurrect a deleted annotation.
   layer.paint();
-  expect(host.querySelectorAll(".reader-highlight")).toHaveLength(2);
+  expect(host.querySelectorAll(".neoread-highlight")).toHaveLength(2);
 });
 it("composites overlapping rectangles once per annotation, including on hover and repaint", () => {
   // Use the production rules: per-rectangle opacity would darken this overlap.
   const style = document.createElement("style");
   style.textContent = readFileSync("apps/web/src/style.css", "utf8")
-    .match(/\.reader-(?:annotation|highlight)[^{]*\{[^}]*\}/g)!
+    .match(/\.neoread-(?:annotation|highlight)[^{]*\{[^}]*\}/g)!
     .join("\n");
   document.head.append(style);
   const mark = annotation("overlap");
@@ -108,7 +108,7 @@ it("composites overlapping rectangles once per annotation, including on hover an
     layer.setAnnotations([mark]);
     const assertSingleComposite = (opacity: string) => {
       const rects = [
-        ...host.querySelectorAll<HTMLElement>(".reader-highlight"),
+        ...host.querySelectorAll<HTMLElement>(".neoread-highlight"),
       ];
       expect(rects).toHaveLength(3);
       const group = rects[0].parentElement!;
@@ -126,9 +126,9 @@ it("composites overlapping rectangles once per annotation, including on hover an
     assertSingleComposite("0.48");
     layer.paint();
     assertSingleComposite("0.32");
-    expect(host.querySelectorAll(".reader-annotation")).toHaveLength(1);
+    expect(host.querySelectorAll(".neoread-annotation")).toHaveLength(1);
     layer.setAnnotations([]);
-    expect(host.querySelector(".reader-annotation")).toBeNull();
+    expect(host.querySelector(".neoread-annotation")).toBeNull();
   } finally {
     style.remove();
   }
@@ -158,7 +158,7 @@ it("discards gestures on scroll and detaches listeners on disposal", () => {
   pointer("pointerdown");
   pointer("click");
   expect(activate).not.toHaveBeenCalled();
-  expect(host.querySelector(".reader-highlight")).toBeNull();
+  expect(host.querySelector(".neoread-highlight")).toBeNull();
 });
 
 it("keeps block and annotation hover active together, with independent hit regions", async () => {
@@ -178,10 +178,10 @@ it("keeps block and annotation hover active together, with independent hit regio
       pointer("pointermove");
     });
     expect(
-      host.querySelectorAll(".reader-highlight[data-hovered]"),
+      host.querySelectorAll(".neoread-highlight[data-hovered]"),
     ).toHaveLength(6);
     expect(
-      host.querySelector(".reader-block-hover")?.getAttribute("data-block-id"),
+      host.querySelector(".neoread-block-hover")?.getAttribute("data-block-id"),
     ).toBe(block.id);
     expect(hover).toHaveBeenLastCalledWith(block);
 
@@ -190,9 +190,9 @@ it("keeps block and annotation hover active together, with independent hit regio
       pointer("pointermove", { clientY: 185 });
     });
     expect(
-      host.querySelectorAll(".reader-highlight[data-hovered]"),
+      host.querySelectorAll(".neoread-highlight[data-hovered]"),
     ).toHaveLength(0);
-    expect(host.querySelector(".reader-block-hover")).not.toBeNull();
+    expect(host.querySelector(".neoread-block-hover")).not.toBeNull();
     expect(hover).toHaveBeenCalledTimes(1);
 
     await act(async () => {
@@ -205,9 +205,9 @@ it("keeps block and annotation hover active together, with independent hit regio
 
     host.dispatchEvent(new Event("pointerleave"));
     expect(
-      host.querySelectorAll(".reader-highlight[data-hovered]"),
+      host.querySelectorAll(".neoread-highlight[data-hovered]"),
     ).toHaveLength(0);
-    expect(host.querySelector(".reader-block-hover")).toBeNull();
+    expect(host.querySelector(".neoread-block-hover")).toBeNull();
     expect(hover).toHaveBeenLastCalledWith(null);
   } finally {
     await act(async () => blocks.destroy());

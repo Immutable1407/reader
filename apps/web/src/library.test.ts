@@ -1,5 +1,5 @@
 import { expect, it } from "vitest";
-import type { Document } from "@reader/core";
+import type { Document } from "@neoread/core";
 import {
   filterDocuments,
   initialFilters,

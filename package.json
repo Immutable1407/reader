@@ -1,25 +1,25 @@
 {
-  "name": "reader",
+  "name": "neoread",
   "private": true,
   "version": "0.8.8",
   "packageManager": "pnpm@10.30.3",
   "scripts": {
     "dev": "node scripts/prepare-assets.mjs && node scripts/dev.mjs",
-    "dev:web": "pnpm --filter @reader/web dev",
-    "dev:server": "cd apps/server && go run ./cmd/reader-server",
-    "build": "node scripts/prepare-assets.mjs && pnpm build:agent && pnpm build:processor && pnpm build:server && pnpm --filter @reader/web build && pnpm --filter @reader/desktop build && pnpm --filter @reader/connector build",
+    "dev:web": "pnpm --filter @neoread/web dev",
+    "dev:server": "cd apps/server && go run ./cmd/neoread-server",
+    "build": "node scripts/prepare-assets.mjs && pnpm build:agent && pnpm build:processor && pnpm build:server && pnpm --filter @neoread/web build && pnpm --filter @neoread/desktop build && pnpm --filter @neoread/connector build",
     "build:server": "node scripts/build-server.mjs",
-    "desktop": "pnpm build && pnpm --filter @reader/desktop start",
+    "desktop": "pnpm build && pnpm --filter @neoread/desktop start",
     "typecheck": "tsc --noEmit",
     "test": "pnpm test:go && vitest run",
     "test:go": "cd apps/server && go test ./...",
     "api:generate": "openapi-typescript docs/openapi.yaml -o packages/api-client/src/schema.d.ts",
     "format": "prettier --write apps/web/src apps/desktop packages docs scripts",
     "postinstall": "node scripts/prepare-assets.mjs",
-    "build:processor": "pnpm --filter @reader/processor build",
+    "build:processor": "pnpm --filter @neoread/processor build",
     "package": "node scripts/package.mjs",
     "package:dir": "node scripts/package.mjs --dir",
-    "build:agent": "pnpm --filter @reader/agent build"
+    "build:agent": "pnpm --filter @neoread/agent build"
   },
   "devDependencies": {
     "@types/jsdom": "^21.1.7",

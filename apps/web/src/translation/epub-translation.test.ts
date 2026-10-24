@@ -4,7 +4,7 @@ import type {
   EPUBReadingBlock,
   TranslationBlock,
   Annotation,
-} from "@reader/core";
+} from "@neoread/core";
 import { Locator } from "@readium/shared";
 import {
   selectionLocator,

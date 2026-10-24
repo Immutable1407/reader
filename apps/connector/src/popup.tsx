@@ -5,7 +5,7 @@ import { detectPage, type Candidate, type Detection } from "./detect";
 import { prepareCandidate } from "./prepare";
 import { TagPicker } from "./TagPicker";
 const bridge = "http://127.0.0.1:17841";
-const outdatedReaderMessage = "请重启 pnpm desktop，更新本机分类和标签接口";
+const outdatedAppMessage = "请重启 pnpm desktop，更新本机分类和标签接口";
 function App() {
   const [secret, setSecret] = useState("");
   const [items, setItems] = useState<Candidate[]>([]);
@@ -37,15 +37,15 @@ function App() {
           const session = await fetch(bridge + "/v1/session", {
             method: "POST",
           });
-          if (!session.ok) throw Error("无法连接 Reader");
+          if (!session.ok) throw Error("无法连接 NeoRead / Reader");
           credential = (await session.json()).secret;
           await chrome.storage.local.set({ secret: credential });
           response = await fetch(bridge + "/v1/labels", {
             headers: { Authorization: `Bearer ${credential}` },
           });
         }
-        if (response.status === 404) throw Error(outdatedReaderMessage);
-        if (!response.ok) throw Error("无法读取 Reader 论文库");
+        if (response.status === 404) throw Error(outdatedAppMessage);
+        if (!response.ok) throw Error("无法读取 NeoRead / Reader 论文库");
         const labels = (await response.json()) as {
           folders: string[];
           tags: string[];
@@ -55,9 +55,9 @@ function App() {
         setSecret(credential);
       } catch (error) {
         setMessage(
-          error instanceof Error && error.message === outdatedReaderMessage
+          error instanceof Error && error.message === outdatedAppMessage
             ? error.message
-            : "请先打开 Reader 桌面应用",
+            : "请先打开 NeoRead / Reader 桌面应用",
         );
         setMessageTone("error");
       }
@@ -107,7 +107,7 @@ function App() {
         });
         if (tab?.url && /^https?:\/\//.test(tab.url)) {
           // Chrome's built-in PDF viewer does not allow page script injection.
-          // The worker validates the PDF signature before sending anything to Reader.
+          // The worker validates the PDF signature before sending anything to NeoRead.
           setItems([
             {
               title: tab.title || "PDF",
@@ -231,9 +231,9 @@ function App() {
   return (
     <>
       <main>
-        <h1>Reader Connector</h1>
+        <h1>NeoRead Connector</h1>
         {!secret ? (
-          <p>正在连接本机 Reader…</p>
+          <p>正在连接本机 NeoRead / Reader…</p>
         ) : (
           <>
             <p>
@@ -265,13 +265,13 @@ function App() {
             <label htmlFor="folder">分类</label>
             <input
               id="folder"
-              list="reader-folders"
+              list="neoread-folders"
               type="text"
               value={folder}
               onChange={(e) => setFolder(e.target.value)}
               placeholder="可选"
             />
-            <datalist id="reader-folders">
+            <datalist id="neoread-folders">
               {folders.map((f) => (
                 <option value={f} key={f} />
               ))}
@@ -307,7 +307,9 @@ function App() {
             disabled={busy || !selected.length}
             onClick={() => void save()}
           >
-            {busy ? "正在处理…" : `收录 ${selected.length} 篇到 Reader`}
+            {busy
+              ? "正在处理…"
+              : `收录 ${selected.length} 篇到 NeoRead / Reader`}
           </button>
         </div>
       )}

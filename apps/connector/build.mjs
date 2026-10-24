@@ -24,7 +24,7 @@ await build({
   minify: true,
 });
 await copyFile(
-  new URL("../../assets/logo/png/reader-logo-256.png", import.meta.url),
+  new URL("../../assets/logo/png/neoread-logo-256.png", import.meta.url),
   new URL("icon.png", out),
 );
 await copyFile(
@@ -40,12 +40,12 @@ await writeFile(
   JSON.stringify(
     {
       manifest_version: 3,
-      ...(process.env.READER_CONNECTOR_DEV_KEY === "1"
+      ...(process.env.NEOREAD_CONNECTOR_DEV_KEY === "1"
         ? { key: developmentKey }
         : {}),
-      name: "Reader Connector",
+      name: "NeoRead Connector",
       version: "0.1.1",
-      description: "将网页中的 PDF 论文收录到本机 Reader",
+      description: "将网页中的 PDF 论文收录到本机 NeoRead / Reader",
       icons: { 128: "icon.png" },
       action: { default_popup: "popup.html", default_icon: "icon.png" },
       background: { service_worker: "worker.js" },

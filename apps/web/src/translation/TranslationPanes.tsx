@@ -6,13 +6,13 @@ import {
   type ReactNode,
 } from "react";
 import { ArrowLeftRight } from "lucide-react";
-import { Button } from "@reader/ui/components/button";
+import { Button } from "@neoread/ui/components/button";
 import {
   ResizableHandle,
   ResizablePanel,
   ResizablePanelGroup,
   usePanelRef,
-} from "@reader/ui/components/resizable";
+} from "@neoread/ui/components/resizable";
 
 export function TranslationPanes({
   mode,

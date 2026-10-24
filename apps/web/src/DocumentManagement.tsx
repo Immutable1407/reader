@@ -1,24 +1,24 @@
 import { useState } from "react";
 import { LayoutGrid, List, Plus, Trash2, X } from "lucide-react";
-import type { Document, DocumentCategory } from "@reader/core";
-import { api } from "@reader/api";
-import { Button } from "@reader/ui/components/button";
-import { Badge } from "@reader/ui/components/badge";
-import { Input } from "@reader/ui/components/input";
+import type { Document, DocumentCategory } from "@neoread/core";
+import { api } from "@neoread/api";
+import { Button } from "@neoread/ui/components/button";
+import { Badge } from "@neoread/ui/components/badge";
+import { Input } from "@neoread/ui/components/input";
 import {
   Select,
   SelectTrigger,
   SelectValue,
   SelectContent,
   SelectItem,
-} from "@reader/ui/components/select";
+} from "@neoread/ui/components/select";
 import {
   Dialog,
   DialogContent,
   DialogHeader,
   DialogTitle,
   DialogDescription,
-} from "@reader/ui/components/dialog";
+} from "@neoread/ui/components/dialog";
 import { toast } from "sonner";
 import { refreshLibrary } from "./store";
 import {

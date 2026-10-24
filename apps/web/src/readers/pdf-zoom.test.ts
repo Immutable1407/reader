@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 import { afterEach, beforeEach, expect, it, vi } from "vitest";
-import { defaultTheme, type Document } from "@reader/core";
+import { defaultTheme, type Document } from "@neoread/core";
 
 const state = vi.hoisted(() => ({
   scale: 1,

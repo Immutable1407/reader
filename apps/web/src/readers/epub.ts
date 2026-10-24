@@ -31,7 +31,7 @@ import {
   Publication,
   type Link,
 } from "@readium/shared";
-import { api, publicationURL } from "@reader/api";
+import { api, publicationURL } from "@neoread/api";
 import type {
   Annotation,
   Document,
@@ -45,7 +45,7 @@ import type {
   SelectionAnchor,
   SearchResult,
   TOCItem,
-} from "@reader/core";
+} from "@neoread/core";
 import { selectSentence, sentenceRoot } from "./sentence-selection";
 export class EPUBReaderAdapter implements ReaderAdapter {
   private navigator?: EpubNavigator;

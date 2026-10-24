@@ -2,12 +2,12 @@
 import { act, type ComponentProps, type ReactNode } from "react";
 import { createRoot, type Root } from "react-dom/client";
 import { beforeEach, afterEach, expect, it, vi } from "vitest";
-import type { AICapability, AIConfig } from "@reader/core";
-import { api } from "@reader/api";
+import type { AICapability, AIConfig } from "@neoread/core";
+import { api } from "@neoread/api";
 import { Settings } from "./Settings";
 import { useReaderStore } from "./store";
 
-vi.mock("@reader/api", () => ({
+vi.mock("@neoread/api", () => ({
   api: {
     connectorStatus: vi.fn(async () => ({ available: true })),
     journalRankConfig: vi.fn(async () => ({
@@ -23,7 +23,7 @@ vi.mock("@reader/api", () => ({
     saveLibraryPreferences: vi.fn(async (value) => value),
   },
 }));
-vi.mock("@reader/ui/components/dialog", () => {
+vi.mock("@neoread/ui/components/dialog", () => {
   const Content = ({ children }: { children: ReactNode }) => (
     <div>{children}</div>
   );
@@ -38,9 +38,9 @@ vi.mock("@reader/ui/components/dialog", () => {
 });
 // These tests cover Agent requests and configuration, not hidden appearance or
 // paper-library panels. Keep the real tabs and the controls exercised below.
-vi.mock("@reader/ui/components/tabs", async (importOriginal) => {
+vi.mock("@neoread/ui/components/tabs", async (importOriginal) => {
   const actual =
-    await importOriginal<typeof import("@reader/ui/components/tabs")>();
+    await importOriginal<typeof import("@neoread/ui/components/tabs")>();
   return {
     ...actual,
     TabsContent: (props: ComponentProps<typeof actual.TabsContent>) =>

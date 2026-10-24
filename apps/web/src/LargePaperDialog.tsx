@@ -7,7 +7,7 @@ import {
   AlertDialogFooter,
   AlertDialogHeader,
   AlertDialogTitle,
-} from "@reader/ui/components/alert-dialog";
+} from "@neoread/ui/components/alert-dialog";
 
 export interface LargePaper {
   name: string;

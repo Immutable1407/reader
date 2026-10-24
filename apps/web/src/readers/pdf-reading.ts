@@ -1,4 +1,4 @@
-import type { PDFLocation } from "@reader/core";
+import type { PDFLocation } from "@neoread/core";
 
 export type Box = NonNullable<PDFLocation["rects"]>[number];
 export const overlap = (a: Box, b: Box) =>

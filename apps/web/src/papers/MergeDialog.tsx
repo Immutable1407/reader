@@ -1,7 +1,7 @@
 import { useState } from "react";
-import type { Document } from "@reader/core";
-import { api } from "@reader/api";
-import { Button } from "@reader/ui/components/button";
+import type { Document } from "@neoread/core";
+import { api } from "@neoread/api";
+import { Button } from "@neoread/ui/components/button";
 import {
   Dialog,
   DialogContent,
@@ -9,8 +9,8 @@ import {
   DialogFooter,
   DialogHeader,
   DialogTitle,
-} from "@reader/ui/components/dialog";
-import { RadioGroup, RadioGroupItem } from "@reader/ui/components/radio-group";
+} from "@neoread/ui/components/dialog";
+import { RadioGroup, RadioGroupItem } from "@neoread/ui/components/radio-group";
 import { toast } from "sonner";
 import { refreshLibrary, refreshTrash } from "../store";
 import { paperByline } from "./format";

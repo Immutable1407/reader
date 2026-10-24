@@ -49,7 +49,7 @@ import { paper } from "../papers/fixtures";
 let adapter: PDFReaderAdapter;
 let host: HTMLDivElement;
 let changed: Mock<
-  (selection: import("@reader/core").ReaderSelection | null) => void
+  (selection: import("@neoread/core").ReaderSelection | null) => void
 >;
 beforeEach(() => {
   vi.stubGlobal(

@@ -2,7 +2,7 @@ import { PaperColumns, usePaperColumns } from "./PaperColumns";
 import { setPaperDragImage } from "./paper-drag-image";
 import type { TableColumn } from "./columns";
 import { PaperTagFilterButton } from "./PaperTagFilter";
-import { Badge } from "@reader/ui/components/badge";
+import { Badge } from "@neoread/ui/components/badge";
 import {
   Fragment,
   Suspense,
@@ -44,18 +44,18 @@ import {
   RefreshCw,
   Trash2,
 } from "lucide-react";
-import { api } from "@reader/api";
+import { api } from "@neoread/api";
 import type {
   Document,
   JournalRankConfig,
   PaperColumn,
   PaperSort,
   Processing,
-} from "@reader/core";
-import { Button } from "@reader/ui/components/button";
-import { Checkbox } from "@reader/ui/components/checkbox";
-import { Input } from "@reader/ui/components/input";
-import { Progress } from "@reader/ui/components/progress";
+} from "@neoread/core";
+import { Button } from "@neoread/ui/components/button";
+import { Checkbox } from "@neoread/ui/components/checkbox";
+import { Input } from "@neoread/ui/components/input";
+import { Progress } from "@neoread/ui/components/progress";
 import {
   Table,
   TableBody,
@@ -63,20 +63,20 @@ import {
   TableHead,
   TableHeader,
   TableRow,
-} from "@reader/ui/components/table";
-import { Tabs, TabsList, TabsTrigger } from "@reader/ui/components/tabs";
+} from "@neoread/ui/components/table";
+import { Tabs, TabsList, TabsTrigger } from "@neoread/ui/components/tabs";
 import {
   Select,
   SelectContent,
   SelectItem,
   SelectTrigger,
   SelectValue,
-} from "@reader/ui/components/select";
+} from "@neoread/ui/components/select";
 import {
   ContextMenu,
   ContextMenuContent,
   ContextMenuTrigger,
-} from "@reader/ui/components/context-menu";
+} from "@neoread/ui/components/context-menu";
 import {
   DropdownMenu,
   DropdownMenuCheckboxItem,
@@ -84,7 +84,7 @@ import {
   DropdownMenuItem,
   DropdownMenuSeparator,
   DropdownMenuTrigger,
-} from "@reader/ui/components/dropdown-menu";
+} from "@neoread/ui/components/dropdown-menu";
 import { useReaderStore } from "../store";
 import { TrashView } from "../TrashView";
 import { exportAnnotatedPDFWithToast } from "../annotated-pdf-export";
@@ -250,12 +250,12 @@ export function PaperLibrary({
         .catch(() => {});
     const refresh = () => setJournalRankRefresh((value) => value + 1);
     load();
-    window.addEventListener("reader:journal-rank-config", load);
-    window.addEventListener("reader:journal-rank-refresh", refresh);
+    window.addEventListener("neoread:journal-rank-config", load);
+    window.addEventListener("neoread:journal-rank-refresh", refresh);
     return () => {
       mounted = false;
-      window.removeEventListener("reader:journal-rank-config", load);
-      window.removeEventListener("reader:journal-rank-refresh", refresh);
+      window.removeEventListener("neoread:journal-rank-config", load);
+      window.removeEventListener("neoread:journal-rank-refresh", refresh);
     };
   }, []);
   const tags = paperTags(documents);

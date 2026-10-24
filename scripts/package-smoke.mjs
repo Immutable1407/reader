@@ -14,13 +14,13 @@ const source = windows
   ? join(root, "release/win-unpacked")
   : join(
       root,
-      `release/mac${process.arch === "arm64" ? "-arm64" : ""}/Reader.app`,
+      `release/mac${process.arch === "arm64" ? "-arm64" : ""}/NeoRead.app`,
     );
-const temporary = await mkdtemp(join(tmpdir(), "reader-package-smoke-"));
-const isolated = join(temporary, windows ? "Reader" : "Reader.app");
+const temporary = await mkdtemp(join(tmpdir(), "neoread-package-smoke-"));
+const isolated = join(temporary, windows ? "NeoRead" : "NeoRead.app");
 const app = windows ? isolated : join(isolated, "Contents");
 const resources = join(app, windows ? "resources" : "Resources");
-const electron = join(app, windows ? "Reader.exe" : "MacOS/Reader");
+const electron = join(app, windows ? "NeoRead.exe" : "MacOS/NeoRead");
 let child;
 let stopped;
 try {
@@ -46,8 +46,8 @@ try {
       assert.equal(details.status, 0, details.stderr);
       assert.match(
         details.stderr,
-        /^Authority=Reader Self-Signed$/m,
-        "Release must be signed with the fixed Reader certificate",
+        /^Authority=NeoRead Self-Signed$/m,
+        "Release must be signed with the fixed NeoRead certificate",
       );
     }
   }
@@ -69,7 +69,7 @@ try {
   assert.equal(agent.status, 0, "Packaged pi worker smoke failed");
   const token = randomBytes(32).toString("hex");
   child = spawn(
-    join(resources, "bin", `reader-server${windows ? ".exe" : ""}`),
+    join(resources, "bin", `neoread-server${windows ? ".exe" : ""}`),
     [
       "--port",
       "0",
@@ -82,10 +82,10 @@ try {
       cwd: temporary,
       env: {
         ...process.env,
-        READER_TOKEN: token,
-        READER_NODE: electron,
-        READER_AGENT: join(resources, "agent/dist/main.mjs"),
-        READER_PROCESSOR: join(resources, "processor/main.mjs"),
+        NEOREAD_TOKEN: token,
+        NEOREAD_NODE: electron,
+        NEOREAD_AGENT: join(resources, "agent/dist/main.mjs"),
+        NEOREAD_PROCESSOR: join(resources, "processor/main.mjs"),
       },
       stdio: ["ignore", "pipe", "inherit"],
     },
@@ -132,11 +132,11 @@ try {
   assert.equal((await request("/samples/reading-notes.pdf")).status, 200);
   // The command line finds the running service through the library directory.
   const cli = spawnSync(
-    join(resources, "bin", `reader${windows ? ".exe" : ""}`),
+    join(resources, "bin", `neoread${windows ? ".exe" : ""}`),
     ["status", "--json"],
     {
       cwd: temporary,
-      env: { ...process.env, READER_DATA: join(temporary, "library") },
+      env: { ...process.env, NEOREAD_DATA: join(temporary, "library") },
       encoding: "utf8",
       timeout: 20000,
     },

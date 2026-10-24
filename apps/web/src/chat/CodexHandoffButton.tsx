@@ -1,9 +1,9 @@
 import { useRef, useState } from "react";
 import { ExternalLink, LoaderCircle } from "lucide-react";
-import { api } from "@reader/api";
-import { Button } from "@reader/ui/components/button";
+import { api } from "@neoread/api";
+import { Button } from "@neoread/ui/components/button";
 import { toast } from "sonner";
-import { codexThreadURL } from "../../../../packages/reader-core/src/codex-link";
+import { codexThreadURL } from "../../../../packages/neoread-core/src/codex-link";
 
 export function CodexHandoffButton({
   documentId,
@@ -26,12 +26,12 @@ export function CodexHandoffButton({
         : await api.codexHandoff(documentId);
       const url = codexThreadURL(result.threadId);
       try {
-        if (window.readerDesktop?.openCodexThread) {
-          await window.readerDesktop.openCodexThread(result.threadId);
+        if (window.neoreadDesktop?.openCodexThread) {
+          await window.neoreadDesktop.openCodexThread(result.threadId);
         } else {
           window.location.assign(url);
         }
-        toast.success("已准备独立阅读对话，后续消息不会同步回 Reader");
+        toast.success("已准备独立阅读对话，后续消息不会同步回 NeoRead");
       } catch {
         toast.error("接续对话已保存，请确认已安装 Codex App 后重试打开");
       }

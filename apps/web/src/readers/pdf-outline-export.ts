@@ -8,7 +8,7 @@ import {
   type PDFObject,
 } from "pdf-lib";
 import type { PDFDocumentProxy } from "pdfjs-dist/types/src/display/api";
-import type { TOCItem } from "@reader/core";
+import type { TOCItem } from "@neoread/core";
 
 /** Standard Outline navigation plus a bounded Reader type manifest. */
 export async function writePDFOutline(

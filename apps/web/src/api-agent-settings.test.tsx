@@ -2,13 +2,13 @@
 import { act, type ComponentProps, type ReactNode } from "react";
 import { createRoot, type Root } from "react-dom/client";
 import { afterEach, beforeEach, expect, it, vi } from "vitest";
-import type { AIConfig, AgentModel, ProxySettingsState } from "@reader/core";
-import { api } from "@reader/api";
+import type { AIConfig, AgentModel, ProxySettingsState } from "@neoread/core";
+import { api } from "@neoread/api";
 import { toast } from "sonner";
 import { Settings } from "./Settings";
 import { useReaderStore } from "./store";
 
-vi.mock("@reader/api", () => ({
+vi.mock("@neoread/api", () => ({
   api: {
     connectorStatus: vi.fn(async () => ({ available: true })),
     journalRankConfig: vi.fn(async () => ({
@@ -26,7 +26,7 @@ vi.mock("@reader/api", () => ({
   },
 }));
 vi.mock("sonner", () => ({ toast: { error: vi.fn(), warning: vi.fn() } }));
-vi.mock("@reader/ui/components/dialog", () => {
+vi.mock("@neoread/ui/components/dialog", () => {
   const Content = ({ children }: { children: ReactNode }) => (
     <div>{children}</div>
   );
@@ -41,9 +41,9 @@ vi.mock("@reader/ui/components/dialog", () => {
 });
 // These tests cover Agent requests and configuration, not hidden appearance or
 // paper-library panels. Keep the real tabs and the controls exercised below.
-vi.mock("@reader/ui/components/tabs", async (importOriginal) => {
+vi.mock("@neoread/ui/components/tabs", async (importOriginal) => {
   const actual =
-    await importOriginal<typeof import("@reader/ui/components/tabs")>();
+    await importOriginal<typeof import("@neoread/ui/components/tabs")>();
   return {
     ...actual,
     TabsContent: (props: ComponentProps<typeof actual.TabsContent>) =>
@@ -147,13 +147,13 @@ beforeEach(() => {
 afterEach(async () => {
   await act(async () => root.unmount());
   host.remove();
-  delete window.readerDesktop;
+  delete window.neoreadDesktop;
   vi.unstubAllGlobals();
 });
 
 it("groups proxy settings and log export under diagnostics without a network tab", async () => {
   const exportLogs = vi.fn(async () => true);
-  window.readerDesktop = {
+  window.neoreadDesktop = {
     platform: "darwin",
     proxySettings: vi.fn(async (): Promise<ProxySettingsState> => ({
       settings: { mode: "manual", host: "127.0.0.1", port: 7890 },

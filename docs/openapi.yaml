@@ -1,6 +1,6 @@
 {
   "openapi": "3.1.0",
-  "info": { "title": "Reader Local API", "version": "0.1.0" },
+  "info": { "title": "NeoRead Local API", "version": "0.1.0" },
   "security": [{ "session": [] }],
   "paths":
     {
@@ -1177,7 +1177,7 @@
         {
           "post":
             {
-              "description": "Copy one previewed PDF, convert supported embedded marks into Reader annotations and remove only those marks from the copy. Source files are unchanged.",
+              "description": "Copy one previewed PDF, convert supported embedded marks into NeoRead annotations and remove only those marks from the copy. Source files are unchanged.",
               "requestBody":
                 {
                   "required": true,
@@ -1777,7 +1777,7 @@
                     "schema": { "type": "string" },
                   },
                   {
-                    "name": "X-Reader-Undo-Session",
+                    "name": "X-NeoRead-Undo-Session",
                     "in": "header",
                     "required": true,
                     "schema":
@@ -1921,7 +1921,7 @@
               "parameters":
                 [
                   {
-                    "name": "X-Reader-Undo-Session",
+                    "name": "X-NeoRead-Undo-Session",
                     "in": "header",
                     "description": "Opt into per-window annotation undo history.",
                     "schema": { "type": "string", "maxLength": 128 },
@@ -1981,7 +1981,7 @@
               "parameters":
                 [
                   {
-                    "name": "X-Reader-Undo-Session",
+                    "name": "X-NeoRead-Undo-Session",
                     "in": "header",
                     "description": "Opt into per-window annotation undo history.",
                     "schema": { "type": "string", "maxLength": 128 },
@@ -2090,7 +2090,7 @@
               "parameters":
                 [
                   {
-                    "name": "X-Reader-Undo-Session",
+                    "name": "X-NeoRead-Undo-Session",
                     "in": "header",
                     "description": "Opt into per-window annotation undo history.",
                     "schema": { "type": "string", "maxLength": 128 },
@@ -2353,7 +2353,7 @@
         {
           "post":
             {
-              "description": "Fork the last committed Codex reading turn into an independent conversation with local document and chat snapshots. Does not generate a model answer or change the Reader conversation. Repeated requests for the same snapshot reuse the fork.",
+              "description": "Fork the last committed Codex reading turn into an independent conversation with local document and chat snapshots. Does not generate a model answer or change the NeoRead conversation. Repeated requests for the same snapshot reuse the fork.",
               "parameters":
                 [
                   {
@@ -6629,7 +6629,7 @@
                   "efforts":
                     {
                       "type": "object",
-                      "description": "Reader effort by provider and model ID. Defaults to medium; adapted to SDK-native values on invocation.",
+                      "description": "NeoRead effort by provider and model ID. Defaults to medium; adapted to SDK-native values on invocation.",
                       "additionalProperties":
                         {
                           "type": "object",

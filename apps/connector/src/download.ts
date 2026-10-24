@@ -165,7 +165,7 @@ async function boundedBlob(response: Response, limit: number): Promise<Blob> {
     new ConnectorError(
       "download-too-large",
       limit === 512 * 1024 * 1024
-        ? "PDF 超过 Reader 的 512 MB 上传限制"
+        ? "PDF 超过 NeoRead 的 512 MB 上传限制"
         : "知网页面超过 10 MB，无法读取",
     );
   if (Number(response.headers.get("content-length")) > limit) {
@@ -226,7 +226,7 @@ export async function downloadPDF(candidate: Candidate): Promise<Blob> {
     if (cnki && candidate.cajUrl)
       throw new ConnectorError(
         "cnki-caj-only",
-        "当前知网页面仅发现 CAJ 下载入口，Reader 暂不支持 CAJ；请在网站确认是否提供 PDF",
+        "当前知网页面仅发现 CAJ 下载入口，NeoRead 暂不支持 CAJ；请在网站确认是否提供 PDF",
       );
     throw new ConnectorError(
       "pdf-not-found",
@@ -253,7 +253,7 @@ export async function downloadPDF(candidate: Candidate): Promise<Blob> {
         ) {
           throw new ConnectorError(
             "cnki-caj-response",
-            "知网返回了 CAJ 文件，Reader 暂不支持；请在网站选择 PDF 下载",
+            "知网返回了 CAJ 文件，NeoRead 暂不支持；请在网站选择 PDF 下载",
           );
         }
       }

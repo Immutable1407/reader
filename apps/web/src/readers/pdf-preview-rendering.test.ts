@@ -1,7 +1,7 @@
 // @vitest-environment jsdom
 import { afterEach, expect, it, vi } from "vitest";
 import type { PDFDocumentProxy } from "pdfjs-dist";
-import type { LinkPreview } from "@reader/core";
+import type { LinkPreview } from "@neoread/core";
 import { PDFLinkPreview } from "./pdf-link-preview";
 
 afterEach(() => {

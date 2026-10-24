@@ -20,13 +20,13 @@
     ],
     "baseUrl": ".",
     "paths": {
-      "@reader/core": [
-        "packages/reader-core/src/index.ts"
+      "@neoread/core": [
+        "packages/neoread-core/src/index.ts"
       ],
-      "@reader/api": [
+      "@neoread/api": [
         "packages/api-client/src/index.ts"
       ],
-      "@reader/ui/*": [
+      "@neoread/ui/*": [
         "packages/ui/src/*"
       ]
     }

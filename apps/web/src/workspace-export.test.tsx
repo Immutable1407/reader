@@ -2,20 +2,20 @@
 import { act, type ReactNode, type ComponentProps } from "react";
 import { createRoot, type Root } from "react-dom/client";
 import { afterEach, beforeEach, expect, it, vi } from "vitest";
-import { defaultTheme, type Processing } from "@reader/core";
-import { TooltipProvider } from "@reader/ui/components/tooltip";
-import { api } from "@reader/api";
+import { defaultTheme, type Processing } from "@neoread/core";
+import { TooltipProvider } from "@neoread/ui/components/tooltip";
+import { api } from "@neoread/api";
 import { Workspace } from "./Workspace";
 import { paper } from "./papers/fixtures";
 import { useReaderStore } from "./store";
-import type { ResizablePanelGroup } from "@reader/ui/components/resizable";
+import type { ResizablePanelGroup } from "@neoread/ui/components/resizable";
 type GroupProps = ComponentProps<typeof ResizablePanelGroup>;
 
 const panels = vi.hoisted(() => ({
   props: undefined as GroupProps | undefined,
 }));
 
-vi.mock("@reader/api", () => ({
+vi.mock("@neoread/api", () => ({
   api: {
     aiConfig: vi.fn(async () => ({
       primary: "",
@@ -54,7 +54,7 @@ vi.mock("./NotesPanel", () => ({
     <button onClick={onExport}>导出</button>
   ),
 }));
-vi.mock("@reader/ui/components/resizable", async () => {
+vi.mock("@neoread/ui/components/resizable", async () => {
   const { useRef } = await import("react");
   const Panel = ({ children }: { children?: ReactNode }) => (
     <div>{children}</div>
@@ -111,7 +111,7 @@ beforeEach(() => {
 });
 
 it("restores user sidebar sizes and collapsed state without replacing expanded sizes with zero", async () => {
-  function Reader() {
+  function NeoRead() {
     const theme = useReaderStore((state) => state.theme);
     return (
       <TooltipProvider>
@@ -124,7 +124,7 @@ it("restores user sidebar sizes and collapsed state without replacing expanded s
       </TooltipProvider>
     );
   }
-  await act(async () => root.render(<Reader />));
+  await act(async () => root.render(<NeoRead />));
   const change = (
     navigation: number,
     assistant: number,
@@ -146,7 +146,7 @@ it("restores user sidebar sizes and collapsed state without replacing expanded s
   await act(async () => root.unmount());
   useReaderStore.setState({ theme: saved });
   root = createRoot(host);
-  await act(async () => root.render(<Reader />));
+  await act(async () => root.render(<NeoRead />));
   expect(panels.props!.defaultLayout).toEqual({
     navigation: 0,
     reading: 68,

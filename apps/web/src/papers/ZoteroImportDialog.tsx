@@ -7,18 +7,18 @@ import {
   RequestError,
   type ZoteroImportResult,
   type ZoteroScan,
-} from "@reader/api";
-import { Button } from "@reader/ui/components/button";
-import { Checkbox } from "@reader/ui/components/checkbox";
-import { Input } from "@reader/ui/components/input";
-import { Progress } from "@reader/ui/components/progress";
+} from "@neoread/api";
+import { Button } from "@neoread/ui/components/button";
+import { Checkbox } from "@neoread/ui/components/checkbox";
+import { Input } from "@neoread/ui/components/input";
+import { Progress } from "@neoread/ui/components/progress";
 import {
   Dialog,
   DialogContent,
   DialogDescription,
   DialogHeader,
   DialogTitle,
-} from "@reader/ui/components/dialog";
+} from "@neoread/ui/components/dialog";
 import { refreshLibrary } from "../store";
 import { downloadText } from "../download";
 
@@ -75,7 +75,7 @@ export function ZoteroImportDialog({
 
   const chooseDirectory = async (linked: boolean) => {
     try {
-      const path = await window.readerDesktop?.chooseZoteroDirectory?.();
+      const path = await window.neoreadDesktop?.chooseZoteroDirectory?.();
       if (path) (linked ? setLinkedBase : setDirectory)(path);
     } catch (e) {
       setError((e as Error).message);
@@ -206,7 +206,7 @@ export function ZoteroImportDialog({
           <DialogTitle>从 {sourceName} 导入</DialogTitle>
           <DialogDescription>
             {endnote
-              ? "复制本机 PDF、论文信息、标签和笔记，将支持的 PDF 标记转换为 Reader 批注并清除副本中的对应标记。EndNote 源数据保持不变。"
+              ? "复制本机 PDF、论文信息、标签和笔记，将支持的 PDF 标记转换为 NeoRead 批注并清除副本中的对应标记。EndNote 源数据保持不变。"
               : "复制本机 PDF、论文信息、分类、标签、笔记和可转换的批注。Zotero 原数据保持不变。"}
           </DialogDescription>
         </DialogHeader>
@@ -239,7 +239,7 @@ export function ZoteroImportDialog({
                     onChange={(event) => setDirectory(event.target.value)}
                     placeholder="包含 zotero.sqlite 和 storage 的目录"
                   />
-                  {window.readerDesktop?.chooseZoteroDirectory && (
+                  {window.neoreadDesktop?.chooseZoteroDirectory && (
                     <Button
                       type="button"
                       variant="outline"
@@ -273,7 +273,7 @@ export function ZoteroImportDialog({
                       disabled={busy}
                       onChange={(event) => setLinkedBase(event.target.value)}
                     />
-                    {window.readerDesktop?.chooseZoteroDirectory && (
+                    {window.neoreadDesktop?.chooseZoteroDirectory && (
                       <Button
                         type="button"
                         variant="outline"

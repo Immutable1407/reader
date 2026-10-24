@@ -5,7 +5,7 @@ import { getDocument } from "pdfjs-dist/legacy/build/pdf.mjs";
 import { readPDFOutline } from "./pdf-outline";
 import { writePDFOutline } from "./pdf-outline-export";
 import { annotatedPDF } from "./pdf-export";
-import type { Annotation, TOCItem } from "@reader/core";
+import type { Annotation, TOCItem } from "@neoread/core";
 const fixture = () =>
   readFile(new URL("../../public/samples/reading-notes.pdf", import.meta.url));
 it("round trips Unicode labels, kinds, hierarchy, same-page positions and standard annotations", async () => {

@@ -6,9 +6,9 @@ import type {
   Message,
   ReaderAdapter,
   TOCItem,
-} from "@reader/core";
-import { Button } from "@reader/ui/components/button";
-import { api } from "@reader/api";
+} from "@neoread/core";
+import { Button } from "@neoread/ui/components/button";
+import { api } from "@neoread/api";
 import {
   referenceCards,
   referenceLabel,

@@ -8,33 +8,33 @@ import {
   Tags,
   Trash2,
 } from "lucide-react";
-import type { Document, Processing, TagBoard } from "@reader/core";
-import { api } from "@reader/api";
+import type { Document, Processing, TagBoard } from "@neoread/core";
+import { api } from "@neoread/api";
 import { toast } from "sonner";
-import { Button } from "@reader/ui/components/button";
-import { Badge } from "@reader/ui/components/badge";
-import { Input } from "@reader/ui/components/input";
+import { Button } from "@neoread/ui/components/button";
+import { Badge } from "@neoread/ui/components/badge";
+import { Input } from "@neoread/ui/components/input";
 import {
   Select,
   SelectTrigger,
   SelectValue,
   SelectContent,
   SelectItem,
-} from "@reader/ui/components/select";
+} from "@neoread/ui/components/select";
 import {
   Dialog,
   DialogContent,
   DialogHeader,
   DialogTitle,
   DialogDescription,
-} from "@reader/ui/components/dialog";
+} from "@neoread/ui/components/dialog";
 import {
   ContextMenu,
   ContextMenuTrigger,
   ContextMenuContent,
   ContextMenuItem,
   ContextMenuSeparator,
-} from "@reader/ui/components/context-menu";
+} from "@neoread/ui/components/context-menu";
 import { LibraryDocuments } from "./LibraryDocuments";
 import {
   filterDocuments,

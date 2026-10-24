@@ -1,7 +1,7 @@
 import { useEffect } from "react";
 import { create } from "zustand";
-import { api, type PaperAttachment } from "@reader/api";
-import type { Document } from "@reader/core";
+import { api, type PaperAttachment } from "@neoread/api";
+import type { Document } from "@neoread/core";
 import { toast } from "sonner";
 import { refreshLibrary } from "../store";
 import { downloadBlob } from "../download";

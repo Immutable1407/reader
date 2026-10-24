@@ -12,7 +12,7 @@ afterEach(() => {
 it("previews a translated citation without navigating and discards a late resolution after leaving", async () => {
   vi.useFakeTimers();
   const host = document.createElement("div");
-  host.innerHTML = '<a href="#reader-citation?block=p1-b1&label=6">6</a>';
+  host.innerHTML = '<a href="#neoread-citation?block=p1-b1&label=6">6</a>';
   document.body.append(host);
   const anchor = host.querySelector("a")!;
   const target = { type: "pdf" as const, page: 9, y: 0.4 };

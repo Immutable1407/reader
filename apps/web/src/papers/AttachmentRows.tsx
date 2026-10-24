@@ -1,14 +1,14 @@
 import { FileText, Link, Paperclip, ArrowLeft } from "lucide-react";
-import type { Document } from "@reader/core";
-import type { PaperAttachment } from "@reader/api";
-import { Button } from "@reader/ui/components/button";
-import { TableCell } from "@reader/ui/components/table";
+import type { Document } from "@neoread/core";
+import type { PaperAttachment } from "@neoread/api";
+import { Button } from "@neoread/ui/components/button";
+import { TableCell } from "@neoread/ui/components/table";
 import {
   ContextMenu,
   ContextMenuContent,
   ContextMenuItem,
   ContextMenuTrigger,
-} from "@reader/ui/components/context-menu";
+} from "@neoread/ui/components/context-menu";
 import { usePaperUI } from "./state";
 import {
   attachmentSize,

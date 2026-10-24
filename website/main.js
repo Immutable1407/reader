@@ -36,7 +36,7 @@
   $("#theme").addEventListener("click", () => {
     const next = isDark() ? "light" : "dark";
     root.dataset.theme = next;
-    store.set("reader-site-theme", next);
+    store.set("neoread-site-theme", next);
     syncTheme();
   });
   systemDark.addEventListener("change", syncTheme);
@@ -47,7 +47,7 @@
   translatable.forEach((el) => (el.dataset.zh = el.innerHTML));
   const titles = {
     zh: document.title,
-    en: "Reader — A local-first EPUB / PDF reader",
+    en: "NeoRead — A local-first EPUB / PDF reader",
   };
   const setLang = (lang) => {
     root.lang = lang === "en" ? "en" : "zh-CN";
@@ -60,9 +60,9 @@
   $("#lang").addEventListener("click", () => {
     const next = root.lang === "en" ? "zh" : "en";
     setLang(next);
-    store.set("reader-site-lang-choice", next);
+    store.set("neoread-site-lang-choice", next);
   });
-  const savedLang = store.get("reader-site-lang-choice");
+  const savedLang = store.get("neoread-site-lang-choice");
   if (savedLang === "en") setLang("en");
 
   /* Nav + reveal */

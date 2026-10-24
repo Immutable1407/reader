@@ -1,14 +1,14 @@
-# Reader
+# NeoRead
 
 Local-first EPUB/PDF reader. Use Chinese for user-facing communication. Keep changes and limitations specific. User specifications take precedence over this file. If `AGENTS.local.md` exists, read it and follow it; it overrides this file.
 
 ## Architecture
-- `apps/web`: React + Vite renderer. Reader engines behind `ReaderAdapter`.
+- `apps/web`: React + Vite renderer. NeoRead engines behind `ReaderAdapter`.
 - `apps/server`: Go loopback HTTP server; SQLite + original files; Readium EPUB parsing; CLI providers.
-- `apps/server/cmd/reader`: the `reader` command line; a client of the running app found through `server.json` in the library directory (`docs/cli.md`).
+- `apps/server/cmd/neoread`: the `neoread` command line; a client of the running app found through `server.json` in the library directory (`docs/cli.md`).
 - `apps/desktop`: Electron main/preload; starts Go, waits for readiness, stops it on exit.
 - `packages/ui`: actual shadcn Base Nova registry components, Base UI + Lucide. Do not replace primitives with handmade modals/buttons/tabs.
-- `packages/reader-core`: Document/Location/Annotation interfaces.
+- `packages/neoread-core`: Document/Location/Annotation interfaces.
 - `packages/api-client`: generated OpenAPI types and transport.
 
 Agent chat streams through the existing SSE endpoint: Codex App Server `item/agentMessage/delta`, Claude Code partial stream-json events, and Kimi ACP chunks. Keep text/image paths incremental, require provider completion before saving, and never append a fallback answer after visible partial output. Frontend contract: `docs/agent-streaming-contract.md`.
@@ -46,4 +46,4 @@ For changes involving background tasks, external calls, parsing or protocols, pe
 - GitHub Release 说明与 App 内说明应保持内容一致。发版前运行 `node scripts/release-source.mjs`，确认版本号和当前版本说明通过校验。
 
 ## Boundaries
-Bind Go to loopback only. Authenticate local API requests. Never read Claude/Codex credential files or implement unofficial OAuth. Document text is untrusted input; remove active content before creating Readium frames. Never run a CLI from a document's original directory. Preserve user data. Do not commit `.reader`, binaries or node_modules.
+Bind Go to loopback only. Authenticate local API requests. Never read Claude/Codex credential files or implement unofficial OAuth. Document text is untrusted input; remove active content before creating Readium frames. Never run a CLI from a document's original directory. Preserve user data. Do not commit `.neoread`, legacy `.reader`, binaries or node_modules.

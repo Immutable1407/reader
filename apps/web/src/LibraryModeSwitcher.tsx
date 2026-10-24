@@ -1,12 +1,12 @@
 import { Check, ChevronDown } from "lucide-react";
-import type { LibraryMode } from "@reader/core";
-import { Button } from "@reader/ui/components/button";
+import type { LibraryMode } from "@neoread/core";
+import { Button } from "@neoread/ui/components/button";
 import {
   DropdownMenu,
   DropdownMenuTrigger,
   DropdownMenuContent,
   DropdownMenuItem,
-} from "@reader/ui/components/dropdown-menu";
+} from "@neoread/ui/components/dropdown-menu";
 
 export const libraryModes: Record<
   LibraryMode,

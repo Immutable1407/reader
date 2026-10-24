@@ -1,5 +1,5 @@
-import { api } from "@reader/api";
-import type { Annotation, EPUBLocation, TOCItem } from "@reader/core";
+import { api } from "@neoread/api";
+import type { Annotation, EPUBLocation, TOCItem } from "@neoread/core";
 import { flattenTOC } from "./navigation-model";
 import { epubOffsets } from "./translation/epub-links";
 

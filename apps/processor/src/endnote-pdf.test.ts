@@ -56,7 +56,7 @@ it.each([0, 90, 180, 270])(
     } finally {
       await task.destroy();
     }
-    // Reprocessing the cleaned document must not create duplicate Reader marks.
+    // Reprocessing the cleaned document must not create duplicate NeoRead marks.
     const again = await migratePDFMarks(getDocument, result.bytes.slice());
     expect(again.marks).toEqual([]);
   },

@@ -6,9 +6,9 @@ import {
   type AIConfig,
   type LibraryMode,
   type LibraryPreferences,
-  type ReaderLinkTarget,
-} from "@reader/core";
-import { api } from "@reader/api";
+  type NeoReadLinkTarget,
+} from "@neoread/core";
+import { api } from "@neoread/api";
 export const useReaderStore = create<{
   documents: Document[];
   active: Document | null;
@@ -18,9 +18,9 @@ export const useReaderStore = create<{
   libraryPreferences: LibraryPreferences;
   trash: Document[];
   setTrash: (trash: Document[]) => void;
-  /** A reader:// target waiting for its document to open. */
-  linkTarget: ReaderLinkTarget | null;
-  setLinkTarget: (target: ReaderLinkTarget | null) => void;
+  /** A neoread:// target waiting for its document to open. */
+  linkTarget: NeoReadLinkTarget | null;
+  setLinkTarget: (target: NeoReadLinkTarget | null) => void;
   setLibraryPreferences: (preferences: LibraryPreferences) => void;
   setAIConfig: (config: AIConfig) => void;
   setAIModelSaving: (saving: boolean) => void;
@@ -99,8 +99,8 @@ export async function refreshTrash() {
   const trash = await api.trash(libraryMode(state.libraryPreferences));
   if (revision === trashRevision) useReaderStore.getState().setTrash(trash);
 }
-/** Open the document a reader:// link points to, in its own library. */
-export async function openLinkTarget(target: ReaderLinkTarget) {
+/** Open the document a neoread:// link points to, in its own library. */
+export async function openLinkTarget(target: NeoReadLinkTarget) {
   let doc = useReaderStore.getState().documents.find((d) => d.id === target.id);
   if (!doc) {
     await refreshLibrary();
@@ -124,7 +124,7 @@ useReaderStore.subscribe((state, previous) => {
   )
     return;
   if (typeof window !== "undefined")
-    window.readerDesktop?.diagnosticSettings?.({
+    window.neoreadDesktop?.diagnosticSettings?.({
       ...state.theme,
       mode: state.libraryPreferences.mode,
       primaryMode: state.libraryPreferences.primaryMode,

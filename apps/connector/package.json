@@ -1,5 +1,5 @@
 {
-  "name": "@reader/connector",
+  "name": "@neoread/connector",
   "private": true,
   "type": "module",
   "scripts": {
@@ -8,7 +8,7 @@
   "dependencies": {
     "react": "^19.2.0",
     "react-dom": "^19.2.0",
-    "@reader/ui": "workspace:*"
+    "@neoread/ui": "workspace:*"
   },
   "devDependencies": {
     "esbuild": "^0.25.0",

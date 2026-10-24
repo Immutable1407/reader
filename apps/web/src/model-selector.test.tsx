@@ -2,11 +2,11 @@
 import { act } from "react";
 import { createRoot, type Root } from "react-dom/client";
 import { afterEach, beforeEach, expect, it, vi } from "vitest";
-import { api } from "@reader/api";
-import type { AIConfig, AgentModel } from "@reader/core";
+import { api } from "@neoread/api";
+import type { AIConfig, AgentModel } from "@neoread/core";
 import { ModelSelector, selectedAgentModel } from "./ModelSelector";
 import { useReaderStore } from "./store";
-vi.mock("@reader/api", () => ({
+vi.mock("@neoread/api", () => ({
   api: { agentModels: vi.fn(), aiConfig: vi.fn(), saveAIConfig: vi.fn() },
 }));
 vi.mock("sonner", () => ({ toast: { error: vi.fn() } }));

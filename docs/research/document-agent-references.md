@@ -1,8 +1,8 @@
 # 文档 Agent：检索方案与参考项目调研
 
-调研日期：2026-10-13。范围：Reader #41 的技术调研与可实施设计；本次不实现 Agent，不调用模型，不读取真实书库或 provider 凭证。Reader 源码基线为 `3aa18a5976f2d39217667699ebbd500e56d95064`，对应本任务 worktree 的起点；不把主目录其他提交或未提交修改当成本报告的事实。
+调研日期：2026-10-13。范围：NeoRead #41 的技术调研与可实施设计；本次不实现 Agent，不调用模型，不读取真实书库或 provider 凭证。NeoRead 源码基线为 `3aa18a5976f2d39217667699ebbd500e56d95064`，对应本任务 worktree 的起点；不把主目录其他提交或未提交修改当成本报告的事实。
 
-本文区分三类证据：**源码事实**、**文档描述**、**设计建议**。只有下文 SQLite 小实验属于本次执行验证；参考项目没有在本机部署或做效果评测。选择它们是因为存在可核查的实现与文档，不以 star 数、厂商宣传或不相同的评测证明“在 Reader 上效果成熟”。
+本文区分三类证据：**源码事实**、**文档描述**、**设计建议**。只有下文 SQLite 小实验属于本次执行验证；参考项目没有在本机部署或做效果评测。选择它们是因为存在可核查的实现与文档，不以 star 数、厂商宣传或不相同的评测证明“在 NeoRead 上效果成熟”。
 
 首版具体取舍与工具契约以 [主设计](./document-agent-design.md) 为准；本文的 regex、向量、可恢复的长时全文遍历是候选能力，不表示首版全部实现。
 
@@ -18,17 +18,17 @@
 - **针对问题选取上下文**：局部事实问答先检索再阅读，没必要每问都把整篇塞进上下文。
 - **全文总结或穷尽性问题**：有遍历范围与覆盖记录，长文采用分章阅读和逐步归纳；固定 top-k 不能证明覆盖全文。LlamaIndex 的默认 `SummaryIndexRetriever` 返回所有节点，和向量 top-k 检索是不同路径，可作为分流设计的参考。[SummaryIndex 固定源码][llama-list]
 
-## Reader 已有的基础和缺口
+## NeoRead 已有的基础和缺口
 
 | 源码事实                                                                                                                                                                                                                                                               | 对 #41 的影响                                                                                                                         |
 | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------- |
-| `search_index` 是 `fts5(document_id UNINDEXED, href UNINDEXED, content, tokenize='unicode61')`。导入时只有 EPUB 的 `prepareEPUB` 产出 `texts` 并写入该表。[Store](../../apps/server/internal/reader/store.go)、[导入路径](../../apps/server/internal/reader/server.go) | 可复用 SQLite/FTS5 依赖，但不能称现有索引已覆盖 PDF。现有索引按 EPUB 资源 `href` 存储，不是独立证据段落。                             |
-| `search` 将输入作为一个转义的 FTS phrase，随后执行带 `ESCAPE` 的 `LIKE` 子串补充，按 `href` 去重，最多返回 100 项；没有 BM25 排序，返回的 location 固定为 EPUB。[搜索实现](../../apps/server/internal/reader/server.go)                                                | 中文并非完全无法搜索，已有回退。不能直接把此端点改名为 Agent 搜索便声称支持跨格式、相关性排序和精确引用。                             |
-| EPUB 正文块已有 `id/text/label/location`，按 manifest `readingOrder` 读取已清洗 HTML；location 带 `href`、DOM 范围、quote、UTF-16 范围和 block ID。[正文块](../../apps/server/internal/reader/epub_blocks.go)、[导入清洗](../../apps/server/internal/reader/epub.go)   | 复用现有语义块和位置。不要另建“第 N 页 EPUB”，也不要仅用章节标题或 quote 作为唯一定位。                                               |
-| PDF `PDFBlock` 已有 `id/page/label/bounds/text/image/caption`；layout manifest 有 `Pages/ParsedPages/IncompletePages/Warnings`。`ParsedPages` 为空的旧约定是全部已解析。[版面结构](../../apps/server/internal/reader/processing.go)                                    | 页数、解析范围和正文质量必须分别判断。`readLayout` 成功、blocks 非空都不能单独证明全文可用。                                          |
-| PDF 图书按章解析，单次窗口最多 30 页；导入和自动翻译开关会影响后续解析路径。[按章处理](../../apps/server/internal/reader/book_layout.go)、[触发语义](../pdf-on-demand.md)                                                                                              | Agent 全文索引需要独立于“是否开启翻译”和“目前翻了哪章”的状态及生命周期。                                                              |
+| `search_index` 是 `fts5(document_id UNINDEXED, href UNINDEXED, content, tokenize='unicode61')`。导入时只有 EPUB 的 `prepareEPUB` 产出 `texts` 并写入该表。[Store](../../apps/server/internal/neoread/store.go)、[导入路径](../../apps/server/internal/neoread/server.go) | 可复用 SQLite/FTS5 依赖，但不能称现有索引已覆盖 PDF。现有索引按 EPUB 资源 `href` 存储，不是独立证据段落。                             |
+| `search` 将输入作为一个转义的 FTS phrase，随后执行带 `ESCAPE` 的 `LIKE` 子串补充，按 `href` 去重，最多返回 100 项；没有 BM25 排序，返回的 location 固定为 EPUB。[搜索实现](../../apps/server/internal/neoread/server.go)                                                | 中文并非完全无法搜索，已有回退。不能直接把此端点改名为 Agent 搜索便声称支持跨格式、相关性排序和精确引用。                             |
+| EPUB 正文块已有 `id/text/label/location`，按 manifest `readingOrder` 读取已清洗 HTML；location 带 `href`、DOM 范围、quote、UTF-16 范围和 block ID。[正文块](../../apps/server/internal/neoread/epub_blocks.go)、[导入清洗](../../apps/server/internal/neoread/epub.go)   | 复用现有语义块和位置。不要另建“第 N 页 EPUB”，也不要仅用章节标题或 quote 作为唯一定位。                                               |
+| PDF `PDFBlock` 已有 `id/page/label/bounds/text/image/caption`；layout manifest 有 `Pages/ParsedPages/IncompletePages/Warnings`。`ParsedPages` 为空的旧约定是全部已解析。[版面结构](../../apps/server/internal/neoread/processing.go)                                    | 页数、解析范围和正文质量必须分别判断。`readLayout` 成功、blocks 非空都不能单独证明全文可用。                                          |
+| PDF 图书按章解析，单次窗口最多 30 页；导入和自动翻译开关会影响后续解析路径。[按章处理](../../apps/server/internal/neoread/book_layout.go)、[触发语义](../pdf-on-demand.md)                                                                                              | Agent 全文索引需要独立于“是否开启翻译”和“目前翻了哪章”的状态及生命周期。                                                              |
 | PDF processor 从 PDF.js 提取文字；没有文字的页加入 `incompletePages`，明确提示尚未接入 OCR。[提取](../../apps/processor/src/text.ts)、[processor](../../apps/processor/src/main.ts)                                                                                    | 现有路径不能解决纯扫描 PDF。此类问题必须报告文本覆盖不足，不能把无结果解释成论文没有相关论述。图表/公式也不能仅凭周边文字宣称已读懂。 |
-| `DocumentLocation` 明确区分 PDF 页码/矩形与 EPUB href/locator。[reader-core](../../packages/reader-core/src/index.ts)                                                                                                                                                  | 新引用协议应携带这一联合类型，并保留块 ID 与来源版本；搜索索引中的标准化文本不能覆盖原始引用文本。                                    |
+| `DocumentLocation` 明确区分 PDF 页码/矩形与 EPUB href/locator。[neoread-core](../../packages/neoread-core/src/index.ts)                                                                                                                                                  | 新引用协议应携带这一联合类型，并保留块 ID 与来源版本；搜索索引中的标准化文本不能覆盖原始引用文本。                                    |
 
 本节行号可在基线中查到：`store.go:102`、`server.go:395/437/750`、`epub_blocks.go:20/69/200`、`processing.go:50/64`、`book_layout.go:22/116`、`apps/processor/src/main.ts:113`。这些是静态源码观察，不构成真实 PDF/EPUB 全文抽取验收。
 
@@ -38,33 +38,33 @@
 
 官方说明把检索论文、收集证据、生成回答拆成工具，Agent 可以换问法、重复检索；证据阶段包含 chunk 召回及面向问题的摘要/评分。固定源码的 `GatherEvidence` 接收更具体的问题，把新增证据加入会话并返回证据数量与摘要。[官方说明][paperqa-readme]、[GatherEvidence 源码][paperqa-tools]
 
-**对 Reader 的借鉴**：不要将所有工作藏在一个“问答”调用里。搜索返回候选块与位置，阅读返回原文；会话保存已读证据 ID，模型可追问“实验设置”和“局限性”并分别收集证据。最终引用应指回原文块，而不是只引用某次自动摘要。
+**对 NeoRead 的借鉴**：不要将所有工作藏在一个“问答”调用里。搜索返回候选块与位置，阅读返回原文；会话保存已读证据 ID，模型可追问“实验设置”和“局限性”并分别收集证据。最终引用应指回原文块，而不是只引用某次自动摘要。
 
-**不直接照搬**：PaperQA 的多论文发现、外部论文元数据获取、Python/LiteLLM 运行栈，以及 LLM 摘要/评分带来的额外调用，并不是当前单篇本地阅读所必需。其默认 embedding 和 NumPy 向量存储也只说明一种实现，不能推导 Reader 必须先运行独立向量服务。[配置与依赖说明][paperqa-readme]
+**不直接照搬**：PaperQA 的多论文发现、外部论文元数据获取、Python/LiteLLM 运行栈，以及 LLM 摘要/评分带来的额外调用，并不是当前单篇本地阅读所必需。其默认 embedding 和 NumPy 向量存储也只说明一种实现，不能推导 NeoRead 必须先运行独立向量服务。[配置与依赖说明][paperqa-readme]
 
 ### Onyx：多路召回后去重、扩展相邻内容，保留给 UI 的引用对象
 
 固定源码的 `internal_search` 路径包含多查询、加权 RRF、相邻块合并、LLM 选择与扩展，再构造工具响应及用于存储/UI 的对象；底层调用 `hybrid_retrieval`。这一提交的内部搜索文档明确说明没有独立 reranking 阶段，不应套用其他版本的“混合检索加 reranker”描述。[搜索工具源码][onyx-tool]、[检索实现][onyx-runner]、[该路径说明][onyx-map]
 
-**对 Reader 的借鉴**：命中一个短块后读上下文；跨章节问题拆查询；重复证据只占一次上下文；展示用引用对象与给模型的文字并行保存。将原始匹配分数当作“答案置信度”没有依据。
+**对 NeoRead 的借鉴**：命中一个短块后读上下文；跨章节问题拆查询；重复证据只占一次上下文；展示用引用对象与给模型的文字并行保存。将原始匹配分数当作“答案置信度”没有依据。
 
-**不直接照搬**：企业连接器、联邦搜索、ACL 和多租户是 Onyx 工具中的实际依赖与边界。Reader 当前按会话绑定单文档，可先用明确 document scope 和轻量去重；在没有失败证据前，不需要复制多次 LLM 选择、扩展的整条调用链。[搜索工具依赖][onyx-tool]
+**不直接照搬**：企业连接器、联邦搜索、ACL 和多租户是 Onyx 工具中的实际依赖与边界。NeoRead 当前按会话绑定单文档，可先用明确 document scope 和轻量去重；在没有失败证据前，不需要复制多次 LLM 选择、扩展的整条调用链。[搜索工具依赖][onyx-tool]
 
 ### RAGFlow：先审查解析和切块质量，再讨论模型回答
 
 固定 README 强调可检查的切块、可追踪引用、多路召回；部署配置同时包含文档引擎及元数据、对象存储等服务选项，当前官方 quickstart 描述的原生 Go Docker 构建目标是 Linux x86-64。[固定 README][ragflow-readme]、[部署配置][ragflow-compose]、[官方 quickstart][ragflow-quickstart]
 
-**对 Reader 的借鉴**：把“哪些页有文字、哪些块是表格或图像、引用能否跳回原文”作为数据质量问题处理；给用户明确的缺页/解析失败信息。文档转换成一长段纯文本会损失这些能力。
+**对 NeoRead 的借鉴**：把“哪些页有文字、哪些块是表格或图像、引用能否跳回原文”作为数据质量问题处理；给用户明确的缺页/解析失败信息。文档转换成一长段纯文本会损失这些能力。
 
-**不直接照搬**：这一部署栈不是 Electron + Go 桌面阅读器的轻量内嵌依赖。参考其块、来源、解析质量和检索测试思路即可；本次没有验证其 OCR、多模态解析或召回效果，不据 README 的质量措辞承诺 Reader 的质量。
+**不直接照搬**：这一部署栈不是 Electron + Go 桌面阅读器的轻量内嵌依赖。参考其块、来源、解析质量和检索测试思路即可；本次没有验证其 OCR、多模态解析或召回效果，不据 README 的质量措辞承诺 NeoRead 的质量。
 
 ### LlamaIndex：区分“找具体证据”和“覆盖全文”
 
 官方 Router Retriever 示例把同一组节点交给 summary、vector 和 keyword 路径，按问题选检索器；固定源码的默认 summary retriever读取全部节点，而 embedding retriever 另行选择 top-k。[Router 示例][llama-router]、[固定 retriever 源码][llama-list]
 
-**对 Reader 的借鉴**：工具层统一证据块，策略层分为具体问答与覆盖阅读。总结任务按章节遍历并记录遗漏，不能只换一个更大的 top-k 就宣布全文总结。分章中间摘要需保留原文证据映射，并允许回读原文核对。
+**对 NeoRead 的借鉴**：工具层统一证据块，策略层分为具体问答与覆盖阅读。总结任务按章节遍历并记录遗漏，不能只换一个更大的 top-k 就宣布全文总结。分章中间摘要需保留原文证据映射，并允许回读原文核对。
 
-**不直接照搬**：工具路由并不自动带来正确回答。Reader 不必为了这几个工具引入整套 Python 框架；Go 服务可以直接实现类型化工具、预算、游标和证据账本。这是适配当前架构的判断，非 LlamaIndex 的性能评价。
+**不直接照搬**：工具路由并不自动带来正确回答。NeoRead 不必为了这几个工具引入整套 Python 框架；Go 服务可以直接实现类型化工具、预算、游标和证据账本。这是适配当前架构的判断，非 LlamaIndex 的性能评价。
 
 ### 固定引用的版本边界
 
@@ -75,11 +75,11 @@
 | RAGFlow             | `c754300366c6397aed4c5f96876e0b2ec389042b` | README 与 Compose；网页 quickstart 另外标明为调研日文档。                    |
 | LlamaIndex          | `5b7b6e323e1da3edd787a2104a89257c14f026d0` | SummaryIndex retriever；网页 Router 示例仅参考职责划分，不照搬其中模型版本。 |
 
-这些 SHA 来自调研时公开 GitHub API 的默认 HEAD 响应，并读取了相应固定原始源码。没有安装这些项目，也没有以其公开 benchmark 数字作为 Reader 的预期效果。
+这些 SHA 来自调研时公开 GitHub API 的默认 HEAD 响应，并读取了相应固定原始源码。没有安装这些项目，也没有以其公开 benchmark 数字作为 NeoRead 的预期效果。
 
 ## 检索方法的具体取舍
 
-| 方法                 | 适合的任务                                      | 局限与 Reader 决策                                                                                                                                                                                                       |
+| 方法                 | 适合的任务                                      | 局限与 NeoRead 决策                                                                                                                                                                                                       |
 | -------------------- | ----------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
 | FTS5/BM25 词法召回   | 英文术语、缩写、方法名、关键词；按小块排序      | 用现有 SQLite；对 heading 和正文分列可调权重。`bm25` 值越小匹配越靠前，不能按普通相似度降序。中文无空格词边界需要另外处理。[FTS5][sqlite-fts]                                                                            |
 | 中文分词             | 中文词语排序、词汇级相关性                      | 需维护词典、专名、新词、版本与索引重建；查询与正文必须用同一分词版本。首期不增加独立分词模型，除非测试证明词法质量不足。此处是工程取舍。                                                                                 |
@@ -87,7 +87,7 @@
 | 精确子串             | 原句、中文短词、编号、数字、特殊符号            | 首期保留；绑定当前文档，对原文做最终验证，明确截断与扫描预算。找不到不能推导语义不存在。                                                                                                                                 |
 | 有界正则（后续候选） | `Table\s+3`、公式编号、多个名称变体             | 若增加显式 `mode=regex`，参数只作用于规范化的文档块，不交给 shell；设置模式长度、扫描字符量、结果上限和取消。Go `regexp` 提供 RE2 风格、输入长度线性匹配，但仍需限制工作量。首版采用字面／词法查询。[Go 文档][go-regexp] |
 | 向量召回             | 中文问英文、同义/概念表述、问题和证据词汇不重合 | 增加 embedding 模型、下载或远程调用、版本/维度/预处理一致性、索引失效与费用管理。不能修复漏页、错误切块、缺失的表格文字或不完整引用。先预留检索接口，以失败集判断是否加入。                                              |
-| 词法 + 向量混合      | 同时覆盖精确词与语义召回                        | 两路独立取候选，以排名融合并去重后读取证据；不要直接相加不同含义的原始分数。Onyx 的 RRF 是可参考实现，权重仍需 Reader 自己验证。[RRF 使用说明][onyx-tool]                                                                |
+| 词法 + 向量混合      | 同时覆盖精确词与语义召回                        | 两路独立取候选，以排名融合并去重后读取证据；不要直接相加不同含义的原始分数。Onyx 的 RRF 是可参考实现，权重仍需 NeoRead 自己验证。[RRF 使用说明][onyx-tool]                                                                |
 | 目录 + 顺序/范围阅读 | 总结、跨章比较、所有假设/所有实验的枚举         | 不依赖查询命中；需要游标、读取预算、已覆盖/未覆盖范围。可和任何召回方式共存，是全文 Agent 必需的另一条路径。                                                                                                             |
 
 **首期默认**：块级英文等词法排名 + 精确子串 + 目录/范围阅读。把中文 trigram 作为同一 SQLite 内的候选加速路线，在确定语料规模和查询计划后启用；两字查询继续有界扫描。不给无空格中文直接套 `unicode61` 后声称已有分词。Agent 可以生成少量中文/英文关键词帮助检索，但必须保留原问法并检验证据；查询翻译的有效性属于评测内容，不能代替跨语言检索验证。
@@ -96,7 +96,7 @@
 
 ### SQLite 行为小实验：已执行，非检索效果评测
 
-在本任务 `apps/server` 模块依赖下，临时 Go 程序导入 `modernc.org/sqlite v1.60.1`，打开 `:memory:`，得到 `sqlite_version() = 3.53.4`。只插入合成字符串 `中文全文检索支持论文问答`，没有访问 Reader 数据库。结果如下：
+在本任务 `apps/server` 模块依赖下，临时 Go 程序导入 `modernc.org/sqlite v1.60.1`，打开 `:memory:`，得到 `sqlite_version() = 3.53.4`。只插入合成字符串 `中文全文检索支持论文问答`，没有访问 NeoRead 数据库。结果如下：
 
 | 查询                               | `unicode61` | `trigram` |
 | ---------------------------------- | ----------- | --------- |
@@ -183,7 +183,7 @@ SELECT count(*) FROM ft
 
 ## 本次验证与未验证项
 
-- 已完成：上述 Reader 基线的静态源码核对；四个项目的一手资料与固定源码核对；项目 Go SQLite 依赖下的内存 tokenizer 小实验。
+- 已完成：上述 NeoRead 基线的静态源码核对；四个项目的一手资料与固定源码核对；项目 Go SQLite 依赖下的内存 tokenizer 小实验。
 - 未完成：真实 PDF/EPUB 语料抽取验收、OCR/图表理解、模型工具循环、端到端问答/引用正确率、延迟/费用比较、跨平台包装与运行验证。
 - 本次仅新增研究文档，不改变运行时代码、模型配置、用户数据、索引或原始文档。应用 typecheck/test/build 不会验证研究结论，留给后续实施阶段；本文需要内容、引用与 diff 检查。
 

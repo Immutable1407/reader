@@ -1,5 +1,5 @@
 import { beforeEach, expect, it, vi } from "vitest";
-import type { Annotation, Document } from "@reader/core";
+import type { Annotation, Document } from "@neoread/core";
 
 const mocks = vi.hoisted(() => ({
   annotations: vi.fn(),
@@ -10,7 +10,7 @@ const mocks = vi.hoisted(() => ({
   downloadBlob: vi.fn(),
   toast: { loading: vi.fn(() => "t"), success: vi.fn(), error: vi.fn() },
 }));
-vi.mock("@reader/api", () => ({
+vi.mock("@neoread/api", () => ({
   api: {
     annotations: mocks.annotations,
     messages: mocks.messages,

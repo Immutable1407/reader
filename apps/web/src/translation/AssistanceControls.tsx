@@ -1,8 +1,8 @@
 import { useEffect, useRef, useState } from "react";
 import { Check, FileSearch, Pause, RotateCcw, Languages } from "lucide-react";
-import type { EPUBLocation, LibraryMode, Processing } from "@reader/core";
-import { api } from "@reader/api";
-import { Button } from "@reader/ui/components/button";
+import type { EPUBLocation, LibraryMode, Processing } from "@neoread/core";
+import { api } from "@neoread/api";
+import { Button } from "@neoread/ui/components/button";
 import {
   AlertDialog,
   AlertDialogTrigger,
@@ -12,7 +12,7 @@ import {
   AlertDialogDescription,
   AlertDialogFooter,
   AlertDialogCancel,
-} from "@reader/ui/components/alert-dialog";
+} from "@neoread/ui/components/alert-dialog";
 import { toast } from "sonner";
 import type { PageRange } from "./chapters";
 

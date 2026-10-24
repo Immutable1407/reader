@@ -1,5 +1,5 @@
-import type { ReaderTheme } from "@reader/core";
-import { Slider } from "@reader/ui/components/slider";
+import type { ReaderTheme } from "@neoread/core";
+import { Slider } from "@neoread/ui/components/slider";
 
 export function AutoTranslationSettings({
   theme,

@@ -2,13 +2,13 @@
 import { act } from "react";
 import { createRoot, type Root } from "react-dom/client";
 import { afterEach, beforeEach, expect, it, vi } from "vitest";
-import { defaultTheme } from "@reader/core";
+import { defaultTheme } from "@neoread/core";
 import { useReaderStore } from "./store";
 import { documentZoom, useDocumentTheme } from "./useDocumentTheme";
-vi.mock("@reader/api", () => ({ api: {} }));
+vi.mock("@neoread/api", () => ({ api: {} }));
 const controls = new Map<string, ReturnType<typeof useDocumentTheme>>();
 let root: Root, host: HTMLDivElement;
-function Reader({ id, active }: { id: string; active: boolean }) {
+function NeoRead({ id, active }: { id: string; active: boolean }) {
   const theme = useReaderStore((state) => state.theme);
   const value = useDocumentTheme(theme, { id, type: "pdf" }, active);
   controls.set(id, value);
@@ -17,8 +17,8 @@ function Reader({ id, active }: { id: string; active: boolean }) {
 const render = (active = "a") =>
   root.render(
     <>
-      <Reader id="a" active={active === "a"} />
-      <Reader id="b" active={active === "b"} />
+      <NeoRead id="a" active={active === "a"} />
+      <NeoRead id="b" active={active === "b"} />
     </>,
   );
 beforeEach(async () => {

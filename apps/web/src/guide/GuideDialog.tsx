@@ -9,7 +9,7 @@ import {
   Keyboard,
   MousePointerClick,
 } from "lucide-react";
-import { Button } from "@reader/ui/components/button";
+import { Button } from "@neoread/ui/components/button";
 import {
   Dialog,
   DialogContent,
@@ -17,13 +17,13 @@ import {
   DialogFooter,
   DialogHeader,
   DialogTitle,
-} from "@reader/ui/components/dialog";
+} from "@neoread/ui/components/dialog";
 import {
   Tabs,
   TabsContent,
   TabsList,
   TabsTrigger,
-} from "@reader/ui/components/tabs";
+} from "@neoread/ui/components/tabs";
 import { SceneCanvas } from "./SceneCanvas";
 import { scenes } from "./scenes";
 import {
@@ -226,11 +226,11 @@ export function ReleaseNotesDialog({
 }) {
   const [opening, setOpening] = useState(false);
   const visitGitHub = async (issues: boolean) => {
-    const url = `https://github.com/cynicalight/reader${issues ? "/issues/new/choose" : ""}`;
+    const url = `https://github.com/cynicalight/NeoRead${issues ? "/issues/new/choose" : ""}`;
     setOpening(true);
     try {
-      if (window.readerDesktop?.openExternal) {
-        await window.readerDesktop.openExternal(url);
+      if (window.neoreadDesktop?.openExternal) {
+        await window.neoreadDesktop.openExternal(url);
       } else {
         const opened = window.open(url, "_blank");
         if (!opened) throw new Error("无法打开浏览器，请允许弹出窗口后重试。");
@@ -252,7 +252,7 @@ export function ReleaseNotesDialog({
         className="guide-dialog sm:max-w-md"
       >
         <DialogHeader>
-          <DialogTitle>Reader {version} 更新内容</DialogTitle>
+          <DialogTitle>NeoRead {version} 更新内容</DialogTitle>
           <DialogDescription>
             {items.length ? "本次更新的主要变化" : "已更新到新版本。"}
           </DialogDescription>
@@ -279,7 +279,7 @@ export function ReleaseNotesDialog({
           </ul>
         )}
         <p className="text-sm leading-6 text-muted-foreground">
-          如果 Reader 对你有帮助，欢迎在 GitHub 点个
+          如果 NeoRead 对你有帮助，欢迎在 GitHub 点个
           Star。遇到问题或有建议，也欢迎提交 Issue。
         </p>
         <DialogFooter className="flex-col sm:flex-col">

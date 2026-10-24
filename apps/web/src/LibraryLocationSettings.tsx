@@ -1,15 +1,15 @@
 import { useEffect, useState } from "react";
 import { FolderOpen, LoaderCircle } from "lucide-react";
-import { Button } from "@reader/ui/components/button";
+import { Button } from "@neoread/ui/components/button";
 import {
   Dialog,
   DialogContent,
   DialogTitle,
   DialogDescription,
-} from "@reader/ui/components/dialog";
+} from "@neoread/ui/components/dialog";
 
 export function LibraryLocationSettings({ open }: { open: boolean }) {
-  const desktop = window.readerDesktop;
+  const desktop = window.neoreadDesktop;
   const [directory, setDirectory] = useState("");
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
@@ -48,7 +48,7 @@ export function LibraryLocationSettings({ open }: { open: boolean }) {
       </p>
       <p className="mb-4 text-xs leading-5 text-muted-foreground">
         PDF、图书、笔记、批注和阅读记录一起保存。选择新位置后，将在该目录下新建
-        Reader Library
+        NeoRead Library
         文件夹，复制整个书库并重启。原目录保留，已有文件不会被覆盖。
       </p>
       <Button
@@ -72,7 +72,7 @@ export function LibraryLocationSettings({ open }: { open: boolean }) {
         <DialogContent showCloseButton={false}>
           <DialogTitle>正在更改书库位置</DialogTitle>
           <DialogDescription>
-            请完成目录选择和确认。迁移过程中请保持 Reader
+            请完成目录选择和确认。迁移过程中请保持 NeoRead
             打开，完成后会自动重启。
           </DialogDescription>
           <LoaderCircle

@@ -58,7 +58,7 @@ export async function prepareCandidate(
     if (!candidate.pdfUrl) {
       throw Error(
         candidate.cajUrl
-          ? "当前知网页面仅发现 CAJ 下载入口，Reader 暂不支持 CAJ；请在网站确认是否提供 PDF"
+          ? "当前知网页面仅发现 CAJ 下载入口，NeoRead 暂不支持 CAJ；请在网站确认是否提供 PDF"
           : "未识别到知网 PDF 下载入口，请确认文章详情页加载完成后重试，或手动下载 PDF 导入",
       );
     }

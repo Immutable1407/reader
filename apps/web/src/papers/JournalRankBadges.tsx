@@ -1,12 +1,12 @@
 import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import { RefreshCw } from "lucide-react";
-import { api } from "@reader/api";
+import { api } from "@neoread/api";
 import type {
   JournalRankBadge,
   JournalRankConfig,
   JournalRankResult,
-} from "@reader/core";
-import { Button } from "@reader/ui/components/button";
+} from "@neoread/core";
+import { Button } from "@neoread/ui/components/button";
 
 function tone(badge: JournalRankBadge) {
   const value = badge.value.trim().toUpperCase();

@@ -1,7 +1,7 @@
 import { FormulaRow } from "./FormulaRow";
-import type { PDFBlock, TranslationBlock } from "@reader/core";
-import { blockImageURL } from "@reader/api";
-import { Button } from "@reader/ui/components/button";
+import type { PDFBlock, TranslationBlock } from "@neoread/core";
+import { blockImageURL } from "@neoread/api";
+import { Button } from "@neoread/ui/components/button";
 import { lazy, Suspense, useEffect, useRef, useState } from "react";
 import { ReadingLinkNavigation } from "../reading-links";
 import { ErrorBoundary } from "../ErrorBoundary";

@@ -1,15 +1,15 @@
 import { useEffect, useId, useRef, useState } from "react";
-import type { WebSearchConfig } from "@reader/core";
-import { Button } from "@reader/ui/components/button";
-import { Checkbox } from "@reader/ui/components/checkbox";
-import { Input } from "@reader/ui/components/input";
+import type { WebSearchConfig } from "@neoread/core";
+import { Button } from "@neoread/ui/components/button";
+import { Checkbox } from "@neoread/ui/components/checkbox";
+import { Input } from "@neoread/ui/components/input";
 import {
   Select,
   SelectTrigger,
   SelectValue,
   SelectContent,
   SelectItem,
-} from "@reader/ui/components/select";
+} from "@neoread/ui/components/select";
 
 const defaultURL = "https://api.deepseek.com";
 const defaults: WebSearchConfig = {

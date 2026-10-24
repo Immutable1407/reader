@@ -1,27 +1,27 @@
 import { useEffect, useRef, useState, type CSSProperties } from "react";
-import { api } from "@reader/api";
+import { api } from "@neoread/api";
 import type {
   AIConfig,
   AgentModel,
   ModelTask,
   ReasoningEffort,
-} from "@reader/core";
+} from "@neoread/core";
 import { RotateCcw, Zap } from "lucide-react";
 import {
   Popover,
   PopoverContent,
   PopoverTitle,
   PopoverTrigger,
-} from "@reader/ui/components/popover";
-import { Slider } from "@reader/ui/components/slider";
-import { Button } from "@reader/ui/components/button";
+} from "@neoread/ui/components/popover";
+import { Slider } from "@neoread/ui/components/slider";
+import { Button } from "@neoread/ui/components/button";
 import {
   Select,
   SelectTrigger,
   SelectValue,
   SelectContent,
   SelectItem,
-} from "@reader/ui/components/select";
+} from "@neoread/ui/components/select";
 import { useReaderStore } from "./store";
 import { ProviderIcon } from "./ProviderIdentity";
 import { toast } from "sonner";

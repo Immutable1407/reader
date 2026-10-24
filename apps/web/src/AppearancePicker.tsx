@@ -1,7 +1,7 @@
 import { Check } from "lucide-react";
-import type { ReaderTheme } from "@reader/core";
-import { Button } from "@reader/ui/components/button";
-import { Tabs, TabsList, TabsTrigger } from "@reader/ui/components/tabs";
+import type { ReaderTheme } from "@neoread/core";
+import { Button } from "@neoread/ui/components/button";
+import { Tabs, TabsList, TabsTrigger } from "@neoread/ui/components/tabs";
 import {
   appearanceChoice,
   appearanceChoices,

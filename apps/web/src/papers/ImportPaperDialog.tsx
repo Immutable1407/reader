@@ -1,21 +1,21 @@
 import { useEffect, useState } from "react";
 import { FileUp, Loader2 } from "lucide-react";
-import { Button } from "@reader/ui/components/button";
-import { Input } from "@reader/ui/components/input";
+import { Button } from "@neoread/ui/components/button";
+import { Input } from "@neoread/ui/components/input";
 import {
   Select,
   SelectContent,
   SelectItem,
   SelectTrigger,
   SelectValue,
-} from "@reader/ui/components/select";
+} from "@neoread/ui/components/select";
 import {
   Dialog,
   DialogContent,
   DialogDescription,
   DialogHeader,
   DialogTitle,
-} from "@reader/ui/components/dialog";
+} from "@neoread/ui/components/dialog";
 import { toast } from "sonner";
 import { libraryModes } from "../LibraryModeSwitcher";
 import { importReference } from "./actions";

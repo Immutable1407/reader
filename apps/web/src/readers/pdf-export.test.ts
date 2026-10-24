@@ -1,6 +1,6 @@
 import { readFile } from "node:fs/promises";
 import { describe, expect, it } from "vitest";
-import type { Annotation } from "@reader/core";
+import type { Annotation } from "@neoread/core";
 import {
   annotatedPDF,
   bottomStrip,

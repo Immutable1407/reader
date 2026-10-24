@@ -30,7 +30,7 @@ EPUB 导入后只提取正文，不自动全文翻译。工具栏的“翻译本
 
 ```sh
 pnpm build
-./apps/desktop/bin/reader-server --data .reader/epub-web-preview --port 0 --web apps/web/dist
+./apps/desktop/bin/neoread-server --data .neoread/epub-web-preview --port 0 --web apps/web/dist
 ```
 
 在浏览器打开启动日志中的 `<url>/#token=<token>`。预览使用独立书库，不要使用正式书库验证导入和删除。2026-10-09 已在本机启动该预览，导入 `MAKE.epub` 和原创批注验收样本。重启后使用新启动日志中的地址和 token。
@@ -39,7 +39,7 @@ pnpm build
 
 - 修正根元素版式识别：`body .quote`、`:root > h1` 及伪元素样式不再误拒整本书，新增选择器边界测试。此检查不计算完整 CSS 层叠，也不识别仅在 `:is()` / `:where()` 参数中声明的根元素。
 - 长段落以可见字符的 Range 保持阅读位置，新增字号和栏宽重排的合成几何回归。
-- 最终 `pnpm typecheck`、`pnpm build`、Go 全套通过。Vitest 484 项通过、4 项跳过；`paper-library.test.tsx` 与 `windows-proxy-reader.test.ts` 各失败一项，已在主线 `43d5466` 复现相同失败。
+- 最终 `pnpm typecheck`、`pnpm build`、Go 全套通过。Vitest 484 项通过、4 项跳过；`paper-library.test.tsx` 与 `windows-proxy-neoread.test.ts` 各失败一项，已在主线 `43d5466` 复现相同失败。
 - 真实 HTTP 检查覆盖 MAKE 的 127 章、1,499 个文字/图片块、80 张图片，以及原创样本的 3 章、19 个块；HTML 块 ID 对齐、图片可读与 API 鉴权通过。使用最终构建重启后，两本书的全部章节接口再次通过。
 - 独立预览设置为默认打开「图书库」，避免首次进入空的「论文库」。尚未进行浏览器排版、触控板或桌面视觉验收；模型整书翻译也未在本轮验证。
 
@@ -49,7 +49,7 @@ pnpm build
 4. 在三种阅读模式间切换，双向滚动、选择译句及点击译文笔记。确认原文块对应，调整译文字号/字体/字重不改变原文字号。
 5. 更改浅色/纸张/深色、原文字号、行距和边距，检查长段落进度恢复。用旧版本笔记副本检查唯一引文恢复和无法定位提示；不应丢失笔记。
 
-实现日期：2026-10-05。基于 `6bfea8a` 创建 `feat/epub-reading`，工作目录为相邻的 `Reader-epub` worktree。保留现有 Readium Go Toolkit 0.16.1、Navigator 2.11.1 和 shared 2.6.0。
+实现日期：2026-10-05。基于 `6bfea8a` 创建 `feat/epub-reading`，工作目录为相邻的 `NeoRead-epub` worktree。保留现有 Readium Go Toolkit 0.16.1、Navigator 2.11.1 和 shared 2.6.0。
 
 ## 使用范围
 
@@ -122,18 +122,18 @@ EPUB 固定使用 Readium 滚动模式，包括已有 `scroll: false` 的偏好�
 
 ## 人工验收
 
-运行 `python3 scripts/create-epub-check.py` 生成 `.reader/epub-check.epub`。文件完全使用项目原创测试文字，包含重复句子、跨节点内容、中文/emoji/ruby、长段落与脚注。
+运行 `python3 scripts/create-epub-check.py` 生成 `.neoread/epub-check.epub`。文件完全使用项目原创测试文字，包含重复句子、跨节点内容、中文/emoji/ruby、长段落与脚注。
 
 1. 打开「EPUB 批注验收样本」，给第一章第二处重复句添加高亮、下划线或笔记。
 2. 调整字号、行距及窗口宽度，上下滚动跨章，再关闭并重新打开。
 3. 点击笔记回原文，确认目标仍为第二处；点击正文批注，检查编辑与删除。
 4. 跨粗体、链接和两个段落划词；第二章选择长段落靠后的文字，检查返回时的滚动位置。
-5. 搜索 `Reader`，逐一打开结果；删除批注后切章返回，确认没有旧高亮。
+5. 搜索 `NeoRead`，逐一打开结果；删除批注后切章返回，确认没有旧高亮。
 
 可在独立测试书库启动已构建的预览，端口 `0` 会自动选择空闲本机端口：
 
 ```sh
-./apps/desktop/bin/reader-server --data .reader/epub-preview --port 0 --web apps/web/dist
+./apps/desktop/bin/neoread-server --data .neoread/epub-preview --port 0 --web apps/web/dist
 ```
 
 启动行返回 `url` 与当前会话 `token`，使用 `<url>/#token=<token>` 打开。此命令使用隔离书库。正式 Electron 的字体、原生窗口与缩放仍需人工检查。

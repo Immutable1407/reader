@@ -1,19 +1,21 @@
 import ReactDOM from "react-dom/client";
-import { configureAPI } from "@reader/api";
+import { configureAPI } from "@neoread/api";
 import { App } from "./App";
 import { installCloseFlush } from "./close-flush";
 import { AppCrash, ErrorBoundary } from "./ErrorBoundary";
 import "./style.css";
 import { installDiagnostics } from "./diagnostics";
 import { installScrollbars } from "./scrollbars";
+import { migrateReaderPreferences } from "./legacy-preferences";
+migrateReaderPreferences();
 const removeScrollbars = installScrollbars(document);
 if (import.meta.hot) import.meta.hot.dispose(removeScrollbars);
 const token =
   new URLSearchParams(location.hash.slice(1)).get("token") ||
-  sessionStorage.getItem("reader-session") ||
+  sessionStorage.getItem("neoread-session") ||
   "";
 if (token) {
-  sessionStorage.setItem("reader-session", token);
+  sessionStorage.setItem("neoread-session", token);
   history.replaceState(null, "", location.pathname + location.search);
 }
 configureAPI(token);

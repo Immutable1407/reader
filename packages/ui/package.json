@@ -1,5 +1,5 @@
 {
-  "name": "@reader/ui",
+  "name": "@neoread/ui",
   "private": true,
   "type": "module",
   "exports": {

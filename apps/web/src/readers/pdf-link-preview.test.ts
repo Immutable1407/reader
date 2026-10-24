@@ -1,5 +1,5 @@
 import { expect, it, vi } from "vitest";
-import type { DocumentLocation } from "@reader/core";
+import type { DocumentLocation } from "@neoread/core";
 import { destinationPoint, parseDestinationHash } from "./pdf-link-preview";
 import { ReferenceNavigation } from "../reference-navigation";
 

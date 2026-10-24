@@ -13,7 +13,7 @@ const upstream = createServer(async (req, res) => {
   const request = JSON.parse(raw);
   calls++;
   const read = request.messages.some(
-    (m) => m.role === "tool" && m.content.includes("reader-smoke"),
+    (m) => m.role === "tool" && m.content.includes("neoread-smoke"),
   );
   assert.deepEqual(
     request.tools.map((t) => t.function.name),
@@ -21,7 +21,7 @@ const upstream = createServer(async (req, res) => {
   );
   res.writeHead(200, { "Content-Type": "text/event-stream" });
   const delta = read
-    ? { content: "reader-smoke complete" }
+    ? { content: "neoread-smoke complete" }
     : {
         tool_calls: [
           {
@@ -52,7 +52,7 @@ createInterface({ input: child.stdout }).on("line", (line) => {
         type: "toolResult",
         runId: "smoke",
         id: event.id,
-        content: [{ type: "text", text: "reader-smoke" }],
+        content: [{ type: "text", text: "neoread-smoke" }],
       }) + "\n",
     );
 });
@@ -73,7 +73,7 @@ const input = {
   model: {
     id: "smoke",
     name: "smoke",
-    provider: "reader",
+    provider: "neoread",
     api: "openai-completions",
     baseUrl: `http://127.0.0.1:${upstream.address().port}/v1`,
     input: ["text"],
@@ -95,7 +95,7 @@ try {
     JSON.stringify(events.filter((e) => e.type === "error")),
   );
   assert.equal(calls, 2);
-  assert.equal(events.at(-1)?.text, "reader-smoke complete");
+  assert.equal(events.at(-1)?.text, "neoread-smoke complete");
   assert.ok(events.at(-1)?.entries?.length);
   console.log("pi worker smoke passed");
 } finally {

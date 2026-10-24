@@ -15,7 +15,7 @@ const specification = {
 const filename = `${specification.name}-${specification.revision}.onnx`;
 const roots: string[] = [];
 async function temporary() {
-  const root = await mkdtemp(join(tmpdir(), "reader-model-build-"));
+  const root = await mkdtemp(join(tmpdir(), "neoread-model-build-"));
   roots.push(root);
   return root;
 }

@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { Bold, Loader2 } from "lucide-react";
-import { defaultTheme, type ReaderTheme } from "@reader/core";
-import { Button } from "@reader/ui/components/button";
+import { defaultTheme, type ReaderTheme } from "@neoread/core";
+import { Button } from "@neoread/ui/components/button";
 import {
   Select,
   SelectContent,
@@ -11,8 +11,8 @@ import {
   SelectSeparator,
   SelectTrigger,
   SelectValue,
-} from "@reader/ui/components/select";
-import { Toggle } from "@reader/ui/components/toggle";
+} from "@neoread/ui/components/select";
+import { Toggle } from "@neoread/ui/components/toggle";
 import { toast } from "sonner";
 import { translationFont, translationFontLabel } from "./appearance";
 import { canQueryLocalFonts, localFontFamilies } from "./local-fonts";

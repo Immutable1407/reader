@@ -2,7 +2,7 @@
 import { act } from "react";
 import { createRoot, type Root } from "react-dom/client";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { api } from "@reader/api";
+import { api } from "@neoread/api";
 import { toast } from "sonner";
 import {
   cursorAt,
@@ -17,7 +17,7 @@ import { guideTopics } from "./topics";
 import { guideLaunch, releaseNotes } from "./releases";
 import { GuideHost } from "./GuideHost";
 
-vi.mock("@reader/api", () => ({
+vi.mock("@neoread/api", () => ({
   api: { guidePreferences: vi.fn(), saveGuidePreferences: vi.fn() },
 }));
 vi.mock("sonner", () => ({ toast: { error: vi.fn() } }));
@@ -180,12 +180,12 @@ describe("guide host", () => {
     await render(false);
     await flush();
     expect(document.querySelector(".tour-card")?.textContent).toContain(
-      "欢迎使用 Reader",
+      "欢迎使用 NeoRead",
     );
     await act(async () => button("开始").click());
     await flush();
     expect(document.querySelector(".tour-card")?.textContent).not.toContain(
-      "欢迎使用 Reader",
+      "欢迎使用 NeoRead",
     );
     expect(api.saveGuidePreferences).not.toHaveBeenCalled();
     await act(async () => button("跳过引导").click());
@@ -206,14 +206,14 @@ describe("guide host", () => {
     const [version, items] = Object.entries(releaseNotes)[0];
     vi.mocked(api.guidePreferences).mockResolvedValue({});
     await render(true, version);
-    expect(document.body.textContent).toContain(`Reader ${version} 更新内容`);
+    expect(document.body.textContent).toContain(`NeoRead ${version} 更新内容`);
     expect(document.body.textContent).toContain(items[0].title);
     const open = vi
       .spyOn(window, "open")
       .mockReturnValue({ opener: null } as Window);
     await act(async () => button("去 GitHub 点 Star").click());
     expect(open).toHaveBeenCalledWith(
-      "https://github.com/cynicalight/reader",
+      "https://github.com/cynicalight/NeoRead",
       "_blank",
     );
     expect(api.saveGuidePreferences).toHaveBeenCalledWith({
@@ -228,7 +228,7 @@ describe("guide host", () => {
       seenVersion: "0.0.1",
     });
     const openExternal = vi.fn().mockResolvedValue(undefined);
-    Object.defineProperty(window, "readerDesktop", {
+    Object.defineProperty(window, "neoreadDesktop", {
       configurable: true,
       value: { openExternal },
     });
@@ -237,14 +237,14 @@ describe("guide host", () => {
       expect(document.querySelector('[data-slot="dialog-close"]')).toBeNull();
       await act(async () => button("已点 Star，去提 Issue").click());
       expect(openExternal).toHaveBeenCalledWith(
-        "https://github.com/cynicalight/reader/issues/new/choose",
+        "https://github.com/cynicalight/NeoRead/issues/new/choose",
       );
       expect(api.saveGuidePreferences).toHaveBeenCalledWith({
         onboarded: true,
         seenVersion: "9.9.9",
       });
     } finally {
-      Object.defineProperty(window, "readerDesktop", {
+      Object.defineProperty(window, "neoreadDesktop", {
         configurable: true,
         value: undefined,
       });

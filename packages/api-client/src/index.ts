@@ -6,7 +6,7 @@ import {
 import {
   diagnosticError,
   diagnosticRoute,
-} from "../../reader-core/src/diagnostics";
+} from "../../neoread-core/src/diagnostics";
 export { setDiagnosticReporter, reportDiagnostic } from "./diagnostics";
 import {
   consumeTranslationStream,
@@ -44,7 +44,7 @@ import type {
   ReadingStatus,
   JournalRankConfig,
   JournalRankResult,
-} from "@reader/core";
+} from "@neoread/core";
 let sessionToken = "";
 export function configureAPI(token: string) {
   sessionToken = token;
@@ -91,7 +91,7 @@ client.use({
       route: diagnosticRoute(new URL(request.url).pathname),
       method: request.method,
       status: response.status,
-      requestId: response.headers.get("X-Reader-Request-ID") || undefined,
+      requestId: response.headers.get("X-NeoRead-Request-ID") || undefined,
     });
     return response;
   },
@@ -144,7 +144,7 @@ function annotationRequest<T>(path: string, init: RequestInit): Promise<T> {
   const operation = annotationQueue.then(() =>
     request<T>(path, {
       ...init,
-      headers: { ...init.headers, "X-Reader-Undo-Session": annotationSession },
+      headers: { ...init.headers, "X-NeoRead-Undo-Session": annotationSession },
     }),
   );
   annotationQueue = operation.then(
@@ -210,14 +210,14 @@ export const api = {
     return response.blob();
   },
   navigation: (id: string) =>
-    request<import("@reader/core").DocumentNavigation>(
+    request<import("@neoread/core").DocumentNavigation>(
       `/api/documents/${encodeURIComponent(id)}/navigation`,
     ),
   saveNavigation: (
     id: string,
-    navigation: import("@reader/core").DocumentNavigation,
+    navigation: import("@neoread/core").DocumentNavigation,
   ) =>
-    request<import("@reader/core").DocumentNavigation>(
+    request<import("@neoread/core").DocumentNavigation>(
       `/api/documents/${encodeURIComponent(id)}/navigation`,
       {
         method: "PUT",
@@ -336,7 +336,7 @@ export const api = {
     return consumeTranslationStream(response.body, signal, onEvent);
   },
   epubChapters: (id: string, signal?: AbortSignal) =>
-    request<import("@reader/core").EPUBChapters>(
+    request<import("@neoread/core").EPUBChapters>(
       `/api/documents/${encodeURIComponent(id)}/epub-chapters`,
       { signal },
     ),
@@ -346,11 +346,11 @@ export const api = {
       { signal },
     ),
   epubBlocks: (id: string) =>
-    request<import("@reader/core").EPUBReadingBlock[]>(
+    request<import("@neoread/core").EPUBReadingBlock[]>(
       `/api/documents/${id}/epub-blocks`,
     ),
   translations: (id: string) =>
-    request<import("@reader/core").TranslationBlock[]>(
+    request<import("@neoread/core").TranslationBlock[]>(
       `/api/documents/${id}/translations`,
     ),
   exportTranslation: async (
@@ -396,7 +396,7 @@ export const api = {
     }),
   translateEPUBChapter: (
     id: string,
-    location: import("@reader/core").EPUBLocation,
+    location: import("@neoread/core").EPUBLocation,
   ) =>
     request<{ queued: number; characters: number; hasMore: boolean }>(
       `/api/documents/${id}/translations/chapter`,
@@ -788,13 +788,13 @@ export async function chat(
     reportDiagnostic({
       level: "info",
       event: "chat.stream_finish",
-      requestId: response.headers.get("X-Reader-Request-ID") || undefined,
+      requestId: response.headers.get("X-NeoRead-Request-ID") || undefined,
     });
   } catch (error) {
     reportDiagnostic({
       level: signal.aborted ? "info" : "error",
       event: signal.aborted ? "chat.stream_cancelled" : "chat.stream_failed",
-      requestId: response.headers.get("X-Reader-Request-ID") || undefined,
+      requestId: response.headers.get("X-NeoRead-Request-ID") || undefined,
       ...diagnosticError(error),
     });
     throw error;

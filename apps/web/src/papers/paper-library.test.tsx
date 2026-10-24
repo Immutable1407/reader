@@ -2,8 +2,8 @@
 import { act } from "react";
 import { createRoot, type Root } from "react-dom/client";
 import { afterEach, beforeEach, expect, it, vi } from "vitest";
-import { api } from "@reader/api";
-import type { Document, Processing } from "@reader/core";
+import { api } from "@neoread/api";
+import type { Document, Processing } from "@neoread/core";
 import { useReaderStore } from "../store";
 import { PaperLibrary } from "./PaperLibrary";
 import { PaperSidebar } from "./PaperSidebar";
@@ -15,7 +15,7 @@ import { exportAnnotatedPDFWithToast } from "../annotated-pdf-export";
 vi.mock("../annotated-pdf-export", () => ({
   exportAnnotatedPDFWithToast: vi.fn(async () => 1),
 }));
-vi.mock("@reader/api", () => ({
+vi.mock("@neoread/api", () => ({
   api: {
     paperAttachments: vi.fn(async () => []),
     snapshotStatus: vi.fn(async () => ({ available: false })),
@@ -1155,7 +1155,7 @@ it.each(["list", "table"] as const)(
     });
     const transfer = await dragColumn(row(docs[0].title), "dragstart");
     expect(transfer.setData).toHaveBeenCalledWith(
-      "application/x-reader-papers",
+      "application/x-neoread-papers",
       JSON.stringify(["a", "b"]),
     );
     const [preview, x, y] = transfer.setDragImage.mock.calls[0];

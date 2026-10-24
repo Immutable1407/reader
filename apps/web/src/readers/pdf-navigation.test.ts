@@ -2,7 +2,7 @@
 import { expect, it, vi } from "vitest";
 import type { PDFPageProxy } from "pdfjs-dist";
 import type { PDFViewer } from "pdfjs-dist/web/pdf_viewer.mjs";
-import type { PDFBlock, TranslationBlock } from "@reader/core";
+import type { PDFBlock, TranslationBlock } from "@neoread/core";
 vi.mock("pdfjs-dist", () => ({
   Util: { transform: (_a: number[], b: number[]) => b },
 }));
@@ -104,7 +104,7 @@ it("uses selected glyph positions to distinguish repeated words and includes bot
     ]);
     // Sentence focusing is exercised through native highlight ranges in
     // pdf-sentence-highlights.test.ts; it no longer appends page rectangles.
-    expect(page.querySelector(".reader-linked-highlight")).toBeNull();
+    expect(page.querySelector(".neoread-linked-highlight")).toBeNull();
     nav.destroy();
   } finally {
     Range.prototype.getClientRects = old;

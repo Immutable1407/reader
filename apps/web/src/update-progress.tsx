@@ -1,28 +1,28 @@
 import { useEffect } from "react";
 import { toast } from "sonner";
-import { Progress } from "@reader/ui/components/progress";
+import { Progress } from "@neoread/ui/components/progress";
 
 const megabytes = (bytes: number) => Math.round(bytes / 1024 / 1024);
 // Shows desktop update downloads in one persistent toast.
 export function useUpdateProgress() {
   useEffect(
     () =>
-      window.readerDesktop?.onUpdateProgress?.((progress) => {
+      window.neoreadDesktop?.onUpdateProgress?.((progress) => {
         if (!progress) {
-          toast.dismiss("reader-update");
+          toast.dismiss("neoread-update");
           return;
         }
         if (progress.phase === "prepare") {
-          toast.loading(`正在准备安装 Reader ${progress.version}`, {
-            id: "reader-update",
+          toast.loading(`正在准备安装 NeoRead ${progress.version}`, {
+            id: "neoread-update",
             description: undefined,
             duration: Infinity,
           });
           return;
         }
         const { received, total } = progress;
-        toast.loading(`正在下载 Reader ${progress.version}`, {
-          id: "reader-update",
+        toast.loading(`正在下载 NeoRead ${progress.version}`, {
+          id: "neoread-update",
           duration: Infinity,
           description: (
             <div className="mt-2 grid gap-1.5">

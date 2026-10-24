@@ -3,7 +3,7 @@ import {
   type PDFBlock,
   type SearchResult,
   type TranslationBlock,
-} from "@reader/core";
+} from "@neoread/core";
 
 /** Search the text shown by the bilingual reader, retaining paragraph anchors. */
 export function searchPDFBlocks(

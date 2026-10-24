@@ -1,6 +1,6 @@
 import { annotationsInRects, sentenceRectsAtPoint } from "./annotation-hover";
 import { useTranslations } from "./useTranslations";
-import { readerLayout, updateReaderLayout } from "../reader-layout";
+import { readerLayout, updateReaderLayout } from "../neoread-layout";
 import {
   useEffect,
   useRef,
@@ -16,10 +16,10 @@ import type {
   ReaderAdapter,
   ReaderSelection,
   Processing,
-} from "@reader/core";
-import { api, publicationURL } from "@reader/api";
-import { Tabs, TabsList, TabsTrigger } from "@reader/ui/components/tabs";
-import { Button } from "@reader/ui/components/button";
+} from "@neoread/core";
+import { api, publicationURL } from "@neoread/api";
+import { Tabs, TabsList, TabsTrigger } from "@neoread/ui/components/tabs";
+import { Button } from "@neoread/ui/components/button";
 import { toast } from "sonner";
 import { ReaderView } from "../ReaderView";
 import { AssistanceControls } from "./AssistanceControls";
@@ -33,7 +33,7 @@ import {
 import { installTranslationSelectionHighlight } from "./selection-highlight";
 import { epubBlocksAt } from "./epub-links";
 import { isSelectionToolbar } from "../readers/selection-anchor";
-import { defaultTheme } from "@reader/core";
+import { defaultTheme } from "@neoread/core";
 import { translationFont } from "../appearance";
 import "./translation.css";
 

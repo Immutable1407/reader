@@ -4,7 +4,7 @@
 
 ## 方法
 
-在 Apple M3 Pro、macOS 27.0.1 上，下载 [v0.8.7 发布 ZIP](https://github.com/cynicalight/reader/releases/tag/v0.8.7)，核对 SHA256SUMS.txt，再使用 ditto 解压为同一份已签名 Reader.app。
+在 Apple M3 Pro、macOS 27.0.1 上，下载 [v0.8.7 发布 ZIP](https://github.com/cynicalight/NeoRead/releases/tag/v0.8.7)，核对 SHA256SUMS.txt，再使用 ditto 解压为同一份已签名 NeoRead.app。
 
 原始 ZIP SHA-256：`6ef91cd9f1c6cea1d6950097f8937f4eed9e773a8974872ce89ff9786e04328d`。
 
@@ -30,4 +30,4 @@ normal 相比 maximum 节省约 303–307 秒（5 分 3 秒至 5 分 7 秒），
 
 这是本机对同一份发布应用的归档对比，maximum 测量一次、normal 两次，不是统计学基准。没有重新触发 GitHub Actions、发布安装包或执行端到端自动更新。CI 硬件、并行 DMG 任务和负载不同，不能把本机节省秒数直接当作 CI 整体节省值。既有 CI 中 ZIP 归档约 13 分 16 秒，调整后实际耗时仍需下一次 CI 验证。
 
-原始计时 JSON 和临时实验脚本位于本机 `/tmp/reader-compression-benchmark-20261021/`，不纳入 Git。
+原始计时 JSON 和临时实验脚本位于本机 `/tmp/neoread-compression-benchmark-20261021/`，不纳入 Git。

@@ -27,7 +27,7 @@ beforeEach(async () => {
   vi.stubGlobal("fetch", fetchMock);
   vi.stubGlobal("chrome", {
     runtime: {
-      id: "reader-extension",
+      id: "neoread-extension",
       getPlatformInfo: vi.fn().mockResolvedValue({}),
       onMessage: {
         addListener: (fn: typeof listener) => {
@@ -58,7 +58,7 @@ it("returns a verification error through the real save listener without importin
   expect(rules.mock.calls[0][0]).toEqual({ removeRuleIds: [17841] });
   expect(rules.mock.calls.at(-1)?.[0]).toEqual({ removeRuleIds: [17841] });
 });
-it("uploads only the validated PDF and preserves Reader labels and library choices", async () => {
+it("uploads only the validated PDF and preserves NeoRead labels and library choices", async () => {
   fetchMock
     .mockResolvedValueOnce(new Response("%PDF-1.7\nbody"))
     .mockResolvedValueOnce(

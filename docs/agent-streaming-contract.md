@@ -48,7 +48,7 @@ Codex 文档会话保留持久 thread，并在同一 turn 内读取和回答。A
 
 | 项目             | 本轮固定约定                                                                                                                                                                                    |
 | ---------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| 接口与认证       | `POST /api/documents/{documentId}/chat`；Reader 会话 Bearer token；JSON 请求。不是 Agent API Key。                                                                                              |
+| 接口与认证       | `POST /api/documents/{documentId}/chat`；NeoRead 会话 Bearer token；JSON 请求。不是 Agent API Key。                                                                                              |
 | 必填请求字段     | `provider: "codex" \| "claude" \| "kimi" \| "api"`、`prompt: string`、`context: string`；context 可为空。                                                                                       |
 | 可选请求字段     | `references: SourceReference[]`、`attachments: string[]`，省略等价于空数组；附件是当前文档块 ID。不新增 connectionId 或客户端模型/认证字段。                                                    |
 | 事件与 JSON data | `status {status:"reading"\|"reading-image"}`、`delta {text:string}`、`fallback {message:string}`、`error {error:string}`、`done {ok:true}`。仍使用独立 SSE event 行，不另包 type/payload 外壳。 |
@@ -74,12 +74,12 @@ Codex 文档会话保留持久 thread，并在同一 turn 内读取和回答。A
 
 ```http
 POST /api/documents/{documentId}/chat
-Authorization: Bearer <当前 Reader 会话 token>
+Authorization: Bearer <当前 NeoRead 会话 token>
 Content-Type: application/json
 ```
 
 ```ts
-import type { SourceReference } from "@reader/core";
+import type { SourceReference } from "@neoread/core";
 
 type ChatRequest = {
   provider: "codex" | "claude" | "kimi" | "api";
@@ -90,7 +90,7 @@ type ChatRequest = {
 };
 ```
 
-`claude` 对应 Claude Code，`kimi` 对应 Kimi Code，`api` 对应设置中填写的 OpenAI 兼容 API（地址与 Key）。`references` 用于保存来源引用；EPUB 使用自身的 `href`、`locator` 等位置字段，PDF 使用页码，类型见 [reader-core](../packages/reader-core/src/index.ts)。
+`claude` 对应 Claude Code，`kimi` 对应 Kimi Code，`api` 对应设置中填写的 OpenAI 兼容 API（地址与 Key）。`references` 用于保存来源引用；EPUB 使用自身的 `href`、`locator` 等位置字段，PDF 使用页码，类型见 [neoread-core](../packages/neoread-core/src/index.ts)。
 
 普通提问默认传空 `context` 和 `references`，并记录发送时的原生 `readingLocation`。手动引用、解释选区或提问批注时，只发送用户主动选择的原文和位置，不附带所在整章、邻近段落或全篇批注。图片附件不自动附加当前页文字。Codex/API 文档 Agent 根据概要、位置和问题调用工具；未具备文档工具的 CLI，仅在用户主动点击“总结当前页面／章节”等操作时通过阅读器取得该范围文字。无工具 API 的预检索仍复用后端原文索引。
 
@@ -230,20 +230,20 @@ data: {"ok":true}
 
 ```sh
 cd apps/server
-go test ./internal/reader -run 'TestAgent|TestCodexProtocolBoundaries|TestChatStreamsOverHTTP|TestChatPartialFailure' -count=1
+go test ./internal/neoread -run 'TestAgent|TestCodexProtocolBoundaries|TestChatStreamsOverHTTP|TestChatPartialFailure' -count=1
 ```
 
 真实调用可选以下测试，只发送内置原创提示，并使用 CLI 自身登录：
 
 ```sh
-READER_TEST_STREAM_PROVIDER=codex go test ./internal/reader -run '^TestLiveAgentStreaming$' -count=1 -v
-READER_TEST_STREAM_PROVIDER=claude go test ./internal/reader -run '^TestLiveAgentStreaming$' -count=1 -v
-READER_TEST_STREAM_PROVIDER=kimi go test ./internal/reader -run '^TestLiveAgentStreaming$' -count=1 -v
+NEOREAD_TEST_STREAM_PROVIDER=codex go test ./internal/neoread -run '^TestLiveAgentStreaming$' -count=1 -v
+NEOREAD_TEST_STREAM_PROVIDER=claude go test ./internal/neoread -run '^TestLiveAgentStreaming$' -count=1 -v
+NEOREAD_TEST_STREAM_PROVIDER=kimi go test ./internal/neoread -run '^TestLiveAgentStreaming$' -count=1 -v
 ```
 
 本次本机实测：Codex CLI 0.160.0 返回 193 个片段，首段约 6.1 秒、完成约 10.6 秒；Kimi 返回 214 个片段，首段约 6.2 秒、完成约 11.8 秒。这些是一次请求的记录，不是延迟承诺。Codex 另通过合成图片识别测试。Claude Code 2.1.220 当前未登录，已验证模拟协议，真实生成待具备登录环境后验证。
 
-人工联调可在合并后的仓库运行 `pnpm dev`，打开终端输出的带会话 token 的 Reader 地址。使用已登录的 Agent，分别测试长段落、代码块、公式和图片问题，确认首段提前显示、没有最终全文重复、取消后不再追加、失败后能重新发送。不要求用浏览器自动化验收；界面效果由前端同事人工确认。
+人工联调可在合并后的仓库运行 `pnpm dev`，打开终端输出的带会话 token 的 NeoRead 地址。使用已登录的 Agent，分别测试长段落、代码块、公式和图片问题，确认首段提前显示、没有最终全文重复、取消后不再追加、失败后能重新发送。不要求用浏览器自动化验收；界面效果由前端同事人工确认。
 
 官方协议参考：[Codex App Server](https://learn.chatgpt.com/docs/app-server)、[Claude Code 流式响应](https://code.claude.com/docs/en/headless#stream-responses)。
 
@@ -268,7 +268,7 @@ READER_TEST_STREAM_PROVIDER=kimi go test ./internal/reader -run '^TestLiveAgentS
 
 运行由 Go 服务管理，不依赖发起 POST 或订阅 SSE 的连接。最多同时运行四个会话，每个会话同时只运行一次；超过上限返回 429，同会话重复运行返回 409，均不保存新问题。切换文档、会话、侧栏或断开事件连接不会取消运行。前端按 session 保存独立的消息、思考、候选文本和取消状态，重新进入会话时查询服务端并订阅现有 run，不自动重新 POST。停止应用会取消并等待所有文档任务；重新打开时把残留 running 记录核对为已完成或已中断，由用户显式继续未回答的问题。
 
-自有 Agent 通过 `apps/agent` 的 pi SDK worker 执行模型与工具循环。Go 用私有临时目录启动进程，通过版本化 JSONL stdio 传入配置、已接受的 pi entries 和允许的工具清单；密钥不放入命令行。worker 使用内存凭据、内存 SessionManager 和显式 ResourceLoader，不发现用户 pi 配置、skills、extensions、AGENTS.md 或默认 shell/文件工具。读取工具仍在 Go 中绑定当前文档、版本、权限、预算和审计。API 连接与推理强度规则沿用 Reader，禁止跨源请求和跟随重定向；CLI 后端继续使用自身协议与登录。
+自有 Agent 通过 `apps/agent` 的 pi SDK worker 执行模型与工具循环。Go 用私有临时目录启动进程，通过版本化 JSONL stdio 传入配置、已接受的 pi entries 和允许的工具清单；密钥不放入命令行。worker 使用内存凭据、内存 SessionManager 和显式 ResourceLoader，不发现用户 pi 配置、skills、extensions、AGENTS.md 或默认 shell/文件工具。读取工具仍在 Go 中绑定当前文档、版本、权限、预算和审计。API 连接与推理强度规则沿用 NeoRead，禁止跨源请求和跟随重定向；CLI 后端继续使用自身协议与登录。
 
 每次运行使用独立 worker；Codex 同样使用独立运行缓存，已提交的原生 thread 可在下一轮恢复。pi 的 `prompt` 完成且 `waitForIdle` 收敛、worker 正常退出、最终答案通过来源校验后，Go 才在同一事务提交答案和 continuation。缺少正常终态、取消、超时、伪造引用或保存失败都不覆盖此前的 continuation。`done` 只在答案持久化后发送。运行事件也存入 SQLite，便于重新订阅已结束的 run；临时草稿不作为成功 assistant 消息保存。
 

@@ -1,11 +1,11 @@
 import { useEffect, useState } from "react";
 import { LoaderCircle, SquareTerminal } from "lucide-react";
-import type { CommandLineStatus } from "@reader/core";
-import { Button } from "@reader/ui/components/button";
+import type { CommandLineStatus } from "@neoread/core";
+import { Button } from "@neoread/ui/components/button";
 
-/** Puts the bundled `reader` command on PATH for terminals and coding agents. */
+/** Puts the bundled `neoread` command on PATH for terminals and coding agents. */
 export function CommandLineSettings({ open }: { open: boolean }) {
-  const desktop = window.readerDesktop;
+  const desktop = window.neoreadDesktop;
   const [status, setStatus] = useState<CommandLineStatus | null>(null);
   const [busy, setBusy] = useState(false);
   const [notice, setNotice] = useState("");
@@ -40,7 +40,7 @@ export function CommandLineSettings({ open }: { open: boolean }) {
       <h3 className="mb-3 text-sm font-medium">命令行工具</h3>
       <p className="mb-4 text-xs leading-5 text-muted-foreground">
         在终端运行 <code>reader</code>，让 Claude Code、Codex
-        等工具检索、阅读和导入书库中的文档。使用时 Reader 需要保持打开。
+        等工具检索、阅读和导入书库中的文档。使用时 NeoRead 需要保持打开。
       </p>
       {status && !status.supported ? (
         <p className="text-xs leading-5 text-muted-foreground">
@@ -59,7 +59,7 @@ export function CommandLineSettings({ open }: { open: boolean }) {
             ) : (
               <SquareTerminal />
             )}
-            {status?.installed ? "卸载 reader 命令" : "安装 reader 命令"}
+            {status?.installed ? "卸载 neoread 命令" : "安装 neoread 命令"}
           </Button>
           {status && (
             <span className="min-w-0 break-all text-xs text-muted-foreground">

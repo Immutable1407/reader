@@ -1,5 +1,5 @@
 import { sentenceTextRanges } from "./pdf-sentence-matching";
-import type { Annotation, PDFLocation, TOCItem } from "@reader/core";
+import type { Annotation, PDFLocation, TOCItem } from "@neoread/core";
 import type {
   DocumentInitParameters,
   PDFDocumentLoadingTask,
@@ -7,7 +7,7 @@ import type {
   PDFDocumentProxy,
 } from "pdfjs-dist/types/src/display/api";
 
-// Writes Reader's PDF annotations into a copy of the original as standard PDF
+// Writes NeoRead's PDF annotations into a copy of the original as standard PDF
 // annotations through PDF.js's incremental save, followed by an optional
 // full rewrite for navigation. The source file is untouched. Highlights, notes and questions
 // become Highlight annotations; notes, question text and AI answers become
@@ -80,7 +80,7 @@ export function commentText(annotation: Annotation, answer?: string) {
 
 const compact = (text: string) => text.replace(/\s+/g, "").toLowerCase();
 
-// Reader stores rects relative to the displayed page, which includes /Rotate
+// NeoRead stores rects relative to the displayed page, which includes /Rotate
 // and the crop box; the viewport maps them back to PDF user space.
 function displayQuads(page: PDFPageProxy, rects: Rect[]): Quad[] {
   const viewport = page.getViewport({ scale: 1 });
@@ -152,7 +152,7 @@ function editorValue(
       q[4],
       q[5],
     ]),
-    user: "Reader",
+    user: "NeoRead",
     date: new Date(annotation.createdAt || Date.now()),
     popup: comment
       ? {

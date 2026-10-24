@@ -6,12 +6,12 @@ import { expect, it } from "vitest";
 import { downloadUpdate } from "./update-download";
 const update = {
   version: "0.2.0",
-  installer: "Reader-0.2.0-mac-arm64.dmg",
+  installer: "NeoRead-0.2.0-mac-arm64.dmg",
   downloadURL: "https://github.com/installer",
   checksumURL: "https://github.com/checksum",
 };
 it("downloads to a private directory only after SHA256 verification", async () => {
-  const directory = await mkdtemp(join(tmpdir(), "reader-update-test-"));
+  const directory = await mkdtemp(join(tmpdir(), "neoread-update-test-"));
   const bytes = new Uint8Array(1024 * 1024 + 1).fill(42);
   const hash = createHash("sha256").update(bytes).digest("hex");
   try {
@@ -35,7 +35,7 @@ it("downloads to a private directory only after SHA256 verification", async () =
   }
 });
 it("removes corrupt or interrupted downloads and never returns a path", async () => {
-  const directory = await mkdtemp(join(tmpdir(), "reader-update-test-"));
+  const directory = await mkdtemp(join(tmpdir(), "neoread-update-test-"));
   try {
     const checksums = `${"0".repeat(64)}  ${update.installer}\n`;
     await expect(

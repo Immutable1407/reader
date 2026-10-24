@@ -1,4 +1,4 @@
-import { Button } from "@reader/ui/components/button";
+import { Button } from "@neoread/ui/components/button";
 import { copyText } from "./clipboard";
 import { Copy } from "lucide-react";
 import { CachedMarkdown, Streamdown } from "@lobehub/streamdown";
@@ -44,7 +44,7 @@ function MarkdownLink({
 }) {
   const navigate = useContext(ReadingLinkNavigation);
   const evidence = useContext(ChatCitationNavigation);
-  if (href?.startsWith("#reader-evidence?")) {
+  if (href?.startsWith("#neoread-evidence?")) {
     const sourceId =
       new URLSearchParams(href.split("?")[1]).get("source") ?? "";
     if (!evidence?.sourceIds.includes(sourceId)) return <span>{children}</span>;
@@ -66,7 +66,7 @@ function MarkdownLink({
         href={href}
         onClick={(event) => {
           event.preventDefault();
-          if (href.startsWith("#reader-citation?")) {
+          if (href.startsWith("#neoread-citation?")) {
             const params = new URLSearchParams(
               href.slice(href.indexOf("?") + 1),
             );

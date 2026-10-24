@@ -2,9 +2,9 @@ import { ToolActivities } from "./ToolActivities";
 import { lazy, Suspense, useSyncExternalStore, type ReactNode } from "react";
 import { ArrowDown, BookOpen, LoaderCircle } from "lucide-react";
 import { ProviderGlyph } from "../ProviderIdentity";
-import type { Message } from "@reader/core";
-import { Button } from "@reader/ui/components/button";
-import { ScrollArea } from "@reader/ui/components/scroll-area";
+import type { Message } from "@neoread/core";
+import { Button } from "@neoread/ui/components/button";
+import { ScrollArea } from "@neoread/ui/components/scroll-area";
 import {
   ChatSession,
   chatRetryAction,

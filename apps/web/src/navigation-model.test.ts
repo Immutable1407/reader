@@ -1,5 +1,5 @@
 import { expect, it } from "vitest";
-import type { Annotation, PDFBlock, TOCItem } from "@reader/core";
+import type { Annotation, PDFBlock, TOCItem } from "@neoread/core";
 import {
   buildNavigation,
   emptyNavigation,

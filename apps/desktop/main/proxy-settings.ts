@@ -8,7 +8,7 @@ import type {
   ProxySettings,
   ProxySettingsState,
   ProxyCheckResult,
-} from "../../../packages/reader-core/src/proxy-settings";
+} from "../../../packages/neoread-core/src/proxy-settings";
 import { resolveSystemProxyEnvironment, systemProxyEnvironment } from "./proxy";
 
 const execute = promisify(execFile);
@@ -219,7 +219,7 @@ export class ProxySettingsService {
         connected: false,
         route: "unknown",
         elapsedMs: Date.now() - started,
-        message: "无法完成连接检测，请重试或重新打开 Reader。",
+        message: "无法完成连接检测，请重试或重新打开 NeoRead。",
         warning,
       };
     } finally {

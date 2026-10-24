@@ -6,7 +6,7 @@ import {
   readerLayout,
   sidebarLayout,
   updateReaderLayout,
-} from "./reader-layout";
+} from "./neoread-layout";
 import { SelectionTranslation } from "./SelectionTranslation";
 import { LinkPreviewPanel } from "./LinkPreviewPanel";
 import { AnnotationHoverCard } from "./AnnotationHoverCard";
@@ -48,7 +48,7 @@ import {
   Check,
   CircleHelp,
 } from "lucide-react";
-import { api, blockImageURL } from "@reader/api";
+import { api, blockImageURL } from "@neoread/api";
 import {
   locationLabel,
   type DocumentChatSession,
@@ -66,42 +66,42 @@ import {
   type PDFBlockAction,
   type ImageAttachment,
   type LinkPreview,
-  readerLink,
-} from "@reader/core";
-import { Button } from "@reader/ui/components/button";
-import { Badge } from "@reader/ui/components/badge";
-import { Input } from "@reader/ui/components/input";
-import { Textarea } from "@reader/ui/components/textarea";
+  neoreadLink,
+} from "@neoread/core";
+import { Button } from "@neoread/ui/components/button";
+import { Badge } from "@neoread/ui/components/badge";
+import { Input } from "@neoread/ui/components/input";
+import { Textarea } from "@neoread/ui/components/textarea";
 import {
   Tabs,
   TabsList,
   TabsTrigger,
   TabsContent,
-} from "@reader/ui/components/tabs";
-import { ScrollArea } from "@reader/ui/components/scroll-area";
+} from "@neoread/ui/components/tabs";
+import { ScrollArea } from "@neoread/ui/components/scroll-area";
 import {
   Popover,
   PopoverTrigger,
   PopoverContent,
-} from "@reader/ui/components/popover";
+} from "@neoread/ui/components/popover";
 import {
   Dialog,
   DialogContent,
   DialogHeader,
   DialogTitle,
   DialogDescription,
-} from "@reader/ui/components/dialog";
+} from "@neoread/ui/components/dialog";
 import {
   ResizablePanelGroup,
   ResizablePanel,
   usePanelRef,
   ResizableHandle,
-} from "@reader/ui/components/resizable";
+} from "@neoread/ui/components/resizable";
 import {
   Tooltip,
   TooltipTrigger,
   TooltipContent,
-} from "@reader/ui/components/tooltip";
+} from "@neoread/ui/components/tooltip";
 import { toast } from "sonner";
 import { DocumentOverviewDialog } from "./DocumentOverview";
 import { ProcessingUsageDialog } from "./ProcessingUsage";
@@ -134,7 +134,7 @@ import { EPUBReadingView } from "./translation/EPUBReadingView";
 import { PDFReadingView } from "./translation/PDFReadingView";
 import { useReaderStore } from "./store";
 import { scheduleProgress, flushProgress } from "./progress";
-import { Slider } from "@reader/ui/components/slider";
+import { Slider } from "@neoread/ui/components/slider";
 import { TranslationFontControls } from "./TranslationFontControls";
 import { AppearancePicker } from "./AppearancePicker";
 function IconButton({
@@ -326,7 +326,7 @@ export function Workspace({
   const palette = highlightPalette(useReaderStore((s) => s.theme));
   const [savedColor, setMarkColor] = useState<string>(() => {
     try {
-      return localStorage.getItem("reader.mark-color") || "";
+      return localStorage.getItem("neoread.mark-color") || "";
     } catch {
       return "";
     }
@@ -338,7 +338,7 @@ export function Workspace({
   const chooseColor = (color: string) => {
     setMarkColor(color);
     try {
-      localStorage.setItem("reader.mark-color", color);
+      localStorage.setItem("neoread.mark-color", color);
     } catch {
       /* the color only lasts for this session */
     }
@@ -369,7 +369,7 @@ export function Workspace({
     selectedSession.documentId === doc.id ? selectedSession.id : "";
   if (!preferred) {
     try {
-      preferred = localStorage.getItem(`reader.chat-session.${doc.id}`) || "";
+      preferred = localStorage.getItem(`neoread.chat-session.${doc.id}`) || "";
     } catch {}
   }
   const currentSession =
@@ -391,7 +391,7 @@ export function Workspace({
   const selectSession = (id: string) => {
     setSelectedSession({ documentId: doc.id, id });
     try {
-      localStorage.setItem(`reader.chat-session.${doc.id}`, id);
+      localStorage.setItem(`neoread.chat-session.${doc.id}`, id);
     } catch {}
   };
   useEffect(() => {
@@ -543,7 +543,7 @@ export function Workspace({
     void go?.catch((e) => toast.error(e.message));
   };
   useEffect(() => {
-    // Follow a reader:// link once the reader and annotations are ready.
+    // Follow a neoread:// link once the reader and annotations are ready.
     if (linkTarget?.id !== doc.id || !adapter || !annotationsLoaded) return;
     useReaderStore.getState().setLinkTarget(null);
     if (linkTarget.annotation) {
@@ -604,7 +604,7 @@ export function Workspace({
       setAnnotations((items) => applySavedAnnotation(items, a));
       adapter?.clearSelection();
       if (kind === "bookmark")
-        toast.success("已添加书签", { id: "reader-annotation-save" });
+        toast.success("已添加书签", { id: "neoread-annotation-save" });
       setNoteOpen(false);
       setNoteSelection(null);
       setEditingAnnotation(null);
@@ -1001,8 +1001,8 @@ export function Workspace({
   );
   return (
     <div className="workspace">
-      <header className="reader-toolbar">
-        <div className="reader-title-group">
+      <header className="neoread-toolbar">
+        <div className="neoread-title-group">
           <IconButton
             label="返回书库"
             onClick={() => {
@@ -1022,7 +1022,7 @@ export function Workspace({
             <PanelLeft />
           </IconButton>
           <span className="toolbar-divider" />
-          <span className="reader-title" title={doc.title}>
+          <span className="neoread-title" title={doc.title}>
             {doc.title}
           </span>
           <Badge variant="secondary">{doc.type.toUpperCase()}</Badge>
@@ -1243,7 +1243,7 @@ export function Workspace({
       </header>
       <ResizablePanelGroup
         orientation="horizontal"
-        className="reader-panels"
+        className="neoread-panels"
         elementRef={panelGroup}
         defaultLayout={initialLayout.current}
         onLayoutChanged={(sizes, { isUserInteraction }) => {
@@ -1279,7 +1279,7 @@ export function Workspace({
           minSize="180px"
           maxSize="30%"
         >
-          <aside className="reader-sidebar" data-open={left} inert={!left}>
+          <aside className="neoread-sidebar" data-open={left} inert={!left}>
             <Tabs
               value={leftTab}
               onValueChange={(value) => setLeftTab(String(value))}
@@ -1911,7 +1911,7 @@ export function Workspace({
           document={doc}
           annotations={annotations}
           messages={chat.messages}
-          link={(a) => readerLink({ id: doc.id, annotation: a.id })}
+          link={(a) => neoreadLink({ id: doc.id, annotation: a.id })}
           onClose={() => setExportingNotes(false)}
         />
       )}

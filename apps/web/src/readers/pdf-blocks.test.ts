@@ -2,7 +2,7 @@
 import { act } from "react";
 import { expect, it, vi } from "vitest";
 import { PDFBlockOverlay, hitBlock, referenceBlock } from "./pdf-blocks";
-import type { PDFBlock } from "@reader/core";
+import type { PDFBlock } from "@neoread/core";
 const block: PDFBlock = {
   id: "p2-b1",
   page: 2,
@@ -45,7 +45,7 @@ it("keeps the reference flash for one second and restarts it on another jump", (
     layer.setBlocks([block]);
     layer.flashBlock(block.id);
     const flash = host.querySelector<HTMLElement>(
-      ".reader-block-reference-flash",
+      ".neoread-block-reference-flash",
     )!;
     expect(flash.style.left).toBe("10%");
     expect(flash.style.height).toBe("40%");
@@ -66,11 +66,11 @@ it("keeps search highlights attached to matching PDF blocks", () => {
   const layer = new PDFBlockOverlay(host);
   layer.setBlocks([block]);
   layer.setSearchBlocks([block.id]);
-  const hit = host.querySelector<HTMLElement>(".reader-block-search-hit")!;
+  const hit = host.querySelector<HTMLElement>(".neoread-block-search-hit")!;
   expect(hit.style.left).toBe("10%");
   expect(hit.style.height).toBe("40%");
   layer.setSearchBlocks([]);
-  expect(host.querySelector(".reader-block-search-hit")).toBeNull();
+  expect(host.querySelector(".neoread-block-search-hit")).toBeNull();
   layer.destroy();
 });
 it("positions the whole-block overlay and clears during selection, scroll and disposal", async () => {
@@ -90,7 +90,7 @@ it("positions the whole-block overlay and clears during selection, scroll and di
       clientY: 440,
     }),
   );
-  const overlay = page.querySelector<HTMLElement>(".reader-block-hover")!;
+  const overlay = page.querySelector<HTMLElement>(".neoread-block-hover")!;
   expect(overlay.style.left).toBe("10%");
   expect(overlay.style.height).toBe("40%");
   expect(overlay.dataset.blockId).toBe(block.id);
@@ -103,7 +103,7 @@ it("positions the whole-block overlay and clears during selection, scroll and di
       clientY: 440,
     }),
   );
-  expect(page.querySelector(".reader-block-hover")).toBeNull();
+  expect(page.querySelector(".neoread-block-hover")).toBeNull();
   target.dispatchEvent(
     new MouseEvent("pointermove", {
       bubbles: true,
@@ -112,7 +112,7 @@ it("positions the whole-block overlay and clears during selection, scroll and di
     }),
   );
   host.dispatchEvent(new Event("scroll"));
-  expect(page.querySelector(".reader-block-hover")).toBeNull();
+  expect(page.querySelector(".neoread-block-hover")).toBeNull();
   layer.destroy();
   target.dispatchEvent(
     new MouseEvent("pointermove", {
@@ -121,7 +121,7 @@ it("positions the whole-block overlay and clears during selection, scroll and di
       clientY: 440,
     }),
   );
-  expect(page.querySelector(".reader-block-hover")).toBeNull();
+  expect(page.querySelector(".neoread-block-hover")).toBeNull();
 });
 
 it("attaches clicks, keeps action buttons interactive, and does not attach drags", async () => {
@@ -205,7 +205,7 @@ it("reports source hover and paints a passive counterpart without feeding hover 
   hover.mockClear();
   layer.setLinkedBlock(block.id);
   const counterpart = page.querySelector<HTMLElement>(
-    ".reader-block-counterpart",
+    ".neoread-block-counterpart",
   )!;
   expect(counterpart.dataset.blockId).toBe(block.id);
   expect(counterpart.style.left).toBe("10%");
@@ -258,7 +258,7 @@ it("shows passive feedback during positioning, fades it on completion and keeps 
   const layer = new PDFBlockOverlay(host);
   layer.setBlocks([text]);
   layer.setFocusBlock(text.id);
-  const outline = () => page.querySelector<HTMLElement>(".reader-block-focus");
+  const outline = () => page.querySelector<HTMLElement>(".neoread-block-focus");
   expect(outline()?.dataset.blockId).toBe(text.id);
   expect(outline()?.children).toHaveLength(0);
   expect(page.querySelector("[data-block-action]")).toBeNull();
@@ -342,7 +342,7 @@ it("keeps the block during fade-out and cancels stale removal when the pointer r
   await act(async () => {
     move();
   });
-  const overlay = page.querySelector<HTMLElement>(".reader-block-hover")!;
+  const overlay = page.querySelector<HTMLElement>(".neoread-block-hover")!;
   let finish!: () => void;
   const cancel = vi.fn();
   overlay.animate = vi.fn(() => ({

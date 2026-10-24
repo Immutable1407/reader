@@ -1,4 +1,4 @@
-import type { PDFLocation } from "@reader/core";
+import type { PDFLocation } from "@neoread/core";
 
 /** Transient navigation feedback, independent of selection and parsed blocks. */
 export class PDFLocationHighlight {
@@ -30,7 +30,7 @@ export class PDFLocationHighlight {
     if (!rects.length) rects = this.fallback ?? [];
     if (!rects.length) return;
     const layer = document.createElement("div");
-    layer.className = "reader-location-highlight";
+    layer.className = "neoread-location-highlight";
     layer.setAttribute("aria-hidden", "true");
     for (const rect of rects) {
       const mark = document.createElement("div");

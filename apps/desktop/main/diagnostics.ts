@@ -20,7 +20,7 @@ import {
   redact,
   redactLog,
   type DiagnosticEvent,
-} from "../../../packages/reader-core/src/diagnostics";
+} from "../../../packages/neoread-core/src/diagnostics";
 
 export const retention = {
   days: 7,
@@ -37,7 +37,7 @@ export class DiagnosticLogs {
   private lastPrune = 0;
   private fallback: string[] = [];
   constructor(
-    readonly directory: string,
+    public directory: string,
     readonly secrets: string[] = [],
   ) {}
   record(
@@ -137,6 +137,7 @@ export class DiagnosticLogs {
     library: string | undefined,
     environment: unknown,
     settings: unknown,
+    additionalDirectories: string[] = [],
   ) {
     const zip = new ZipFile();
     const files: Array<{ name: string; bytes: number; modified: string }> = [];
@@ -241,6 +242,9 @@ export class DiagnosticLogs {
       }
     };
     addDirectory(this.directory, "logs/");
+    for (const [index, directory] of additionalDirectories.entries())
+      if (directory !== this.directory)
+        addDirectory(directory, `startup-logs/${index}/`);
     if (library) {
       const cache = join(library, "cache");
       try {
@@ -310,7 +314,7 @@ export class DiagnosticLogs {
     );
     zip.addBuffer(
       Buffer.from(
-        "Reader 本地诊断包\n包含全部已保留日志，跨会话、不按级别筛选；时间采用 UTC。\n凭据、URL、用户路径和旧翻译日志的模型正文已脱敏。没有包含书库数据库、PDF/EPUB、聊天或批注。\nmanifest.json 列出缺失文件和保留规则。反馈时请附上发生时间、操作步骤、预期结果和实际结果。\n日志无法保证复现依赖特定文档的问题。此文件由用户手动导出，没有自动上传。\n",
+        "NeoRead 本地诊断包\n包含全部已保留日志，跨会话、不按级别筛选；时间采用 UTC。\n凭据、URL、用户路径和旧翻译日志的模型正文已脱敏。没有包含书库数据库、PDF/EPUB、聊天或批注。\nmanifest.json 列出缺失文件和保留规则。反馈时请附上发生时间、操作步骤、预期结果和实际结果。\n日志无法保证复现依赖特定文档的问题。此文件由用户手动导出，没有自动上传。\n",
       ),
       "README.txt",
     );

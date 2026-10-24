@@ -8,14 +8,14 @@ import {
   type ReactNode,
 } from "react";
 import { Columns3, GripVertical } from "lucide-react";
-import type { PaperColumn, PaperLibraryPreferences } from "@reader/core";
-import { Button } from "@reader/ui/components/button";
-import { Checkbox } from "@reader/ui/components/checkbox";
+import type { PaperColumn, PaperLibraryPreferences } from "@neoread/core";
+import { Button } from "@neoread/ui/components/button";
+import { Checkbox } from "@neoread/ui/components/checkbox";
 import {
   Popover,
   PopoverContent,
   PopoverTrigger,
-} from "@reader/ui/components/popover";
+} from "@neoread/ui/components/popover";
 import { savePaperPreferences } from "./actions";
 import {
   columnOrder,
@@ -109,7 +109,7 @@ export function usePaperColumns(prefs: PaperLibraryPreferences) {
       }}
       onDragStart={(event) => {
         event.stopPropagation();
-        event.dataTransfer.setData("application/x-reader-paper-column", column);
+        event.dataTransfer.setData("application/x-neoread-paper-column", column);
         event.dataTransfer.effectAllowed = "move";
         const surface =
           event.currentTarget.closest<HTMLElement>("[data-column]");

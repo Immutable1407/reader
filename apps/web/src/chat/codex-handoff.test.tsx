@@ -9,7 +9,7 @@ const mocks = vi.hoisted(() => ({
   error: vi.fn(),
   success: vi.fn(),
 }));
-vi.mock("@reader/api", () => ({ api: { codexHandoff: mocks.prepare } }));
+vi.mock("@neoread/api", () => ({ api: { codexHandoff: mocks.prepare } }));
 vi.mock("sonner", () => ({
   toast: { error: mocks.error, success: mocks.success },
 }));
@@ -21,7 +21,7 @@ beforeEach(() => {
     threadId: "01900000-0000-7000-8000-000000000002",
   });
   mocks.open.mockResolvedValue(undefined);
-  Object.defineProperty(window, "readerDesktop", {
+  Object.defineProperty(window, "neoreadDesktop", {
     configurable: true,
     value: { openCodexThread: mocks.open },
   });
@@ -32,7 +32,7 @@ beforeEach(() => {
 afterEach(async () => {
   await act(async () => root.unmount());
   host.remove();
-  delete window.readerDesktop;
+  delete window.neoreadDesktop;
   vi.unstubAllGlobals();
 });
 async function render(disabled = false) {

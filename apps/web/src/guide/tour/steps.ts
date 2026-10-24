@@ -166,7 +166,7 @@ function agentView(s: TourState): TourView {
       title: `检测到 ${names} 可用`,
       body: api
         ? "点开上方的下拉框，选择 API。"
-        : `${names} 的 CLI 已在${s.shell}中登录，Reader 用的是 CLI，不是 Codex App。点开上方的下拉框，选择要使用的 Agent。`,
+        : `${names} 的 CLI 已在${s.shell}中登录，NeoRead 用的是 CLI，不是 Codex App。点开上方的下拉框，选择要使用的 Agent。`,
       focus: ready.map(card),
       click: [tour("agent-select")],
       pointer: { gesture: "click", target: tour("agent-select") },
@@ -177,7 +177,7 @@ function agentView(s: TourState): TourView {
     return mine.some((a) => a.status === "pending")
       ? {
           title: "正在检测 API 模型",
-          body: "Reader 正在拉取模型并逐个测试文本推理和图片理解。",
+          body: "NeoRead 正在拉取模型并逐个测试文本推理和图片理解。",
           focus: [card("api")],
           pointer: { gesture: "hover", target: card("api") },
           ...choice,
@@ -193,7 +193,7 @@ function agentView(s: TourState): TourView {
   if (s.detecting || mine.some((a) => a.status === "pending"))
     return {
       title: "正在检测本机 Agent",
-      body: `Reader 调用的是命令行里的 Codex、Claude Code 和 Kimi CLI，不是 Codex App 或 Claude 桌面版。请在${s.shell}中确认 CLI 已登录，例如运行 \`codex login\` 或 \`claude auth login\`。`,
+      body: `NeoRead 调用的是命令行里的 Codex、Claude Code 和 Kimi CLI，不是 Codex App 或 Claude 桌面版。请在${s.shell}中确认 CLI 已登录，例如运行 \`codex login\` 或 \`claude auth login\`。`,
       focus: localAgents.map(card),
       pointer: { gesture: "wander", targets: localAgents.map(card) },
       ...choice,
@@ -222,7 +222,7 @@ export const tourSteps: TourStep[] = [
   {
     id: "welcome",
     view: () => ({
-      title: "欢迎使用 Reader",
+      title: "欢迎使用 NeoRead",
       body: "跟着光标完成三件事：连接 Agent、导入论文、开始阅读。大约一分钟。",
       next: "开始",
     }),
@@ -309,7 +309,7 @@ export const tourSteps: TourStep[] = [
     done: (s) => !s.importDialog,
     view: () => ({
       title: "粘贴链接或选择 PDF",
-      body: "Reader 支持导入本地 pdf、粘贴论文链接、arXiv 编号，也可以选择直接从 Zotero 中迁移完整的论文库。\n**这里先了解导入入口，点右上角关闭。引导结束后，可以导入自己的论文；已有论文时，接下来会演示阅读功能。**",
+      body: "NeoRead 支持导入本地 pdf、粘贴论文链接、arXiv 编号，也可以选择直接从 Zotero 中迁移完整的论文库。\n**这里先了解导入入口，点右上角关闭。引导结束后，可以导入自己的论文；已有论文时，接下来会演示阅读功能。**",
       focus: [tour("import-dialog")],
       click: [closeImport],
       pointer: { gesture: "click", target: closeImport },

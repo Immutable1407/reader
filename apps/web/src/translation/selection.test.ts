@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 import { expect, it } from "vitest";
-import type { Annotation, PDFBlock, TranslationBlock } from "@reader/core";
+import type { Annotation, PDFBlock, TranslationBlock } from "@neoread/core";
 import { translatedSelection } from "./selection";
 import { translatedAnnotationRanges } from "./annotations";
 

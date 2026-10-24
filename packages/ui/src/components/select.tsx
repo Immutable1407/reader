@@ -2,7 +2,7 @@
 
 import * as React from "react";
 import { Select as SelectPrimitive } from "@base-ui/react/select";
-import { cn } from "@reader/ui/lib/utils";
+import { cn } from "@neoread/ui/lib/utils";
 
 import { CheckIcon, ChevronDownIcon, ChevronUpIcon } from "lucide-react";
 

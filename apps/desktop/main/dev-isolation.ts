@@ -6,8 +6,8 @@ export function devIsolation({
   env: NodeJS.ProcessEnv;
 }) {
   return {
-    userDataDirectory: isPackaged ? null : "Reader Dev",
-    registerProtocol: isPackaged || env.READER_DEV_PROTOCOL === "1",
-    enableConnector: isPackaged || env.READER_DEV_CONNECTOR === "1",
+    userDataDirectory: isPackaged ? null : "NeoRead Dev",
+    registerProtocol: isPackaged || env.NEOREAD_DEV_PROTOCOL === "1",
+    enableConnector: isPackaged || env.NEOREAD_DEV_CONNECTOR === "1",
   };
 }

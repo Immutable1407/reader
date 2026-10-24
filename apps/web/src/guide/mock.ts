@@ -1,4 +1,4 @@
-// Simplified Reader interface pieces drawn on the guide canvas. Positions are
+// Simplified NeoRead interface pieces drawn on the guide canvas. Positions are
 // in the scene's logical 640 × 400 space.
 import { ease, type Frame, type Rect } from "./canvas";
 

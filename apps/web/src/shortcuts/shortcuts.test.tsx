@@ -2,7 +2,7 @@
 import { act } from "react";
 import { createRoot, type Root } from "react-dom/client";
 import { beforeEach, afterEach, expect, it, vi } from "vitest";
-import { api } from "@reader/api";
+import { api } from "@neoread/api";
 import { GuideDialog } from "../guide/GuideDialog";
 import { ShortcutPanel } from "./ShortcutPanel";
 import {
@@ -18,7 +18,7 @@ import {
   useShortcut,
 } from "./shortcuts";
 
-vi.mock("@reader/api", () => ({
+vi.mock("@neoread/api", () => ({
   api: {
     shortcutPreferences: vi.fn(async () => ({})),
     saveShortcutPreferences: vi.fn(async (value) => value),
@@ -236,7 +236,7 @@ it("allows reading shortcuts beside a pinned preview but not from its controls",
   function Harness() {
     useShortcut("readerLeft", run);
     return (
-      <div role="dialog" data-reader-floating-preview="">
+      <div role="dialog" data-neoread-floating-preview="">
         <button>Preview</button>
       </div>
     );

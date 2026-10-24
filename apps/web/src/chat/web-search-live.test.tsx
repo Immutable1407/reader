@@ -1,7 +1,7 @@
 // @vitest-environment jsdom
 import { readFileSync } from "node:fs";
 import { afterEach, beforeEach, expect, it, vi } from "vitest";
-import type { Message } from "@reader/core";
+import type { Message } from "@neoread/core";
 import type { ChatSession } from "./chat-session";
 
 type LiveCase = {
@@ -11,7 +11,7 @@ type LiveCase = {
   messages: Message[];
   events: { event: string; data: unknown }[];
 };
-const reportPath = process.env.READER_TEST_WEB_REPORT;
+const reportPath = process.env.NEOREAD_TEST_WEB_REPORT;
 const cases: LiveCase[] = reportPath
   ? JSON.parse(readFileSync(reportPath, "utf8"))
   : [];

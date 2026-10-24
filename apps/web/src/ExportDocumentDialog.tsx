@@ -1,16 +1,16 @@
 import { useEffect, useRef, useState } from "react";
 import { Copy, Download, FileDown, LoaderCircle } from "lucide-react";
-import type { Annotation, Document, Message } from "@reader/core";
-import { api } from "@reader/api";
-import { Button } from "@reader/ui/components/button";
-import { Checkbox } from "@reader/ui/components/checkbox";
+import type { Annotation, Document, Message } from "@neoread/core";
+import { api } from "@neoread/api";
+import { Button } from "@neoread/ui/components/button";
+import { Checkbox } from "@neoread/ui/components/checkbox";
 import {
   Dialog,
   DialogContent,
   DialogDescription,
   DialogHeader,
   DialogTitle,
-} from "@reader/ui/components/dialog";
+} from "@neoread/ui/components/dialog";
 import { copyText } from "./chat/clipboard";
 import {
   defaultExportParts,
@@ -24,7 +24,7 @@ import { exportAnnotatedPDFWithToast } from "./annotated-pdf-export";
 
 type DocumentExportPart = "translation" | ExportPart;
 const labels = { translation: "译文", ...exportParts };
-const storageKey = "reader.notes-export";
+const storageKey = "neoread.notes-export";
 function savedParts(): DocumentExportPart[] {
   try {
     const value: unknown = JSON.parse(localStorage.getItem(storageKey) || "");

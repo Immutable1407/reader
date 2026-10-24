@@ -2,7 +2,7 @@
 import { act } from "react";
 import { createRoot } from "react-dom/client";
 import { expect, it, vi } from "vitest";
-import type { WebSearchConfig } from "@reader/core";
+import type { WebSearchConfig } from "@neoread/core";
 import { WebSearchSettings } from "./WebSearchSettings";
 
 const value: WebSearchConfig = {

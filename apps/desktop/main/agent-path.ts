@@ -1,7 +1,7 @@
 import { execFile } from "node:child_process";
 import { posix, win32 } from "node:path";
 
-const marker = "__READER_AGENT_PATH__";
+const marker = "__NEOREAD_AGENT_PATH__";
 type Run = (
   file: string,
   args: string[],
@@ -55,7 +55,7 @@ export async function agentPath(
         ?.slice(marker.length);
       if (shellPath) entries.splice(2, 0, ...shellPath.split(separator));
     } catch {
-      // A broken or slow shell must not prevent Reader from starting.
+      // A broken or slow shell must not prevent NeoRead from starting.
     }
     entries.push("/opt/homebrew/bin", "/usr/local/bin", "/usr/bin", "/bin");
   }

@@ -12,7 +12,7 @@ import {
   type ReaderTheme,
   type SearchResult,
   type TranslationBlock,
-} from "@reader/core";
+} from "@neoread/core";
 const fixture = vi.hoisted(() => ({
   events: undefined as ReaderEvents | undefined,
   ready: undefined as ReaderAdapter | undefined,
@@ -26,7 +26,7 @@ const fixture = vi.hoisted(() => ({
     | undefined,
   signal: undefined as AbortSignal | undefined,
 }));
-vi.mock("@reader/api", () => ({
+vi.mock("@neoread/api", () => ({
   api: {
     assistance: vi.fn(async () => undefined),
     translationStream: vi.fn(
@@ -276,7 +276,7 @@ it("keeps the translated selection and navigation metadata without marking the o
   window.getSelection()!.addRange(range);
   document.dispatchEvent(new Event("selectionchange"));
   expect(
-    [...highlights.get("reader-translation-selection")!][0].toString(),
+    [...highlights.get("neoread-translation-selection")!][0].toString(),
   ).toBe("第二句。");
   expect(
     host
@@ -318,7 +318,7 @@ it("keeps the translated selection and navigation metadata without marking the o
   await act(async () => fixture.ready!.clearSelection());
   expect(events.selection).toHaveBeenLastCalledWith(null);
   document.dispatchEvent(new Event("selectionchange"));
-  expect(highlights.has("reader-translation-selection")).toBe(false);
+  expect(highlights.has("neoread-translation-selection")).toBe(false);
 });
 it("focuses the visible middle translation once when entering parallel mode", async () => {
   vi.stubGlobal("matchMedia", () => ({ matches: true }));
@@ -446,7 +446,7 @@ it("links block hover in both directions and clears it without changing sentence
   await act(async () =>
     fixture.events!.blockHover?.({
       id: "p1-b1",
-    } as import("@reader/core").PDFBlock),
+    } as import("@neoread/core").PDFBlock),
   );
   const block = host.querySelector<HTMLElement>(
     '[data-translation-block="p1-b1"]',

@@ -1,5 +1,5 @@
 import { useEffect, useSyncExternalStore } from "react";
-import { api } from "@reader/api";
+import { api } from "@neoread/api";
 
 export const shortcutActions = [
   { id: "readerLeft", name: "阅读模式－左侧栏", scope: "reader", key: "l" },
@@ -14,8 +14,8 @@ export type Binding = { key: string; shift: boolean };
 export type Bindings = Record<ShortcutId, Binding>;
 
 export const isMac = () =>
-  window.readerDesktop?.platform
-    ? window.readerDesktop.platform === "darwin"
+  window.neoreadDesktop?.platform
+    ? window.neoreadDesktop.platform === "darwin"
     : /Mac|iPhone|iPad/.test(navigator.platform);
 export const defaults = (): Bindings =>
   Object.fromEntries(
@@ -139,9 +139,9 @@ export function useShortcut(
         event.isComposing ||
         event.repeat ||
         (event.target instanceof Element &&
-          event.target.closest("[data-reader-floating-preview]")) ||
+          event.target.closest("[data-neoread-floating-preview]")) ||
         document.querySelector(
-          '[role="dialog"]:not([data-reader-floating-preview]), [role="alertdialog"]',
+          '[role="dialog"]:not([data-neoread-floating-preview]), [role="alertdialog"]',
         )
       )
         return;

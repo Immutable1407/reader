@@ -70,7 +70,7 @@ export default function StreamingBenchmark() {
         textLength: host.current?.textContent?.length,
         userAgent: navigator.userAgent,
       };
-      console.log("READER_BENCHMARK=" + JSON.stringify(report));
+      console.log("NEOREAD_BENCHMARK=" + JSON.stringify(report));
       observer.disconnect();
     })();
     return () => {

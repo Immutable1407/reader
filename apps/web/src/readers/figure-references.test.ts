@@ -1,5 +1,5 @@
 import { expect, it } from "vitest";
-import type { PDFBlock } from "@reader/core";
+import type { PDFBlock } from "@neoread/core";
 import { figureReferences, figureTarget } from "./figure-references";
 const block = (
   id: string,

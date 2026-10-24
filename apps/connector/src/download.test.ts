@@ -22,7 +22,7 @@ beforeEach(() => {
   vi.stubGlobal("fetch", fetchMock);
   vi.stubGlobal("chrome", {
     runtime: {
-      id: "reader-extension",
+      id: "neoread-extension",
       getPlatformInfo: vi.fn().mockResolvedValue({}),
     },
     declarativeNetRequest: {
@@ -52,7 +52,7 @@ it("downloads with browser credentials and a temporary origin-scoped Referer rul
       ],
     },
     condition: {
-      initiatorDomains: ["reader-extension"],
+      initiatorDomains: ["neoread-extension"],
       urlFilter: "|https://kns.cnki.net/",
       resourceTypes: ["xmlhttprequest"],
     },

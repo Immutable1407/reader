@@ -1,7 +1,7 @@
 import type { ReactNode } from "react";
 import { Copy, Expand, Sparkles } from "lucide-react";
-import { Button } from "@reader/ui/components/button";
-import type { PDFBlock, PDFBlockAction } from "@reader/core";
+import { Button } from "@neoread/ui/components/button";
+import type { PDFBlock, PDFBlockAction } from "@neoread/core";
 export function BlockActions({
   block,
   onAction,

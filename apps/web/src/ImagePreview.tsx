@@ -1,15 +1,15 @@
 import { useEffect, useState } from "react";
 import { Minus, Plus } from "lucide-react";
-import { blockImageURL } from "@reader/api";
-import type { ImageAttachment } from "@reader/core";
-import { Button } from "@reader/ui/components/button";
+import { blockImageURL } from "@neoread/api";
+import type { ImageAttachment } from "@neoread/core";
+import { Button } from "@neoread/ui/components/button";
 import {
   Dialog,
   DialogContent,
   DialogHeader,
   DialogTitle,
   DialogDescription,
-} from "@reader/ui/components/dialog";
+} from "@neoread/ui/components/dialog";
 export function imageLabel(image: ImageAttachment) {
   const kind = /formula|equation/.test(image.label)
     ? "公式"

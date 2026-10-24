@@ -1,18 +1,18 @@
 import { useEffect, useState } from "react";
-import { api } from "@reader/api";
+import { api } from "@neoread/api";
 import type {
   AIConfig,
   AgentModel,
   ModelTask,
   ReasoningEffort,
-} from "@reader/core";
+} from "@neoread/core";
 import {
   Select,
   SelectTrigger,
   SelectValue,
   SelectContent,
   SelectItem,
-} from "@reader/ui/components/select";
+} from "@neoread/ui/components/select";
 import { toast } from "sonner";
 import {
   catalogRevision,

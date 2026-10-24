@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { Download, LoaderCircle } from "lucide-react";
-import { Button } from "@reader/ui/components/button";
+import { Button } from "@neoread/ui/components/button";
 import { exportDiagnostics } from "./diagnostics";
 
 /** Self-contained so it works inside the last-resort error boundary. */

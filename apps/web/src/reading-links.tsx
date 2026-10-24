@@ -10,15 +10,15 @@ export const ReadingLinkNavigation = createContext<
 
 export function openExternalLink(url: string) {
   if (!/^https?:\/\//i.test(url)) return;
-  if (window.readerDesktop?.openExternal)
-    void window.readerDesktop
+  if (window.neoreadDesktop?.openExternal)
+    void window.neoreadDesktop
       .openExternal(url)
       .catch((e) => toast.error(e.message));
   else window.open(url, "_blank", "noopener,noreferrer");
 }
 
 export function citationHref(blockId: string, label: string) {
-  return `#reader-citation?${new URLSearchParams({ block: blockId, label })}`;
+  return `#neoread-citation?${new URLSearchParams({ block: blockId, label })}`;
 }
 
 const citationPattern = /\[(\d+(?:\s*[,，–-]\s*\d+)*)\]/g;

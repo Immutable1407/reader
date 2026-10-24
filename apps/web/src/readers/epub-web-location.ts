@@ -1,4 +1,4 @@
-import type { EPUBLocation, EPUBReadingBlock } from "@reader/core";
+import type { EPUBLocation, EPUBReadingBlock } from "@neoread/core";
 import { epubOffsets } from "../translation/epub-links";
 
 export type EPUBSlice = { block: EPUBReadingBlock; start: number; end: number };

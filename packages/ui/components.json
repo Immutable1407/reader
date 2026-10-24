@@ -11,10 +11,10 @@
   },
   "iconLibrary": "lucide",
   "aliases": {
-    "components": "@reader/ui/components",
-    "utils": "@reader/ui/lib/utils",
-    "ui": "@reader/ui/components",
-    "lib": "@reader/ui/lib",
-    "hooks": "@reader/ui/hooks"
+    "components": "@neoread/ui/components",
+    "utils": "@neoread/ui/lib/utils",
+    "ui": "@neoread/ui/components",
+    "lib": "@neoread/ui/lib",
+    "hooks": "@neoread/ui/hooks"
   }
 }

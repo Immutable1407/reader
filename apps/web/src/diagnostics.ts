@@ -1,17 +1,17 @@
-import { setDiagnosticReporter } from "@reader/api";
+import { setDiagnosticReporter } from "@neoread/api";
 import {
   diagnosticError,
   redact,
   type DiagnosticEvent,
-} from "../../../packages/reader-core/src/diagnostics";
+} from "../../../packages/neoread-core/src/diagnostics";
 import { version } from "../../desktop/package.json";
 
 let pending = Promise.resolve();
 let token = "";
 export function reportDiagnostic(event: DiagnosticEvent) {
   const safe = redact(event, [token]) as DiagnosticEvent;
-  if (window.readerDesktop?.recordDiagnostic) {
-    window.readerDesktop.recordDiagnostic(safe);
+  if (window.neoreadDesktop?.recordDiagnostic) {
+    window.neoreadDesktop.recordDiagnostic(safe);
   } else if (token) {
     pending = pending.then(async () => {
       try {
@@ -51,7 +51,7 @@ export function installDiagnostics(sessionToken: string) {
   reportDiagnostic({
     level: "info",
     event: "renderer.start",
-    detail: `Reader ${version}`,
+    detail: `NeoRead ${version}`,
   });
   return () => {
     window.removeEventListener("error", error);
@@ -62,8 +62,8 @@ export function installDiagnostics(sessionToken: string) {
 
 export async function exportDiagnostics(): Promise<boolean> {
   reportDiagnostic({ level: "info", event: "diagnostics.export_requested" });
-  if (window.readerDesktop?.exportDiagnostics)
-    return window.readerDesktop.exportDiagnostics();
+  if (window.neoreadDesktop?.exportDiagnostics)
+    return window.neoreadDesktop.exportDiagnostics();
   await pending;
   const response = await fetch("/api/diagnostics/export", {
     headers: { Authorization: `Bearer ${token}` },
@@ -72,7 +72,7 @@ export async function exportDiagnostics(): Promise<boolean> {
   const url = URL.createObjectURL(await response.blob());
   const link = document.createElement("a");
   link.href = url;
-  link.download = `Reader-diagnostics-${new Date().toISOString().replace(/[:.]/g, "-")}.zip`;
+  link.download = `NeoRead-diagnostics-${new Date().toISOString().replace(/[:.]/g, "-")}.zip`;
   link.click();
   setTimeout(() => URL.revokeObjectURL(url), 60_000);
   return true;

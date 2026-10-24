@@ -23,7 +23,7 @@ import { CommandLineSettings } from "./CommandLineSettings";
 import { ProviderIdentity } from "./ProviderIdentity";
 import { TaskModels } from "./TaskModels";
 import { APIAgentForm, APIModelForm } from "./APIAgentForm";
-import { api } from "@reader/api";
+import { api } from "@neoread/api";
 import type {
   AICapability,
   AIConfig,
@@ -33,35 +33,35 @@ import type {
   JournalRankConfig,
   PaperColumn,
   Provider,
-} from "@reader/core";
-import { Button } from "@reader/ui/components/button";
-import { Input } from "@reader/ui/components/input";
+} from "@neoread/core";
+import { Button } from "@neoread/ui/components/button";
+import { Input } from "@neoread/ui/components/input";
 import {
   Dialog,
   DialogContent,
   DialogHeader,
   DialogTitle,
   DialogDescription,
-} from "@reader/ui/components/dialog";
-import { Badge } from "@reader/ui/components/badge";
+} from "@neoread/ui/components/dialog";
+import { Badge } from "@neoread/ui/components/badge";
 import {
   Select,
   SelectTrigger,
   SelectValue,
   SelectContent,
   SelectItem,
-} from "@reader/ui/components/select";
+} from "@neoread/ui/components/select";
 import {
   Tooltip,
   TooltipTrigger,
   TooltipContent,
-} from "@reader/ui/components/tooltip";
+} from "@neoread/ui/components/tooltip";
 import {
   Tabs,
   TabsContent,
   TabsList,
   TabsTrigger,
-} from "@reader/ui/components/tabs";
+} from "@neoread/ui/components/tabs";
 import { HighlightColorsEditor } from "./HighlightColorsEditor";
 import { ProxySettings } from "./ProxySettings";
 import {
@@ -70,7 +70,7 @@ import {
   useReaderStore,
 } from "./store";
 import { libraryModes } from "./LibraryModeSwitcher";
-import { Checkbox } from "@reader/ui/components/checkbox";
+import { Checkbox } from "@neoread/ui/components/checkbox";
 import { toast } from "sonner";
 import { columnLabels, defaultColumns, toggleColumn } from "./papers/model";
 import { savePaperPreferences } from "./papers/actions";
@@ -138,7 +138,7 @@ export function Settings({
       });
       setJournalRank(saved);
       setJournalKey("");
-      window.dispatchEvent(new Event("reader:journal-rank-config"));
+      window.dispatchEvent(new Event("neoread:journal-rank-config"));
     } catch (error) {
       toast.error((error as Error).message);
     } finally {
@@ -709,7 +709,7 @@ export function Settings({
             className="settings-panel"
             keepMounted
           >
-            {window.readerDesktop?.proxySettings && (
+            {window.neoreadDesktop?.proxySettings && (
               <div className="mb-6">
                 <ProxySettings open={open} />
               </div>
@@ -882,7 +882,7 @@ export function Settings({
             </section>
           </TabsContent>
           <TabsContent value="papers" className="settings-panel" keepMounted>
-            {window.readerDesktop?.libraryLocation && (
+            {window.neoreadDesktop?.libraryLocation && (
               <div className="mb-6">
                 <LibraryLocationSettings open={open} />
               </div>
@@ -1072,7 +1072,7 @@ export function Settings({
                       variant="outline"
                       onClick={() =>
                         window.dispatchEvent(
-                          new Event("reader:journal-rank-refresh"),
+                          new Event("neoread:journal-rank-refresh"),
                         )
                       }
                     >
@@ -1241,9 +1241,9 @@ export function Settings({
               </div>
               <p className="mt-4 flex gap-2 text-xs leading-5 text-muted-foreground">
                 <CircleHelp className="mt-0.5 size-4 shrink-0" />
-                Reader 调用已安装的 CLI，不读取账号凭据。AI 请求使用 CLI
+                NeoRead 调用已安装的 CLI，不读取账号凭据。AI 请求使用 CLI
                 当前账户与计费方式；选择订阅登录时无需另填 API Key。API 连接使用
-                OpenAI 兼容接口，Key 保存在本机 Reader
+                OpenAI 兼容接口，Key 保存在本机 NeoRead
                 数据目录。发送的选区或章节会交给对应服务。
               </p>
             </section>

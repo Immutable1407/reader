@@ -1,6 +1,6 @@
 module.exports = {
-  appId: "io.github.cynicalight.reader",
-  productName: "Reader",
+  appId: "io.github.cynicalight.neoread",
+  productName: "NeoRead",
   directories: { output: "../../release" },
   files: ["dist/**/*", "package.json"],
   extraResources: [{ from: "staging", to: ".", filter: ["**/*"] }],
@@ -9,7 +9,7 @@ module.exports = {
   compression: "maximum",
   npmRebuild: false,
   publish: null,
-  protocols: [{ name: "Reader", schemes: ["reader"] }],
+  protocols: [{ name: "NeoRead", schemes: ["neoread"] }],
   mac: {
     compression: "normal",
     // The zip is the Squirrel.Mac in-place update payload.
@@ -23,8 +23,8 @@ module.exports = {
     notarize: false,
     artifactName:
       process.arch === "x64"
-        ? "Reader-${version}-mac-intel-x64.${ext}"
-        : "Reader-${version}-mac-${arch}.${ext}",
+        ? "NeoRead-${version}-mac-intel-x64.${ext}"
+        : "NeoRead-${version}-mac-${arch}.${ext}",
   },
   dmg: {
     sign: false,
@@ -38,7 +38,7 @@ module.exports = {
     icon: "../../assets/icons/windows/icon.ico",
     // Skip only code signing; resource editing still embeds the icon and version info.
     signExecutable: false,
-    artifactName: "Reader-${version}-win-${arch}.${ext}",
+    artifactName: "NeoRead-${version}-win-${arch}.${ext}",
   },
   nsis: {
     oneClick: false,

@@ -1,7 +1,7 @@
 import { Profiler, useEffect, useRef, useState } from "react";
 import { ArrowDown } from "lucide-react";
-import { Button } from "@reader/ui/components/button";
-import { ScrollArea } from "@reader/ui/components/scroll-area";
+import { Button } from "@neoread/ui/components/button";
+import { ScrollArea } from "@neoread/ui/components/scroll-area";
 import { MessageMarkdown } from "./MessageMarkdown";
 import { copyText } from "./clipboard";
 import {

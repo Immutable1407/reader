@@ -1,12 +1,12 @@
 import type { RefObject } from "react";
-import type { Annotation, SelectionAnchor } from "@reader/core";
+import type { Annotation, SelectionAnchor } from "@neoread/core";
 import { Trash2, StickyNote, SquarePen, Sparkles } from "lucide-react";
-import { Button } from "@reader/ui/components/button";
+import { Button } from "@neoread/ui/components/button";
 import {
   Tooltip,
   TooltipTrigger,
   TooltipContent,
-} from "@reader/ui/components/tooltip";
+} from "@neoread/ui/components/tooltip";
 import { SelectionToolbar } from "./SelectionToolbar";
 import { ColorSwatches } from "./ColorSwatches";
 

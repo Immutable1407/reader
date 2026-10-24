@@ -4,7 +4,7 @@ import {
   type LinkPreview,
   type PDFLocation,
   type ReaderTheme,
-} from "@reader/core";
+} from "@neoread/core";
 import {
   cropPDFRegions,
   imageRegions,

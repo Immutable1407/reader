@@ -2,9 +2,9 @@
 import { act } from "react";
 import { createRoot, type Root } from "react-dom/client";
 import { afterEach, beforeEach, expect, it, vi } from "vitest";
-import type { DocumentNavigation, TOCItem } from "@reader/core";
+import type { DocumentNavigation, TOCItem } from "@neoread/core";
 const mocks = vi.hoisted(() => ({ load: vi.fn(), save: vi.fn() }));
-vi.mock("@reader/api", () => ({
+vi.mock("@neoread/api", () => ({
   api: { navigation: mocks.load, saveNavigation: mocks.save },
 }));
 import { NavigationTree } from "./NavigationTree";

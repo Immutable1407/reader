@@ -1,11 +1,11 @@
 import type { ReactNode } from "react";
 import { ChevronRight, LoaderCircle } from "lucide-react";
-import { Button } from "@reader/ui/components/button";
+import { Button } from "@neoread/ui/components/button";
 import {
   Collapsible,
   CollapsibleTrigger,
   CollapsibleContent,
-} from "@reader/ui/components/collapsible";
+} from "@neoread/ui/components/collapsible";
 import "./chat-process.css";
 
 export function ChatDisclosure({

@@ -2,12 +2,12 @@
 import { act } from "react";
 import { createRoot } from "react-dom/client";
 import { afterEach, expect, it, vi } from "vitest";
-import { api } from "@reader/api";
-import { defaultTheme } from "@reader/core";
+import { api } from "@neoread/api";
+import { defaultTheme } from "@neoread/core";
 import { App } from "./App";
 import { useReaderStore } from "./store";
 
-vi.mock("@reader/api", () => ({
+vi.mock("@neoread/api", () => ({
   RequestError: class extends Error {},
   api: {
     documents: vi.fn().mockRejectedValue(new Error("library unavailable")),

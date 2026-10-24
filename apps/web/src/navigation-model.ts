@@ -5,7 +5,7 @@ import type {
   NavigationEdit,
   PDFBlock,
   TOCItem,
-} from "@reader/core";
+} from "@neoread/core";
 
 export interface NavigationItem extends TOCItem {
   kind: "heading" | "bookmark";

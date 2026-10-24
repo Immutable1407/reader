@@ -3,9 +3,9 @@ import { act, useEffect, useState } from "react";
 import { createRoot, type Root } from "react-dom/client";
 import { afterEach, beforeEach, expect, it, vi } from "vitest";
 import { TranslationPanes } from "./TranslationPanes";
-import { defaultTheme } from "@reader/core";
+import { defaultTheme } from "@neoread/core";
 import { useReaderStore } from "../store";
-import { readerLayout, updateReaderLayout } from "../reader-layout";
+import { readerLayout, updateReaderLayout } from "../neoread-layout";
 
 let host: HTMLDivElement, root: Root;
 const mount = vi.fn(),

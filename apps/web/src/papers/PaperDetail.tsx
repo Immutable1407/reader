@@ -19,31 +19,31 @@ import type {
   Document,
   PaperItemType,
   PaperMetadataField,
-} from "@reader/core";
-import { Button } from "@reader/ui/components/button";
-import { api, publicationURL } from "@reader/api";
+} from "@neoread/core";
+import { Button } from "@neoread/ui/components/button";
+import { api, publicationURL } from "@neoread/api";
 import {
   Dialog,
   DialogContent,
   DialogHeader,
   DialogTitle,
-} from "@reader/ui/components/dialog";
-import { Input } from "@reader/ui/components/input";
-import { Textarea } from "@reader/ui/components/textarea";
+} from "@neoread/ui/components/dialog";
+import { Input } from "@neoread/ui/components/input";
+import { Textarea } from "@neoread/ui/components/textarea";
 import {
   Select,
   SelectContent,
   SelectItem,
   SelectTrigger,
   SelectValue,
-} from "@reader/ui/components/select";
+} from "@neoread/ui/components/select";
 import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuSeparator,
   DropdownMenuTrigger,
-} from "@reader/ui/components/dropdown-menu";
+} from "@neoread/ui/components/dropdown-menu";
 import { useReaderStore } from "../store";
 import {
   lookupPaper,

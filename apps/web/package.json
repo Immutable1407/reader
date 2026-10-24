@@ -1,5 +1,5 @@
 {
-  "name": "@reader/web",
+  "name": "@neoread/web",
   "private": true,
   "type": "module",
   "scripts": {
@@ -11,9 +11,9 @@
     "@citation-js/plugin-csl": "^0.9.0",
     "@lobehub/icons": "5.23.0",
     "@lobehub/streamdown": "1.4.0",
-    "@reader/api": "workspace:*",
-    "@reader/core": "workspace:*",
-    "@reader/ui": "workspace:*",
+    "@neoread/api": "workspace:*",
+    "@neoread/core": "workspace:*",
+    "@neoread/ui": "workspace:*",
     "@readium/navigator": "2.11.1",
     "@readium/shared": "2.6.0",
     "katex": "0.18.1",

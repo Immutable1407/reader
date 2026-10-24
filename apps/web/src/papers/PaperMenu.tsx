@@ -12,7 +12,7 @@ import {
   Tag,
   Trash2,
 } from "lucide-react";
-import { readerLink, type Document, type ReadingStatus } from "@reader/core";
+import { neoreadLink, type Document, type ReadingStatus } from "@neoread/core";
 import { copyText } from "../chat/clipboard";
 import {
   ContextMenuCheckboxItem,
@@ -23,7 +23,7 @@ import {
   ContextMenuSub,
   ContextMenuSubContent,
   ContextMenuSubTrigger,
-} from "@reader/ui/components/context-menu";
+} from "@neoread/ui/components/context-menu";
 import {
   DropdownMenuCheckboxItem,
   DropdownMenuItem,
@@ -33,7 +33,7 @@ import {
   DropdownMenuSub,
   DropdownMenuSubContent,
   DropdownMenuSubTrigger,
-} from "@reader/ui/components/dropdown-menu";
+} from "@neoread/ui/components/dropdown-menu";
 import { useReaderStore } from "../store";
 import {
   addToCategory,
@@ -243,7 +243,7 @@ export function PaperMenuItems({
           <K.Separator />
           <K.Item
             onClick={() =>
-              void copyText(readerLink({ id: one.id }), "已复制阅读链接")
+              void copyText(neoreadLink({ id: one.id }), "已复制阅读链接")
             }
           >
             <Link2 />
@@ -255,10 +255,10 @@ export function PaperMenuItems({
               打开论文主页
             </K.Item>
           )}
-          {window.readerDesktop?.showDocumentFile && (
+          {window.neoreadDesktop?.showDocumentFile && (
             <K.Item onClick={() => revealFile(one)}>
               <FolderOpen />
-              {window.readerDesktop.platform === "darwin"
+              {window.neoreadDesktop.platform === "darwin"
                 ? "在访达中显示"
                 : "在文件夹中显示"}
             </K.Item>

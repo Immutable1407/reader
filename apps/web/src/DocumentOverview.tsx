@@ -5,16 +5,16 @@ import type {
   DocumentLocation,
   DocumentOverview,
   OverviewJob,
-} from "@reader/core";
-import { api } from "@reader/api";
-import { Button } from "@reader/ui/components/button";
+} from "@neoread/core";
+import { api } from "@neoread/api";
+import { Button } from "@neoread/ui/components/button";
 import {
   Dialog,
   DialogContent,
   DialogHeader,
   DialogTitle,
   DialogDescription,
-} from "@reader/ui/components/dialog";
+} from "@neoread/ui/components/dialog";
 
 const labels: Record<OverviewJob["status"], string> = {
   missing: "尚未生成概要",
