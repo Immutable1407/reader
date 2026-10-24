@@ -1918,29 +1918,33 @@ it("keeps resizing after hiding the last column and persists the expanded width"
     )!;
     const table = host.querySelector<HTMLTableElement>(".paper-table table")!;
     await press(edge, "pointerdown", 496);
-    for (const dx of [64, 800, 32]) {
+    for (const [dx, title, authors] of [
+      [64, 560, 48],
+      [800, 796, 48],
+      [784, 780, 64],
+    ]) {
       await press(edge, "pointermove", 496 + dx);
       expect(
         table.querySelector<HTMLElement>('th[data-column="title"]')!.style
           .width,
-      ).toBe(`${496 + Math.min(dx, 300)}px`);
+      ).toBe(`${title}px`);
       expect(
         table.querySelector<HTMLElement>('th[data-column="authors"]')!.style
           .width,
-      ).toBe("48px");
-      expect(table.style.minWidth).toBe(`${576 + Math.min(dx, 300)}px`);
+      ).toBe(`${authors}px`);
+      expect(table.style.minWidth).toBe(`${title + authors + 32}px`);
       expect(table.style.width).toBe("100%");
     }
     expect(api.saveLibraryPreferences).not.toHaveBeenCalled();
-    await press(edge, "pointerup", 528);
-    expect(prefs().columnWidths).toEqual({ title: 528, authors: 48 });
+    await press(edge, "pointerup", 1280);
+    expect(prefs().columnWidths).toEqual({ title: 780, authors: 64 });
     const saved = structuredClone(useReaderStore.getState().libraryPreferences);
     await act(async () =>
       useReaderStore.setState({ libraryPreferences: saved }),
     );
     expect(
       table.querySelector<HTMLElement>('th[data-column="title"]')!.style.width,
-    ).toBe("528px");
+    ).toBe("780px");
   } finally {
     rects.mockRestore();
   }
@@ -1973,8 +1977,6 @@ it("compresses visible columns in order when dragging the second boundary", asyn
       [60, 48, 48, 130],
       [200, 48, 48, 48],
       [500, 48, 48, 48],
-      [5, 59, 72, 150],
-      [-20, 84, 72, 150],
     ]) {
       await press(edge, "pointermove", 560 + dx);
       expect(
@@ -1997,8 +1999,14 @@ it("compresses visible columns in order when dragging the second boundary", asyn
       }
     }
     expect(api.saveLibraryPreferences).not.toHaveBeenCalled();
-    await press(edge, "pointerup", 540);
-    expect(prefs().columnWidths).toEqual({ ...widths, authors: 140, year: 84 });
+    await press(edge, "pointerup", 1060);
+    expect(prefs().columnWidths).toEqual({
+      ...widths,
+      authors: 382,
+      year: 48,
+      status: 48,
+      venue: 48,
+    });
   } finally {
     rects.mockRestore();
   }
@@ -2073,8 +2081,6 @@ it("compresses columns to the left in nearest-first order and stops at their min
       [-48, 200, 64, 48, 48, 128],
       [-80, 184, 48, 48, 48, 160],
       [-999, 160, 48, 48, 48, 184],
-      [20, 200, 80, 64, 84, 60],
-      [-12, 200, 80, 64, 52, 92],
     ]) {
       await press(edge, "pointermove", 408 + dx);
       for (const [column, width] of Object.entries({
@@ -2095,8 +2101,105 @@ it("compresses columns to the left in nearest-first order and stops at their min
       ).toBe("520px");
     }
     expect(api.saveLibraryPreferences).not.toHaveBeenCalled();
-    await press(edge, "pointerup", 396);
-    expect(prefs().columnWidths).toEqual({ ...widths, status: 52, venue: 92 });
+    await press(edge, "pointerup", -591);
+    expect(prefs().columnWidths).toEqual({
+      title: 160,
+      authors: 48,
+      year: 48,
+      status: 48,
+      venue: 184,
+    });
+  } finally {
+    rects.mockRestore();
+  }
+});
+
+it.each(["right", "left"])(
+  "keeps displaced columns in place when reversing a %s drag",
+  async (direction) => {
+    const widths = { title: 200, authors: 80, year: 64, status: 64, venue: 80 };
+    await act(async () =>
+      useReaderStore.setState({
+        libraryPreferences: {
+          mode: "papers",
+          papers: {
+            layout: "table",
+            columns: ["authors", "year", "status", "venue"],
+            columnOrder: ["title", "authors", "year", "status", "venue"],
+            columnWidths: widths,
+          },
+        },
+      }),
+    );
+    const rects = fakeWidths(widths);
+    try {
+      const edge = host.querySelector<HTMLElement>(
+        direction === "right"
+          ? '[aria-label="调整作者列宽度"]'
+          : '[aria-label="调整状态列宽度"]',
+      )!;
+      const sign = direction === "right" ? 1 : -1;
+      await press(edge, "pointerdown", 400);
+      await press(edge, "pointermove", 400 + sign * 32);
+      await press(edge, "pointermove", 400 + sign * 24);
+      const expected =
+        direction === "right"
+          ? { ...widths, authors: 104, year: 56, status: 48 }
+          : { ...widths, year: 48, status: 56, venue: 104 };
+      for (const [column, width] of Object.entries(expected)) {
+        expect(
+          host.querySelector<HTMLElement>(`th[data-column="${column}"]`)!.style
+            .width,
+        ).toBe(`${width}px`);
+      }
+      await press(edge, "pointerup", 400 + sign * 24);
+      expect(prefs().columnWidths).toEqual(expected);
+    } finally {
+      rects.mockRestore();
+    }
+  },
+);
+
+it("accounts for consumed and released spare space across repeated drag reversals", async () => {
+  await act(async () =>
+    useReaderStore.setState({
+      libraryPreferences: {
+        mode: "papers",
+        papers: {
+          layout: "table",
+          columns: ["authors"],
+          columnWidths: { title: 400, authors: 160 },
+        },
+      },
+    }),
+  );
+  const rects = fakeWidths({ title: 400, authors: 160, filler: 80 });
+  try {
+    const edge = host.querySelector<HTMLElement>(
+      '[aria-label="调整作者列宽度"]',
+    )!;
+    await press(edge, "pointerdown", 560);
+    for (const [dx, width] of [
+      [60, 220],
+      [100, 240],
+      [84, 224],
+      [100, 240],
+      [200, 240],
+    ]) {
+      await press(edge, "pointermove", 560 + dx);
+      expect(
+        host.querySelector<HTMLElement>('th[data-column="authors"]')!.style
+          .width,
+      ).toBe(`${width}px`);
+      expect(
+        Number.parseFloat(
+          host.querySelector<HTMLTableElement>(".paper-table table")!.style
+            .minWidth,
+        ),
+      ).toBeLessThanOrEqual(672);
+    }
+    await press(edge, "pointerup", 760);
+    expect(prefs().columnWidths).toEqual({ title: 400, authors: 240 });
   } finally {
     rects.mockRestore();
   }

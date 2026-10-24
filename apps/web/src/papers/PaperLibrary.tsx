@@ -421,13 +421,31 @@ export function PaperLibrary({
     left: TableColumn[],
     right: TableColumn[],
   ) => {
-    const start = headerWidths(e.currentTarget);
-    const spareWidth = spareTableWidth(e.currentTarget);
+    let current = headerWidths(e.currentTarget);
+    let spareWidth = spareTableWidth(e.currentTarget);
+    let previous = 0;
     let next: Partial<Record<TableColumn, number>> = {};
     dragHorizontally(
       e,
       (dx) => {
-        next = resizeBoundary(start, left, right, dx, spareWidth);
+        // Reverse from the current layout instead of replaying the drag from
+        // pointerdown, so columns already pushed aside do not snap back.
+        const position = Math.round(dx);
+        const change = resizeBoundary(
+          current,
+          left,
+          right,
+          position - previous,
+          spareWidth,
+        );
+        previous = position;
+        const released = Object.entries(change).reduce(
+          (sum, [column, width]) => sum + (current[column] ?? width) - width,
+          0,
+        );
+        spareWidth = Math.max(0, spareWidth + released);
+        current = { ...current, ...change };
+        next = { ...next, ...change };
         setDraftWidths(next);
       },
       () => {
