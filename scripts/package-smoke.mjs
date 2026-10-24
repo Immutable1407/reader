@@ -125,7 +125,12 @@ try {
   assert.equal((await request("/api/documents", false)).status, 401);
   const documents = await request("/api/documents");
   assert.equal(documents.status, 200);
-  assert.deepEqual(await documents.json(), []);
+  // A fresh library includes the bundled onboarding paper.
+  const library = await documents.json();
+  assert.equal(library.length, 1, "Fresh library must contain the example paper");
+  assert.equal(library[0].title, "Attention Is All You Need");
+  assert.equal(library[0].type, "pdf");
+  assert.equal(library[0].metadata.arxiv, "1706.03762");
   const web = await request("/");
   assert.equal(web.status, 200);
   assert.match(await web.text(), /<div id="root">/);
@@ -145,7 +150,7 @@ try {
   assert.equal(cli.status, 0, `Packaged command line failed: ${cli.stderr}`);
   const status = JSON.parse(cli.stdout);
   assert.equal(status.url, ready.url);
-  assert.equal(status.documents, 0);
+  assert.equal(status.documents, library.length);
   console.log(
     "Packaged Go service, SQLite, API authentication, command line and web resources passed.",
   );
