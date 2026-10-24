@@ -33,3 +33,14 @@ after every change to `ReaderCite.bas` or `customUI14.xml`, then committed.
   and write `apps/cite-plugins/word/Reader.dotm`.
 
 The ribbon icons in `wps/images` are from Lucide (ISC license).
+
+## Word document-isolation regression
+
+On Windows with Word and VBA project access enabled, run
+`powershell -File apps/cite-plugins/word/test-template.ps1`.
+The script imports the real module into a separate, unsaved Word project and
+adds test-only wrappers around its private operations. It creates disposable
+documents to verify that switching documents/cursors cannot redirect updates,
+preferences, insertion or removal, and that closing the original document
+rejects subsequent writes. It closes only its own Word instance. The test
+module and wrappers are not included in the shipped template.

@@ -25,6 +25,8 @@ Private Const PREF_CHUNK As Long = 255
 Private Const STYLE_BIBLIOGRAPHY As Long = -266
 Private Const PROPERTY_STRING As Long = 4
 
+Private mDocument As Document
+Private mSelection As Range
 Private mRunning As Boolean
 Private mCount As Long
 Private mFields() As Variant
@@ -67,13 +69,14 @@ Private Sub RunCommand(ByVal command As String)
     End If
     mRunning = True
     On Error GoTo Failed
+    BindDocument
     Dim reply As String
     Dim opName As String
     Dim transaction As String
     Dim failure As String
     Dim result As String
     reply = Post("/v1/cite/execCommand", "{""command"":" & Q(command) & _
-        ",""documentId"":" & Q(ActiveDocument.FullName) & _
+        ",""documentId"":" & Q(mDocument.FullName) & _
         ",""client"":" & Q(ClientName()) & "}")
     Do
         opName = JsonString(reply, "op")
@@ -96,15 +99,49 @@ Private Sub RunCommand(ByVal command As String)
     Loop
     mRunning = False
     If JsonBool(reply, "activate") Then ActivateWord
+    Set mDocument = Nothing
+    Set mSelection = Nothing
     If Len(JsonString(reply, "error")) > 0 Then Notify JsonString(reply, "error"), vbExclamation
     Exit Sub
 Failed:
     mRunning = False
+    Set mDocument = Nothing
+    Set mSelection = Nothing
     Notify Err.Description, vbExclamation
+End Sub
+
+' Keep the document and insertion range stable while HTTP yields to Word.
+Private Sub BindDocument()
+    Set mDocument = ActiveDocument
+    Set mSelection = Selection.Range.Duplicate
+    mCount = 0
+End Sub
+
+Private Sub EnsureDocumentOpen()
+    Dim doc As Document
+    For Each doc In Documents
+        If doc Is mDocument Then Exit Sub
+    Next
+    Err.Raise vbObjectError + 517, "Reader", T("\u539f\u6587\u6863\u5df2\u5173\u95ed\uff0c\u672c\u6b21\u5f15\u7528\u64cd\u4f5c\u5df2\u53d6\u6d88\u3002")
+End Sub
+
+' Indexes refer to the fields returned by getState, never to the active window.
+Private Sub ValidateFields()
+    EnsureDocumentOpen
+    Dim i As Long
+    For i = 1 To mCount
+        If Not (mFields(i).Code.Document Is mDocument) Then
+            Err.Raise vbObjectError + 518, "Reader", T("\u6587\u6863\u4e2d\u7684\u5f15\u6ce8\u5df2\u6539\u53d8\uff0c\u8bf7\u91cd\u8bd5\u3002")
+        End If
+        If ReaderCode(mFields(i).Code.Text) <> mCodes(i) Then
+            Err.Raise vbObjectError + 518, "Reader", T("\u6587\u6863\u4e2d\u7684\u5f15\u6ce8\u5df2\u6539\u53d8\uff0c\u8bf7\u91cd\u8bd5\u3002")
+        End If
+    Next
 End Sub
 
 Private Function ExecuteOperation(ByVal encoded As String, ByRef failure As String) As String
     On Error GoTo Failed
+    EnsureDocumentOpen
     If Len(encoded) = 0 Then
         failure = T("\u63d2\u4ef6\u7248\u672c\u8fc7\u65e7\uff0c\u8bf7\u5728 Reader \u8bbe\u7f6e\u4e2d\u91cd\u65b0\u5b89\u88c5 Word \u63d2\u4ef6\u3002")
         Exit Function
@@ -151,15 +188,15 @@ Private Function GetState() As String
         Set f = mFields(i)
         parts(i - 1) = "{""code"":" & Q(mCodes(i)) & ",""text"":" & Q(f.Result.Text) & _
             ",""noteIndex"":" & mNotes(i) & "}"
-        If f.Result.StoryType = Selection.StoryType And f.Code.Start - 1 <= Selection.Start _
-            And Selection.End <= f.Result.End + 1 Then cursor = CStr(i - 1)
+        If f.Result.StoryType = mSelection.StoryType And f.Code.Start - 1 <= mSelection.Start _
+            And mSelection.End <= f.Result.End + 1 Then cursor = CStr(i - 1)
         If mAnchors(i) < anchor Then before = before + 1
     Next
     Dim list As String
     If mCount > 0 Then list = Join(parts, ",")
     GetState = "{""fields"":[" & list & "],""cursor"":" & cursor & _
         ",""fieldsBefore"":" & before & ",""data"":" & Q(ReadData()) & _
-        ",""canInsert"":" & IIf(ActiveDocument.ReadOnly, "false", "true") & "}"
+        ",""canInsert"":" & IIf(mDocument.ReadOnly, "false", "true") & "}"
 End Function
 
 Private Function InsertField(lines() As String) As String
@@ -175,18 +212,18 @@ Private Function InsertField(lines() As String) As String
         End Select
     Next
     Dim target As Range
-    Set target = Selection.Range
+    Set target = mSelection.Duplicate
     target.Collapse wdCollapseEnd
     Dim note As Object
     If noteType = 1 Then
-        Set note = ActiveDocument.Footnotes.Add(Range:=target)
+        Set note = mDocument.Footnotes.Add(Range:=target)
         Set target = note.Range
     ElseIf noteType = 2 Then
-        Set note = ActiveDocument.Endnotes.Add(Range:=target)
+        Set note = mDocument.Endnotes.Add(Range:=target)
         Set target = note.Range
     End If
     Dim f As Field
-    Set f = ActiveDocument.Fields.Add(Range:=target, Type:=wdFieldEmpty, _
+    Set f = mDocument.Fields.Add(Range:=target, Type:=wdFieldEmpty, _
         Text:="ADDIN READER_TEMP", PreserveFormatting:=False)
     If kind = "bibliography" Then
         f.Result.Text = "{Bibliography}"
@@ -200,6 +237,7 @@ Private Function InsertField(lines() As String) As String
         note.Reference.Select
     End If
     Selection.Collapse wdCollapseEnd
+    Set mSelection = Selection.Range.Duplicate
     CollectFields
     For i = 1 To mCount
         If mCodes(i) = "READER_TEMP" Then
@@ -211,7 +249,7 @@ Private Function InsertField(lines() As String) As String
 End Function
 
 Private Sub UpdateFields(lines() As String)
-    CollectFields
+    ValidateFields
     Dim i As Long
     Dim index As Long
     Dim f As Object
@@ -264,7 +302,7 @@ Private Sub UpdateFields(lines() As String)
 End Sub
 
 Private Sub RemoveFields(lines() As String)
-    CollectFields
+    ValidateFields
     Dim keepText As Boolean
     Dim i As Long
     Dim index As Long
@@ -293,7 +331,7 @@ Private Sub SetData(lines() As String)
         If Part(lines(i), 0) = "data" Then data = Part(lines(i), 1)
     Next
     Dim props As Object
-    Set props = ActiveDocument.CustomDocumentProperties
+    Set props = mDocument.CustomDocumentProperties
     For i = props.Count To 1 Step -1
         If Left$(props(i).Name, Len(PREF_PREFIX)) = PREF_PREFIX Then props(i).Delete
     Next
@@ -310,7 +348,7 @@ Private Function ReadData() As String
     Dim props As Object
     Dim i As Long
     Dim out As String
-    Set props = ActiveDocument.CustomDocumentProperties
+    Set props = mDocument.CustomDocumentProperties
     On Error GoTo Done
     i = 1
     Do
@@ -332,17 +370,17 @@ Private Sub CollectFields()
     ReDim mAnchors(1 To 1)
     ReDim mOffsets(1 To 1)
     Dim f As Field
-    For Each f In ActiveDocument.Fields
+    For Each f In mDocument.Fields
         AddField f, 0, f.Code.Start
     Next
     Dim footNote As Footnote
-    For Each footNote In ActiveDocument.Footnotes
+    For Each footNote In mDocument.Footnotes
         For Each f In footNote.Range.Fields
             AddField f, footNote.Index, footNote.Reference.Start
         Next
     Next
     Dim lastNote As Endnote
-    For Each lastNote In ActiveDocument.Endnotes
+    For Each lastNote In mDocument.Endnotes
         For Each f In lastNote.Range.Fields
             AddField f, lastNote.Index, lastNote.Reference.Start
         Next
@@ -397,17 +435,17 @@ End Function
 
 ' Main-text position of the selection; inside a note, its reference.
 Private Function SelectionAnchor() As Long
-    SelectionAnchor = Selection.Start
-    If Selection.StoryType = wdMainTextStory Then Exit Function
+    SelectionAnchor = mSelection.Start
+    If mSelection.StoryType = wdMainTextStory Then Exit Function
     Dim footNote As Footnote
-    For Each footNote In ActiveDocument.Footnotes
+    For Each footNote In mDocument.Footnotes
         If InNote(footNote.Range) Then
             SelectionAnchor = footNote.Reference.Start
             Exit Function
         End If
     Next
     Dim lastNote As Endnote
-    For Each lastNote In ActiveDocument.Endnotes
+    For Each lastNote In mDocument.Endnotes
         If InNote(lastNote.Range) Then
             SelectionAnchor = lastNote.Reference.Start
             Exit Function
@@ -416,8 +454,8 @@ Private Function SelectionAnchor() As Long
 End Function
 
 Private Function InNote(ByVal note As Range) As Boolean
-    InNote = note.StoryType = Selection.StoryType And note.Start <= Selection.Start _
-        And Selection.End <= note.End
+    InNote = note.StoryType = mSelection.StoryType And note.Start <= mSelection.Start _
+        And mSelection.End <= note.End
 End Function
 
 Private Sub AddRun(texts() As String, flags() As String, count As Long, _
@@ -478,7 +516,7 @@ Private Sub FormatBibliography(ByVal result As Range, ByVal hanging As Boolean, 
     ByVal entrySpacing As Double)
     On Error Resume Next
     ' Documents without the built-in style keep their paragraph style.
-    result.Style = ActiveDocument.Styles(STYLE_BIBLIOGRAPHY)
+    result.Style = mDocument.Styles(STYLE_BIBLIOGRAPHY)
     On Error GoTo 0
     Dim size As Single
     Dim indent As Single
@@ -590,7 +628,7 @@ End Function
 
 Private Sub ActivateWord()
     On Error Resume Next
-    ActiveDocument.ActiveWindow.Activate
+    mDocument.ActiveWindow.Activate
     Application.Activate
 End Sub
 
