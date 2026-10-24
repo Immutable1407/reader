@@ -1,3 +1,4 @@
+import { PDFResizeObserver } from "./pdf-resize";
 import { readPDFOutline } from "./pdf-outline";
 import { PDFFigureLinks } from "./pdf-figure-links";
 import { selectionContext } from "./selection-context";
@@ -67,8 +68,7 @@ export class PDFReaderAdapter implements ReaderAdapter {
   private linkPreview: PDFLinkPreview;
   private removeExternalLinks: () => void;
   private texts = new Map<number, string>();
-  private resize: ResizeObserver;
-  private resizeFrame = 0;
+  private resize: PDFResizeObserver;
   private viewportFrame = 0;
   private viewport: PDFViewport;
   private resizingViewport = false;
@@ -219,9 +219,9 @@ export class PDFReaderAdapter implements ReaderAdapter {
     container.addEventListener("scroll", this.onScroll, {
       passive: true,
     });
-    this.resize = new ResizeObserver(() => {
-      cancelAnimationFrame(this.resizeFrame);
-      this.resizeFrame = requestAnimationFrame(() => {
+    this.resize = new PDFResizeObserver(
+      container,
+      () => {
         if (this.disposed || !this.pdf || container.closest("[inert]")) return;
         viewer.style.paddingBottom = `${container.clientHeight / 2}px`;
         this.resizingViewport = true;
@@ -243,9 +243,9 @@ export class PDFReaderAdapter implements ReaderAdapter {
           this.appliedZoom = result.scale;
           this.events.zoom?.(result.scale, "layout", result.widthRatio);
         }
-      });
-    });
-    this.resize.observe(container);
+      },
+      () => this.viewport.cancelAnimation(),
+    );
   }
   preferTheme(theme: ReaderTheme) {
     this.theme = theme;
@@ -310,6 +310,7 @@ export class PDFReaderAdapter implements ReaderAdapter {
     return overlap > view.height / 2;
   }
   async goTo(location: DocumentLocation) {
+    this.viewport.cancelAnimation();
     if (location.type !== "pdf" || !this.pdf) return;
     this.locationHighlight.clear();
     const request = ++this.navigationRequest;
@@ -394,6 +395,7 @@ export class PDFReaderAdapter implements ReaderAdapter {
     this.viewportFrame = requestAnimationFrame(() => this.viewport.remember());
   };
   private onPointerDown = (event: PointerEvent) => {
+    this.viewport.cancelAnimation();
     if (isSelectionToolbar(event.target)) return;
     this.locationHighlight.clear();
     this.events.annotation?.(null);
@@ -411,6 +413,7 @@ export class PDFReaderAdapter implements ReaderAdapter {
     if (!command || event.defaultPrevented || !this.canZoom(event.target))
       return;
     event.preventDefault();
+    this.viewport.cancelAnimation();
     this.wheelScale = undefined;
     if (command === "width") {
       this.navigation.stop();
@@ -464,6 +467,7 @@ export class PDFReaderAdapter implements ReaderAdapter {
     this.viewport.reset();
   }
   private onWheel = (event: WheelEvent) => {
+    this.viewport.cancelAnimation();
     // Chromium reports trackpad pinch as Ctrl+wheel; macOS Cmd+wheel uses metaKey.
     if (
       !(event.ctrlKey || event.metaKey) ||
@@ -826,6 +830,7 @@ export class PDFReaderAdapter implements ReaderAdapter {
       this.redrawDarkPages();
   }
   async focusReference(location: DocumentLocation, text: string) {
+    this.viewport.cancelAnimation();
     if (location.type !== "pdf" || this.disposed) return false;
     const block = referenceBlock(this.blockData, location, text);
     if (!block) return false;
@@ -867,6 +872,7 @@ export class PDFReaderAdapter implements ReaderAdapter {
     this.blocks.setSearchBlocks(blockIds);
   }
   async focusBlock(blockId: string, layout: "source" | "parallel") {
+    this.viewport.cancelAnimation();
     if (!this.blockData.some((block) => block.id === blockId)) return;
     this.fitWidth = false;
     this.clearSelection();
@@ -882,7 +888,10 @@ export class PDFReaderAdapter implements ReaderAdapter {
   }
   cancelBlockFocus() {
     this.navigation.cancelMotion();
-    this.viewport.reset();
+    this.viewport.cancelAnimation();
+    // A second toggle can arrive at an intermediate width. Keep the original
+    // zoom basis and reading point until the whole layout change has settled.
+    this.viewport.remember();
   }
   followBlock(anchor: import("@neoread/core").PDFReadingAnchor) {
     return this.navigation.follow(anchor);
@@ -984,7 +993,7 @@ export class PDFReaderAdapter implements ReaderAdapter {
     this.figureLinks.destroy();
     this.disposed = true;
     this.resize.disconnect();
-    cancelAnimationFrame(this.resizeFrame);
+    this.viewport.cancelAnimation();
     cancelAnimationFrame(this.viewportFrame);
     document.removeEventListener("mouseup", this.onMouseUp);
     document.removeEventListener("pointerdown", this.onPointerDown);

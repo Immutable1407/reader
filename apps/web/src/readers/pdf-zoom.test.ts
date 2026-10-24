@@ -100,7 +100,10 @@ beforeEach(async () => {
     },
   );
   host = document.createElement("div");
-  document.body.append(host);
+  const group = document.createElement("div");
+  group.dataset.slot = "resizable-panel-group";
+  group.append(host);
+  document.body.append(group);
   adapter = new PDFReaderAdapter(host, {
     location: vi.fn(),
     selection: vi.fn(),
@@ -288,7 +291,7 @@ it("resizes a manually zoomed PDF with its pane and preserves horizontal and ver
     await vi.advanceTimersByTimeAsync(32);
     width = 400;
     state.resize?.();
-    await vi.advanceTimersByTimeAsync(32);
+    await vi.advanceTimersByTimeAsync(160);
     expect(state.scale).toBe(0.8);
     expect(host.scrollLeft).toBeCloseTo(160);
     expect(host.scrollTop).toBeCloseTo(400);
@@ -296,10 +299,38 @@ it("resizes a manually zoomed PDF with its pane and preserves horizontal and ver
     await adapter.setTheme({ ...defaultTheme, zoom: 0.8 });
     width = 800;
     state.resize?.();
-    await vi.advanceTimersByTimeAsync(32);
+    await vi.advanceTimersByTimeAsync(160);
     expect(state.scale).toBe(1.6);
     expect(host.scrollLeft).toBeCloseTo(320);
     expect(host.scrollTop).toBeCloseTo(1100);
+  } finally {
+    vi.useRealTimers();
+  }
+});
+
+it("keeps the original zoom basis when a sidebar toggle reverses mid-animation", async () => {
+  let width = 800;
+  Object.defineProperties(host, {
+    clientWidth: { get: () => width },
+    clientHeight: { value: 600 },
+  });
+  await adapter.setTheme({ ...defaultTheme, zoom: 1.6 });
+  const group = host.parentElement!;
+  vi.useFakeTimers();
+  try {
+    adapter.cancelBlockFocus();
+    group.setAttribute("data-toggling", "");
+    width = 600;
+    state.resize?.();
+    await vi.advanceTimersByTimeAsync(160);
+    expect(state.scale).toBe(1.6);
+    adapter.cancelBlockFocus();
+    width = 800;
+    state.resize?.();
+    group.removeAttribute("data-toggling");
+    await vi.advanceTimersByTimeAsync(160);
+    expect(state.scale).toBe(1.6);
+    expect(state.update).not.toHaveBeenCalled();
   } finally {
     vi.useRealTimers();
   }

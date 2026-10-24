@@ -130,3 +130,47 @@ it("does not overwrite its pre-resize anchor when layout has already changed bef
   expect(s.point().x).toBeCloseTo(before.x);
   expect(s.point().y).toBeCloseTo(before.y);
 });
+
+it("commits scale once and animates presentation without recapturing intermediate geometry", () => {
+  const s = setup();
+  const element = document.createElement("div");
+  s.host.append(element);
+  const animation = { cancel: vi.fn(), onfinish: null };
+  const animate = vi.fn(() => animation);
+  Object.defineProperty(element, "animate", { value: animate });
+  s.viewer.viewer = element;
+  const update = vi.spyOn(s.viewer, "updateScale");
+  s.size.width = 400;
+  s.resize();
+  expect(update).toHaveBeenCalledTimes(1);
+  expect(animate).toHaveBeenCalledTimes(1);
+  expect(animate.mock.calls[0]).toMatchObject([
+    [
+      { transform: expect.stringContaining("scale(2)") },
+      { transform: "translate(0px, 0px) scale(1)" },
+    ],
+    { duration: 160 },
+  ]);
+  const measure = vi.spyOn(s.host, "getBoundingClientRect");
+  measure.mockClear();
+  s.viewport.remember();
+  expect(measure).not.toHaveBeenCalled();
+  s.viewport.cancelAnimation();
+  expect(animation.cancel).toHaveBeenCalledTimes(1);
+});
+it("applies the final scale without animation for reduced motion", () => {
+  const s = setup();
+  const element = document.createElement("div");
+  const animate = vi.fn();
+  Object.defineProperty(element, "animate", { value: animate });
+  s.viewer.viewer = element;
+  vi.stubGlobal("matchMedia", () => ({ matches: true }));
+  try {
+    s.size.width = 400;
+    s.resize();
+    expect(s.viewer.currentScale).toBe(0.8);
+    expect(animate).not.toHaveBeenCalled();
+  } finally {
+    vi.unstubAllGlobals();
+  }
+});
