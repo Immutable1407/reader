@@ -37,29 +37,48 @@ export function dragHorizontally(
 }
 
 /**
- * Moves the boundary between two adjacent columns by dx. The table fills its
- * width while both neighbouring widths are saved explicitly. The last column
- * can grow into horizontal scroll space without changing the menu column.
+ * Move a column's right edge, compressing the visible columns to its right in
+ * display order. Each keeps its minimum width; remaining growth consumes spare
+ * table space and stops when that is exhausted. Moving left gives space back
+ * to the immediate right neighbour.
  */
 export function resizeBoundary(
   widths: Partial<Record<"title" | PaperColumn, number>>,
   left: "title" | PaperColumn,
-  right: "title" | PaperColumn | undefined,
+  right: readonly ("title" | PaperColumn)[],
   dx: number,
+  spareWidth = 0,
 ): Partial<Record<"title" | PaperColumn, number>> {
-  const l = widths[left] ?? 0;
-  if (!right) {
-    // Fix the measured title too, otherwise its flex width absorbs this drag.
-    return {
-      ...(widths.title !== undefined ? { title: widths.title } : {}),
-      [left]: Math.round(Math.max(minWidth(left), l + dx)),
-    };
-  }
-  const r = widths[right] ?? 0;
-  const moved = Math.round(
-    Math.min(Math.max(dx, minWidth(left) - l), r - minWidth(right)),
+  const l = widths[left] ?? minWidth(left);
+  const available = right.reduce(
+    (sum, column) =>
+      sum +
+      Math.max(0, (widths[column] ?? minWidth(column)) - minWidth(column)),
+    Math.max(0, spareWidth),
   );
-  return { [left]: l + moved, [right]: r - moved };
+  const moved = Math.min(
+    available,
+    Math.max(Math.round(dx), minWidth(left) - l),
+  );
+  const next: Partial<Record<"title" | PaperColumn, number>> = {
+    [left]: l + moved,
+  };
+  let remaining = moved;
+  for (const column of right) {
+    const width = widths[column] ?? minWidth(column);
+    const taken = Math.min(remaining, Math.max(0, width - minWidth(column)));
+    next[column] = width - taken;
+    remaining -= taken;
+    if (remaining <= 0) break;
+  }
+  // Freeze the measured title when total width changes, so its flex sizing
+  // cannot absorb the drag. A resized title in `next` takes precedence.
+  return {
+    ...((remaining > 0 || !right.length) && widths.title !== undefined
+      ? { title: widths.title }
+      : {}),
+    ...next,
+  };
 }
 
 export const clampDetailWidth = (width: number) =>

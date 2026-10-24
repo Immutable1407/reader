@@ -411,17 +411,23 @@ export function PaperLibrary({
           [],
       ).map((th) => [th.dataset.column, th.getBoundingClientRect().width]),
     );
+  const spareTableWidth = (cell: Element) =>
+    cell
+      .closest("tr")
+      ?.querySelector<HTMLElement>('th[aria-hidden="true"]')
+      ?.getBoundingClientRect().width ?? 0;
   const resizeColumn = (
     e: ReactPointerEvent<HTMLElement>,
     left: "title" | PaperColumn,
-    right: TableColumn | undefined,
+    right: TableColumn[],
   ) => {
     const start = headerWidths(e.currentTarget);
+    const spareWidth = spareTableWidth(e.currentTarget);
     let next: Partial<Record<TableColumn, number>> = {};
     dragHorizontally(
       e,
       (dx) => {
-        next = resizeBoundary(start, left, right, dx);
+        next = resizeBoundary(start, left, right, dx, spareWidth);
         setDraftWidths(next);
       },
       () => {
@@ -433,13 +439,19 @@ export function PaperLibrary({
   const nudgeColumn = (
     e: ReactKeyboardEvent<HTMLElement>,
     left: "title" | PaperColumn,
-    right: TableColumn | undefined,
+    right: TableColumn[],
   ) => {
     const dx = { ArrowLeft: -resizeStep, ArrowRight: resizeStep }[e.key];
     if (!dx) return;
     e.preventDefault();
     saveColumnWidths(
-      resizeBoundary(headerWidths(e.currentTarget), left, right, dx),
+      resizeBoundary(
+        headerWidths(e.currentTarget),
+        left,
+        right,
+        dx,
+        spareTableWidth(e.currentTarget),
+      ),
     );
   };
   const saveDetailWidth = (width: number) =>
@@ -1054,7 +1066,7 @@ export function PaperLibrary({
                       <TableRow>
                         {picking && <TableHead className="w-8" />}
                         {columnControls.visible.map((c, i, order) => {
-                          const next = order[i + 1];
+                          const right = order.slice(i + 1);
                           const sortKey = columnSort[c];
                           const active = sort === sortKey;
                           const descending =
@@ -1099,8 +1111,8 @@ export function PaperLibrary({
                                 aria-label={`调整${c === "title" ? "标题" : columnLabels[c]}列宽度`}
                                 tabIndex={0}
                                 className="paper-column-resizer"
-                                onPointerDown={(e) => resizeColumn(e, c, next)}
-                                onKeyDown={(e) => nudgeColumn(e, c, next)}
+                                onPointerDown={(e) => resizeColumn(e, c, right)}
+                                onKeyDown={(e) => nudgeColumn(e, c, right)}
                               />
                             </TableHead>
                           );
