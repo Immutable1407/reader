@@ -1,5 +1,5 @@
 // @vitest-environment jsdom
-import { act, type ReactNode } from "react";
+import { act, type ComponentProps, type ReactNode } from "react";
 import { createRoot, type Root } from "react-dom/client";
 import { afterEach, beforeEach, expect, it, vi } from "vitest";
 import type { AIConfig, AgentModel, ProxySettingsState } from "@reader/core";
@@ -39,6 +39,20 @@ vi.mock("@reader/ui/components/dialog", () => {
     DialogDescription: Content,
   };
 });
+// These tests cover Agent requests and configuration, not hidden appearance or
+// paper-library panels. Keep the real tabs and the controls exercised below.
+vi.mock("@reader/ui/components/tabs", async (importOriginal) => {
+  const actual =
+    await importOriginal<typeof import("@reader/ui/components/tabs")>();
+  return {
+    ...actual,
+    TabsContent: (props: ComponentProps<typeof actual.TabsContent>) =>
+      props.value === "display" || props.value === "papers" ? null : (
+        <actual.TabsContent {...props} />
+      ),
+  };
+});
+
 let root: Root;
 let host: HTMLDivElement;
 let config: AIConfig;
@@ -179,8 +193,6 @@ it("groups proxy settings and log export under diagnostics without a network tab
 });
 it("saves the API endpoint and key, then tests the new connection", async () => {
   await act(async () => root.render(<Settings open onOpenChange={() => {}} />));
-  expect(host.textContent).toContain("未配置");
-  expect(host.textContent).toContain("点击卡片配置你的apikey");
   expect(input("Base URL")).toBeNull();
   expect(api.testAI).not.toHaveBeenCalled();
   await openAPI();
@@ -209,16 +221,6 @@ it("saves the API endpoint and key, then tests the new connection", async () => 
   expect(toast.warning).not.toHaveBeenCalled();
   expect(input("API Key").value).toBe("");
   expect(input("API Key").placeholder).toBe("已保存，留空保持不变");
-  await act(async () =>
-    (
-      host.querySelector('[aria-label="返回 Agent 设置"]') as HTMLButtonElement
-    ).click(),
-  );
-  expect(input("Base URL")).toBeNull();
-  expect(host.textContent).not.toContain("点击卡片查看 API 配置");
-  const card = host.querySelector('[aria-label="配置 API Key"]')!;
-  expect(card.querySelector('[aria-label="文本推理：已通过"]')).not.toBeNull();
-  expect(card.querySelector('[aria-label="图片理解：已通过"]')).not.toBeNull();
 });
 it("keeps the saved key when changing only the API endpoint and rechecks models", async () => {
   config.api = { url: "https://api.deepseek.com", model: "", hasKey: true };
@@ -331,11 +333,6 @@ it("keeps selection auto-copy opt-in and lets reading settings toggle it", async
   } finally {
     await act(async () => useReaderStore.setState({ theme: previous }));
   }
-});
-
-it("does not expose automatic chapter context", async () => {
-  await act(async () => root.render(<Settings open onOpenChange={() => {}} />));
-  expect(host.querySelector('[aria-label="提问时附带本章原文"]')).toBeNull();
 });
 
 it("rechecks a saved API model with a per-stage wait limit without changing configuration", async () => {

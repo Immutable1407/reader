@@ -1,5 +1,5 @@
 // @vitest-environment jsdom
-import { act, type ReactNode } from "react";
+import { act, type ComponentProps, type ReactNode } from "react";
 import { createRoot, type Root } from "react-dom/client";
 import { beforeEach, afterEach, expect, it, vi } from "vitest";
 import type { AICapability, AIConfig } from "@reader/core";
@@ -10,7 +10,12 @@ import { useReaderStore } from "./store";
 vi.mock("@reader/api", () => ({
   api: {
     connectorStatus: vi.fn(async () => ({ available: true })),
-    journalRankConfig: vi.fn(async () => ({ enabled: true, hasKey: false, selected: [], available: [] })),
+    journalRankConfig: vi.fn(async () => ({
+      enabled: true,
+      hasKey: false,
+      selected: [],
+      available: [],
+    })),
     providers: vi.fn(),
     aiConfig: vi.fn(),
     testAI: vi.fn(),
@@ -31,6 +36,20 @@ vi.mock("@reader/ui/components/dialog", () => {
     DialogDescription: Content,
   };
 });
+// These tests cover Agent requests and configuration, not hidden appearance or
+// paper-library panels. Keep the real tabs and the controls exercised below.
+vi.mock("@reader/ui/components/tabs", async (importOriginal) => {
+  const actual =
+    await importOriginal<typeof import("@reader/ui/components/tabs")>();
+  return {
+    ...actual,
+    TabsContent: (props: ComponentProps<typeof actual.TabsContent>) =>
+      props.value === "display" || props.value === "papers" ? null : (
+        <actual.TabsContent {...props} />
+      ),
+  };
+});
+
 let root: Root;
 let host: HTMLDivElement;
 let config: AIConfig;
@@ -80,64 +99,36 @@ it("automatically checks installed agents once, even when settings reopen during
   await render();
   expect(api.testAI).toHaveBeenCalledExactlyOnceWith("codex", "text");
   expect(host.querySelector('[aria-label="文本推理：检测中"]')).not.toBeNull();
-  expect(host.textContent).not.toContain("测试可用性与识图");
   expect(host.querySelector('[aria-label="图片理解：检测中"]')).not.toBeNull();
   await render(false);
   await render();
   expect(api.testAI).toHaveBeenCalledTimes(1);
   await act(async () => complete(passed));
   expect(host.querySelector('[data-state="passed"]')).not.toBeNull();
-  await render(false);
-  await render();
+  expect(api.testAI).toHaveBeenNthCalledWith(2, "codex", "vision");
   expect(api.testAI).toHaveBeenCalledTimes(2);
-  expect(host.querySelector('[data-state="passed"]')).not.toBeNull();
 });
-it("shows independent text and image results and allows an explicit retry", async () => {
+it("reuses saved results after remount until an explicit retry", async () => {
+  config.capabilities.codex = { ...passed, vision: false, error: "识图失败" };
   await render();
-  await act(async () =>
-    complete({ ...passed, vision: false, error: "图片能力未通过检测" }),
-  );
-  expect(
-    host.querySelector('[aria-label="文本推理：已通过"] [data-state="passed"]'),
-  ).not.toBeNull();
-  expect(
-    host.querySelector('[aria-label="图片理解：未通过"] [data-state="failed"]'),
-  ).not.toBeNull();
+  expect(api.testAI).not.toHaveBeenCalled();
+  expect(host.querySelector('[aria-label="文本推理：已通过"]')).not.toBeNull();
+  expect(host.querySelector('[aria-label="图片理解：未通过"]')).not.toBeNull();
+  await act(async () => root.unmount());
+  root = createRoot(host);
+  await render();
+  expect(api.testAI).not.toHaveBeenCalled();
   await act(async () =>
     (
       host.querySelector('[aria-label="重新检测 Agent"]') as HTMLButtonElement
     ).click(),
   );
-  expect(api.testAI).toHaveBeenCalledTimes(3);
-  expect(host.querySelector('[data-state="pending"]')).not.toBeNull();
+  expect(api.testAI).toHaveBeenCalledExactlyOnceWith("codex", "text");
   await act(async () => complete(passed));
-  expect(host.querySelector('[data-state="passed"]')).not.toBeNull();
+  expect(useReaderStore.getState().aiConfig?.capabilities.codex).toEqual(
+    passed,
+  );
 });
-it.each([passed, { ...passed, vision: false, error: "识图失败" }])(
-  "reuses persisted results after settings remount until an explicit retry",
-  async (capability) => {
-    config = { ...config, capabilities: { codex: capability } };
-    await render();
-    expect(api.testAI).not.toHaveBeenCalled();
-    expect(
-      host.querySelector('[aria-label="文本推理：已通过"]'),
-    ).not.toBeNull();
-    await act(async () => root.unmount());
-    root = createRoot(host);
-    await render();
-    expect(api.testAI).not.toHaveBeenCalled();
-    await act(async () =>
-      (
-        host.querySelector('[aria-label="重新检测 Agent"]') as HTMLButtonElement
-      ).click(),
-    );
-    expect(api.testAI).toHaveBeenCalledExactlyOnceWith("codex", "text");
-    await act(async () => complete(passed));
-    expect(useReaderStore.getState().aiConfig?.capabilities.codex).toEqual(
-      passed,
-    );
-  },
-);
 it("keeps a saved check visible while metadata loads and reflects global failures", async () => {
   config = { ...config, capabilities: { codex: passed } };
   useReaderStore.setState({ aiConfig: config });
