@@ -122,7 +122,8 @@ function agentView(s: TourState): TourView {
           focus: [apiKey],
           click: [tour("settings")],
           pointer: { gesture: "click", target: apiKey },
-          anchor: apiKey,
+          anchor: tour("api-form"),
+          side: "right",
           link: { label: "platform.deepseek.com", url: deepseek },
         };
   if (!s.agentPanel)
