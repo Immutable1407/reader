@@ -8,10 +8,17 @@ import {
   DialogDescription,
 } from "@neoread/ui/components/dialog";
 
-export function LibraryLocationSettings({ open }: { open: boolean }) {
+export function LibraryLocationSettings({
+  open,
+  recovery = false,
+}: {
+  open: boolean;
+  recovery?: boolean;
+}) {
   const desktop = window.neoreadDesktop;
   const [directory, setDirectory] = useState("");
   const [busy, setBusy] = useState(false);
+  const [importing, setImporting] = useState(false);
   const [error, setError] = useState("");
   useEffect(() => {
     if (!open || !desktop?.libraryLocation) return;
@@ -29,11 +36,13 @@ export function LibraryLocationSettings({ open }: { open: boolean }) {
     };
   }, [open, desktop]);
   if (!desktop?.libraryLocation || !desktop.moveLibrary) return null;
-  const move = async () => {
+  const move = async (existing = false) => {
+    setImporting(existing);
     setBusy(true);
     setError("");
     try {
-      await desktop.moveLibrary!();
+      if (existing) await desktop.importLibrary!();
+      else await desktop.moveLibrary!();
     } catch (error) {
       setError((error as Error).message);
     } finally {
@@ -44,7 +53,7 @@ export function LibraryLocationSettings({ open }: { open: boolean }) {
     <section>
       <h3 className="mb-3 text-sm font-medium">书库位置</h3>
       <p className="mb-3 break-all text-xs leading-5 text-muted-foreground">
-        {directory || "正在读取位置"}
+        {recovery ? "书库尚未连接" : directory || "正在读取位置"}
       </p>
       <p className="mb-4 text-xs leading-5 text-muted-foreground">
         PDF、图书、笔记、批注和阅读记录一起保存。选择新位置后，将在该目录下新建
@@ -53,13 +62,28 @@ export function LibraryLocationSettings({ open }: { open: boolean }) {
       </p>
       <Button
         variant="outline"
-        disabled={!directory || busy}
+        disabled={recovery || !directory || busy}
         onClick={() => void move()}
         className="transition-transform active:scale-[0.98] motion-reduce:transform-none"
       >
         <FolderOpen />
         更改位置
       </Button>
+      {desktop.importLibrary && (
+        <Button
+          variant="outline"
+          disabled={busy}
+          className="ml-2"
+          onClick={() => void move(true)}
+        >
+          <FolderOpen />
+          导入书库
+        </Button>
+      )}
+      <p className="mt-3 text-xs leading-5 text-muted-foreground">
+        导入书库：选择包含 neoread.sqlite 或 reader.sqlite 的 library
+        文件夹，直接打开已有书库，不合并数据。
+      </p>
       {error && (
         <p
           role="alert"
@@ -70,9 +94,11 @@ export function LibraryLocationSettings({ open }: { open: boolean }) {
       )}
       <Dialog open={busy} onOpenChange={(_, details) => details.cancel()}>
         <DialogContent showCloseButton={false}>
-          <DialogTitle>正在更改书库位置</DialogTitle>
+          <DialogTitle>
+            {importing ? "正在导入书库" : "正在更改书库位置"}
+          </DialogTitle>
           <DialogDescription>
-            请完成目录选择和确认。迁移过程中请保持 NeoRead
+            请完成目录选择和确认。处理过程中请保持 NeoRead
             打开，完成后会自动重启。
           </DialogDescription>
           <LoaderCircle

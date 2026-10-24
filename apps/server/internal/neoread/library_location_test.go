@@ -301,3 +301,52 @@ func TestCopyLibraryPreservesCorpusOverviewAndReferences(t *testing.T) {
 		})
 	}
 }
+
+func TestValidateLibraryPreservesDataAndRejectsInvalidLibraries(t *testing.T) {
+	root := migrationSource(t)
+	before, err := os.ReadFile(filepath.Join(root, "neoread.sqlite"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := ValidateLibrary(root); err != nil {
+		t.Fatal(err)
+	}
+	after, err := os.ReadFile(filepath.Join(root, "neoread.sqlite"))
+	if err != nil || string(before) != string(after) {
+		t.Fatal("validation modified database", err)
+	}
+	unlock, err := LockLibrary(root)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := ValidateLibrary(root); err == nil {
+		t.Fatal("accepted an in-use library")
+	}
+	unlock()
+	empty := t.TempDir()
+	if err := ValidateLibrary(empty); err == nil {
+		t.Fatal("accepted empty directory")
+	}
+	if _, err := os.Stat(filepath.Join(empty, "neoread.sqlite")); !os.IsNotExist(err) {
+		t.Fatal("created a database")
+	}
+	if err := os.WriteFile(filepath.Join(empty, "neoread.sqlite"), []byte("not sqlite"), 0600); err != nil {
+		t.Fatal(err)
+	}
+	if err := ValidateLibrary(empty); err == nil {
+		t.Fatal("accepted corrupt database")
+	}
+}
+
+func TestValidateLegacyLibraryWithoutRenamingDatabase(t *testing.T) {
+	root := migrationSource(t)
+	if err := os.Rename(filepath.Join(root, "neoread.sqlite"), filepath.Join(root, "reader.sqlite")); err != nil {
+		t.Fatal(err)
+	}
+	if err := ValidateLibrary(root); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := os.Stat(filepath.Join(root, "neoread.sqlite")); !os.IsNotExist(err) {
+		t.Fatal("validation renamed legacy database")
+	}
+}

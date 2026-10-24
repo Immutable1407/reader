@@ -220,3 +220,42 @@ func relocateCorpusFingerprintsAt(db *sql.DB, source, physical, destination stri
 	}
 	return tx.Commit()
 }
+
+// ValidateLibrary checks an existing library without creating or migrating it.
+func ValidateLibrary(directory string) error {
+	database := filepath.Join(directory, "neoread.sqlite")
+	info, err := os.Stat(database)
+	if os.IsNotExist(err) {
+		database = filepath.Join(directory, "reader.sqlite")
+		info, err = os.Stat(database)
+	}
+	if err != nil {
+		return err
+	}
+	if !info.Mode().IsRegular() {
+		return fmt.Errorf("书库数据库不是普通文件")
+	}
+	unlock, err := LockLibrary(directory)
+	if err != nil {
+		return err
+	}
+	defer unlock()
+	uri := strings.Replace(libraryDatabaseURI(database), "mode=rw", "mode=ro", 1)
+	db, err := sql.Open("sqlite", uri)
+	if err != nil {
+		return err
+	}
+	defer db.Close()
+	var result string
+	if err = db.QueryRow("PRAGMA quick_check").Scan(&result); err != nil {
+		return fmt.Errorf("书库数据库校验失败：%w", err)
+	}
+	if result != "ok" {
+		return fmt.Errorf("书库数据库校验失败")
+	}
+	var tables int
+	if err = db.QueryRow("SELECT count(*) FROM sqlite_schema WHERE type='table' AND name='documents'").Scan(&tables); err != nil || tables != 1 {
+		return fmt.Errorf("所选目录不是有效的 NeoRead 书库")
+	}
+	return nil
+}

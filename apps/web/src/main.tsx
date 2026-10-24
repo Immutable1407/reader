@@ -22,7 +22,18 @@ configureAPI(token);
 const removeDiagnostics = installDiagnostics(token);
 if (import.meta.hot) import.meta.hot.dispose(removeDiagnostics);
 const root = ReactDOM.createRoot(document.getElementById("root")!);
-if (import.meta.env.DEV && location.pathname === "/__streaming-benchmark") {
+if (
+  window.neoreadDesktop &&
+  new URLSearchParams(location.search).has("libraryRecovery")
+) {
+  window.neoreadDesktop.onBeforeClose(async () => {});
+  void import("./LibraryRecoverySettings").then(({ LibraryRecoverySettings }) =>
+    root.render(<LibraryRecoverySettings />),
+  );
+} else if (
+  import.meta.env.DEV &&
+  location.pathname === "/__streaming-benchmark"
+) {
   void import("./chat/StreamingBenchmark").then(({ default: Benchmark }) =>
     root.render(<Benchmark />),
   );
