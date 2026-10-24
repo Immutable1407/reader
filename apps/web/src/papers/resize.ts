@@ -4,8 +4,29 @@ import type { PaperColumn } from "@reader/core";
 /** Keyboard step for resize separators, in CSS pixels. */
 export const resizeStep = 16;
 export const detailWidthRange = { min: 280, max: 720 };
-const minWidth = (column: "title" | PaperColumn) =>
-  column === "title" ? 160 : 48;
+type ColumnWidths = Partial<Record<"title" | PaperColumn, number>>;
+
+/** Measure the unwrapped header, including controls and cell padding. */
+export function columnMinimums(root: Element): ColumnWidths {
+  return Object.fromEntries(
+    Array.from(root.querySelectorAll<HTMLElement>("th[data-column]")).map(
+      (cell) => {
+        const heading = cell.querySelector<HTMLElement>(
+          ".paper-column-heading",
+        );
+        const style = getComputedStyle(cell);
+        return [
+          cell.dataset.column,
+          Math.ceil(
+            (heading?.getBoundingClientRect().width ?? 0) +
+              (parseFloat(style.paddingLeft) || 0) +
+              (parseFloat(style.paddingRight) || 0),
+          ),
+        ];
+      },
+    ),
+  );
+}
 
 /**
  * Follows a horizontal drag from a resize handle until release. The page keeps
@@ -47,8 +68,10 @@ export function resizeBoundary(
   left: readonly ("title" | PaperColumn)[],
   right: readonly ("title" | PaperColumn)[],
   dx: number,
+  minimums: ColumnWidths,
   spareWidth = 0,
-): Partial<Record<"title" | PaperColumn, number>> {
+): { widths: ColumnWidths; spareWidth: number } {
+  const minWidth = (column: "title" | PaperColumn) => minimums[column] ?? 0;
   const forward = dx >= 0;
   const shrinking = forward ? right : [...left].reverse();
   const growing = forward ? left.at(-1) : right[0];
@@ -71,11 +94,18 @@ export function resizeBoundary(
   }
   // Freeze a flexible title when using or releasing trailing spare space.
   // If the title itself was resized, its new width in `next` takes precedence.
-  return {
+  const changedWidths = {
     ...((remaining > 0 || !right.length) && widths.title !== undefined
       ? { title: widths.title }
       : {}),
     ...next,
+  };
+  return {
+    widths: changedWidths,
+    spareWidth: Math.max(
+      0,
+      spareWidth + (!growing ? moved : forward ? -remaining : 0),
+    ),
   };
 }
 

@@ -8,6 +8,7 @@ import {
   Suspense,
   lazy,
   useEffect,
+  useLayoutEffect,
   useMemo,
   useRef,
   useState,
@@ -147,6 +148,7 @@ import {
   detailWidthRange,
   dragHorizontally,
   resizeBoundary,
+  columnMinimums,
   resizeStep,
 } from "./resize";
 
@@ -384,13 +386,40 @@ export function PaperLibrary({
   const [draftWidths, setDraftWidths] =
     useState<Partial<Record<TableColumn, number>>>();
   const [draftDetail, setDraftDetail] = useState<number>();
+  const [minimumWidths, setMinimumWidths] = useState<
+    Partial<Record<TableColumn, number>>
+  >({});
+  const visibleColumnKey = columnControls.visible.join(",");
+  useLayoutEffect(() => {
+    const root = listRef.current;
+    if (loading || !table || !root) return;
+    const measure = () => {
+      const measured = columnMinimums(root);
+      setMinimumWidths((previous) =>
+        JSON.stringify(previous) === JSON.stringify(measured)
+          ? previous
+          : measured,
+      );
+    };
+    measure();
+    const observer = new ResizeObserver(measure);
+    root
+      .querySelectorAll(".paper-column-heading")
+      .forEach((heading) => observer.observe(heading));
+    return () => observer.disconnect();
+  }, [loading, table, visibleColumnKey]);
   const columnWidths = {
     ...defaultColumnWidths,
     ...prefs.columnWidths,
     ...draftWidths,
   };
+  for (const column of columnControls.visible) {
+    const width = columnWidths[column];
+    if (width !== undefined)
+      columnWidths[column] = Math.max(width, minimumWidths[column] ?? 0);
+  }
   const tableWidth = columnControls.visible.reduce(
-    (sum, c) => sum + (columnWidths[c] ?? 160),
+    (sum, c) => sum + (columnWidths[c] ?? Math.max(160, minimumWidths[c] ?? 0)),
     32 + (picking ? 32 : 0),
   );
   // Once the title has an explicit width, spare space belongs to a blank
@@ -421,35 +450,33 @@ export function PaperLibrary({
     left: TableColumn[],
     right: TableColumn[],
   ) => {
+    const minimums = columnMinimums(e.currentTarget.closest("tr")!);
     let current = headerWidths(e.currentTarget);
     let spareWidth = spareTableWidth(e.currentTarget);
     let previous = 0;
-    let next: Partial<Record<TableColumn, number>> = {};
+    let changedWidths: Partial<Record<TableColumn, number>> = {};
     dragHorizontally(
       e,
       (dx) => {
         // Reverse from the current layout instead of replaying the drag from
         // pointerdown, so columns already pushed aside do not snap back.
         const position = Math.round(dx);
-        const change = resizeBoundary(
+        const result = resizeBoundary(
           current,
           left,
           right,
           position - previous,
+          minimums,
           spareWidth,
         );
         previous = position;
-        const released = Object.entries(change).reduce(
-          (sum, [column, width]) => sum + (current[column] ?? width) - width,
-          0,
-        );
-        spareWidth = Math.max(0, spareWidth + released);
-        current = { ...current, ...change };
-        next = { ...next, ...change };
-        setDraftWidths(next);
+        spareWidth = result.spareWidth;
+        current = { ...current, ...result.widths };
+        changedWidths = { ...changedWidths, ...result.widths };
+        setDraftWidths(changedWidths);
       },
       () => {
-        if (Object.keys(next).length) saveColumnWidths(next);
+        if (Object.keys(changedWidths).length) saveColumnWidths(changedWidths);
         setDraftWidths(undefined);
       },
     );
@@ -468,8 +495,9 @@ export function PaperLibrary({
         left,
         right,
         dx,
+        columnMinimums(e.currentTarget.closest("tr")!),
         spareTableWidth(e.currentTarget),
-      ),
+      ).widths,
     );
   };
   const saveDetailWidth = (width: number) =>
@@ -1117,10 +1145,19 @@ export function PaperLibrary({
                                     c,
                                     false,
                                     <>
-                                      <span className="min-w-0 truncate">
-                                        {c === "title" ? "标题" : columnLabels[c]}
+                                      <span className="shrink-0 whitespace-nowrap">
+                                        {c === "title"
+                                          ? "标题"
+                                          : columnLabels[c]}
                                       </span>
-                                      {active && <Arrow />}
+                                      {sortKey && (
+                                        <Arrow
+                                          className={
+                                            active ? undefined : "invisible"
+                                          }
+                                          aria-hidden="true"
+                                        />
+                                      )}
                                     </>,
                                     sortKey ? () => sortBy(sortKey) : undefined,
                                   )
@@ -1141,7 +1178,10 @@ export function PaperLibrary({
                           );
                         })}
                         {fillTableSpace && (
-                          <TableHead aria-hidden="true" style={{ padding: 0 }} />
+                          <TableHead
+                            aria-hidden="true"
+                            style={{ padding: 0 }}
+                          />
                         )}
                         <TableHead className="w-8" />
                       </TableRow>

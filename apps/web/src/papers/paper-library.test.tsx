@@ -548,6 +548,12 @@ const fakeWidths = (widths: Record<string, number>) =>
   vi
     .spyOn(Element.prototype, "getBoundingClientRect")
     .mockImplementation(function (this: Element) {
+      if (this.classList.contains("paper-column-heading")) {
+        const column = this.closest<HTMLElement>("th")?.dataset.column;
+        return {
+          width: widths[`minimum:${column}`] ?? (column === "title" ? 160 : 48),
+        } as DOMRect;
+      }
       const key =
         (this as HTMLElement).dataset?.column ??
         (this.classList.contains("paper-detail")
@@ -1804,7 +1810,7 @@ it.each([true, false])(
     );
     expect(prefs().columnWidths).toEqual({ title: 360 });
     const filler = table.querySelector<HTMLElement>(
-      "thead [aria-hidden=true]",
+      "thead th[aria-hidden=true]",
     )!;
     expect(filler.style.padding).toBe("0px");
     expect(filler.nextElementSibling).toBe(
@@ -2200,6 +2206,81 @@ it("accounts for consumed and released spare space across repeated drag reversal
     }
     await press(edge, "pointerup", 760);
     expect(prefs().columnWidths).toEqual({ title: 400, authors: 240 });
+  } finally {
+    rects.mockRestore();
+  }
+});
+
+it("uses measured header minimums for pointer and keyboard resizing", async () => {
+  const measuredWidths = {
+    title: 200,
+    authors: 160,
+    year: 100,
+    "minimum:title": 42,
+    "minimum:authors": 76,
+    "minimum:year": 68,
+  };
+  const rects = fakeWidths(measuredWidths);
+  try {
+    await act(async () =>
+      useReaderStore.setState({
+        libraryPreferences: {
+          mode: "papers",
+          papers: {
+            layout: "table",
+            columns: ["authors", "year"],
+            columnWidths: { title: 200, authors: 160, year: 100 },
+          },
+        },
+      }),
+    );
+    const edge = host.querySelector<HTMLElement>(
+      '[aria-label="调整标题列宽度"]',
+    )!;
+    await press(edge, "pointerdown", 200);
+    await press(edge, "pointermove", 1000);
+    await press(edge, "pointerup", 1000);
+    expect(prefs().columnWidths).toEqual({ title: 316, authors: 76, year: 68 });
+    Object.assign(measuredWidths, prefs().columnWidths);
+    await act(async () =>
+      edge.dispatchEvent(
+        new KeyboardEvent("keydown", {
+          key: "ArrowLeft",
+          bubbles: true,
+        }),
+      ),
+    );
+    expect(prefs().columnWidths).toEqual({
+      title: 300,
+      authors: 92,
+      year: 68,
+    });
+  } finally {
+    rects.mockRestore();
+  }
+});
+
+it("fits saved narrow widths to the complete header without overwriting preferences", async () => {
+  const rects = fakeWidths({ "minimum:authors": 92, "minimum:title": 42 });
+  try {
+    await act(async () =>
+      useReaderStore.setState({
+        libraryPreferences: {
+          mode: "papers",
+          papers: {
+            layout: "table",
+            columns: ["authors"],
+            columnWidths: { title: 42, authors: 48 },
+          },
+        },
+      }),
+    );
+    const heading = host.querySelector<HTMLElement>(
+      'th[data-column="authors"]',
+    )!;
+    expect(heading.style.width).toBe("92px");
+    expect(heading.querySelector(".truncate")).toBeNull();
+    expect(prefs().columnWidths?.authors).toBe(48);
   } finally {
     rects.mockRestore();
   }

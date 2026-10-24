@@ -1,5 +1,18 @@
 import { expect, it } from "vitest";
-import { clampDetailWidth, resizeBoundary } from "./resize";
+import {
+  clampDetailWidth,
+  resizeBoundary as calculateBoundary,
+} from "./resize";
+
+// Explicit minimums keep the cascade examples independent of font metrics.
+const minimums = { title: 160, authors: 48, year: 48, status: 48, venue: 48 };
+const resizeBoundary = (
+  widths: Parameters<typeof calculateBoundary>[0],
+  left: Parameters<typeof calculateBoundary>[1],
+  right: Parameters<typeof calculateBoundary>[2],
+  dx: number,
+  spareWidth = 0,
+) => calculateBoundary(widths, left, right, dx, minimums, spareWidth).widths;
 
 it("moves only the two columns on either side of a boundary", () => {
   const widths = { title: 400, authors: 160, year: 64 };
@@ -128,4 +141,36 @@ it("can shrink the last boundary through earlier columns into trailing space", (
   expect(
     resizeBoundary({ title: 200, authors: 48 }, ["title", "authors"], [], -100),
   ).toEqual({ title: 160, authors: 48 });
+});
+
+it("returns remaining space when consuming and releasing it", () => {
+  const grown = calculateBoundary(
+    { title: 200 },
+    ["title"],
+    [],
+    100,
+    { title: 42 },
+    80,
+  );
+  expect(grown).toEqual({ widths: { title: 280 }, spareWidth: 0 });
+  const shrunk = calculateBoundary(
+    grown.widths,
+    ["title"],
+    [],
+    -300,
+    { title: 42 },
+    grown.spareWidth,
+  );
+  expect(shrunk).toEqual({ widths: { title: 42 }, spareWidth: 238 });
+});
+
+it("uses each measured minimum in either direction", () => {
+  const widths = { title: 200, authors: 160, year: 100 };
+  const measured = { title: 42, authors: 76, year: 68 };
+  expect(
+    calculateBoundary(widths, ["title"], ["authors", "year"], 500, measured),
+  ).toEqual({ widths: { title: 316, authors: 76, year: 68 }, spareWidth: 0 });
+  expect(
+    calculateBoundary(widths, ["title", "authors"], ["year"], -500, measured),
+  ).toEqual({ widths: { title: 42, authors: 76, year: 342 }, spareWidth: 0 });
 });
