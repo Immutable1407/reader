@@ -3,6 +3,7 @@ package neoread
 import (
 	"bytes"
 	"encoding/json"
+	"fmt"
 	"os"
 	"path/filepath"
 	"testing"
@@ -55,10 +56,7 @@ func TestNewLibraryExample(t *testing.T) {
 	if !bytes.Contains([]byte(prefs), []byte(paper.ID)) {
 		t.Fatal("missing onboarding example")
 	}
-	if _, err = os.Stat(filepath.Join(root, examplePending)); !os.IsNotExist(err) {
-		t.Fatal("pending marker retained")
-	}
-	// Restart, then permanently delete; neither operation restores the example.
+	// Restart does not duplicate; completely emptying the library seeds again.
 	s.DB.Close()
 	s, err = OpenLibrary(root)
 	if err != nil {
@@ -79,58 +77,87 @@ func TestNewLibraryExample(t *testing.T) {
 	}
 	defer s.DB.Close()
 	s.DB.QueryRow("SELECT count(*) FROM documents").Scan(&count)
-	if count != 0 {
-		t.Fatal("deleted sample restored")
+	if count != 1 {
+		t.Fatal("empty library was not reseeded")
 	}
 }
 
-func TestExistingLibraryDoesNotSeedExample(t *testing.T) {
-	for _, legacy := range []bool{false, true} {
-		t.Run(map[bool]string{false: "current", true: "legacy"}[legacy], func(t *testing.T) {
-			root := t.TempDir()
-			s, err := OpenStore(root)
-			if err != nil {
-				t.Fatal(err)
-			}
-			s.DB.Close()
-			if legacy {
-				if err = os.Rename(filepath.Join(root, "neoread.sqlite"), filepath.Join(root, "reader.sqlite")); err != nil {
+func TestExampleAfterReaderMigration(t *testing.T) {
+	for _, external := range []bool{false, true} {
+		for _, empty := range []bool{false, true} {
+			name := fmt.Sprintf("external=%t/empty=%t", external, empty)
+			t.Run(name, func(t *testing.T) {
+				old, current, lib := legacyFixture(t, external)
+				if empty {
+					original, err := OpenStore(lib)
+					if err != nil {
+						t.Fatal(err)
+					}
+					if _, err = original.DB.Exec("DELETE FROM documents"); err != nil {
+						t.Fatal(err)
+					}
+					original.DB.Close()
+					if err = os.Rename(filepath.Join(lib, "neoread.sqlite"), filepath.Join(lib, "reader.sqlite")); err != nil {
+						t.Fatal(err)
+					}
+				}
+				migrated, err := MigrateReaderData(old, current)
+				if err != nil {
 					t.Fatal(err)
 				}
-			}
-			s, err = OpenLibrary(root)
-			if err != nil {
-				t.Fatal(err)
-			}
-			defer s.DB.Close()
-			var count int
-			s.DB.QueryRow("SELECT count(*) FROM documents").Scan(&count)
-			if count != 0 {
-				t.Fatal("seeded existing empty library")
-			}
-		})
+				s, err := OpenLibrary(migrated.Library)
+				if err != nil {
+					t.Fatal(err)
+				}
+				defer s.DB.Close()
+				var title string
+				if err = s.DB.QueryRow("SELECT title FROM documents").Scan(&title); err != nil {
+					t.Fatal(err)
+				}
+				want := "Paper"
+				if empty {
+					want = "Attention Is All You Need"
+				}
+				if title != want {
+					t.Fatalf("got %s, want %s", title, want)
+				}
+				var count int
+				s.DB.QueryRow("SELECT count(*) FROM documents").Scan(&count)
+				if count != 1 {
+					t.Fatalf("documents: %d", count)
+				}
+				var onboarded bool
+				if err = s.DB.QueryRow("SELECT json_extract(value,'$.onboarded') FROM settings WHERE key='preferences:guide'").Scan(&onboarded); err != nil {
+					t.Fatal(err)
+				}
+				if onboarded == empty {
+					t.Fatalf("onboarded=%t for empty=%t", onboarded, empty)
+				}
+			})
+		}
 	}
 }
 
 func TestExampleInitializationRecovery(t *testing.T) {
 	root := t.TempDir()
-	if err := os.WriteFile(filepath.Join(root, examplePending), []byte("v1\n"), 0600); err != nil {
-		t.Fatal(err)
-	}
 	s, err := OpenStore(root)
 	if err != nil {
 		t.Fatal(err)
 	}
 	s.DB.Close()
+	// Reuse a PDF published by an interrupted initialization, before DB commit.
+	raw, _ := examplePaper.ReadFile("example-paper/paper.json")
+	var paper bundledPaper
+	json.Unmarshal(raw, &paper)
+	pdf, _ := examplePaper.ReadFile("example-paper/paper.pdf")
+	if err = os.WriteFile(filepath.Join(root, "papers", paper.ID+".pdf"), pdf, 0600); err != nil {
+		t.Fatal(err)
+	}
 	s, err = OpenLibrary(root)
 	if err != nil {
 		t.Fatal(err)
 	}
 	s.DB.Close()
-	// Recover a crash after commit but before marker removal, even after deletion.
-	if err = os.WriteFile(filepath.Join(root, examplePending), []byte("v1\n"), 0600); err != nil {
-		t.Fatal(err)
-	}
 	s, err = OpenLibrary(root)
 	if err != nil {
 		t.Fatal(err)
@@ -140,6 +167,13 @@ func TestExampleInitializationRecovery(t *testing.T) {
 	s.DB.QueryRow("SELECT count(*) FROM documents").Scan(&count)
 	if count != 1 {
 		t.Fatal("recovery duplicated example")
+	}
+	var onboarded bool
+	if err = s.DB.QueryRow("SELECT json_extract(value,'$.onboarded') FROM settings WHERE key='preferences:guide'").Scan(&onboarded); err != nil {
+		t.Fatal(err)
+	}
+	if !onboarded {
+		t.Fatal("existing example triggered onboarding again")
 	}
 }
 
@@ -155,8 +189,8 @@ func TestExamplePreservesOrphanedLibraryFiles(t *testing.T) {
 	defer s.DB.Close()
 	var count int
 	s.DB.QueryRow("SELECT count(*) FROM documents").Scan(&count)
-	if count != 0 {
-		t.Fatal("seeded a library with existing files")
+	if count != 1 {
+		t.Fatal("empty database did not receive example")
 	}
 	data, _ := os.ReadFile(path)
 	if string(data) != "user content" {
@@ -166,7 +200,6 @@ func TestExamplePreservesOrphanedLibraryFiles(t *testing.T) {
 
 func TestExampleRecoveryPreservesConflictingFile(t *testing.T) {
 	root := t.TempDir()
-	os.WriteFile(filepath.Join(root, examplePending), []byte("v1\n"), 0600)
 	var paper bundledPaper
 	raw, _ := examplePaper.ReadFile("example-paper/paper.json")
 	json.Unmarshal(raw, &paper)
@@ -190,8 +223,5 @@ func TestExampleRecoveryPreservesConflictingFile(t *testing.T) {
 	s.DB.QueryRow("SELECT count(*) FROM documents").Scan(&count)
 	if count != 0 {
 		t.Fatal("partial example published")
-	}
-	if _, err = os.Stat(filepath.Join(root, examplePending)); err != nil {
-		t.Fatal("recovery marker lost")
 	}
 }

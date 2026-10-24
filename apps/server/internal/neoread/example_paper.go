@@ -19,78 +19,43 @@ import (
 //go:embed example-paper/paper.pdf example-paper/paper.json example-paper/analysis
 var examplePaper embed.FS
 
-const examplePending = ".example-paper-pending"
-const exampleInstalled = "bundled-example:v1"
-
-// OpenLibrary is the application startup path. OpenStore remains suitable for
-// migrations, imports and tests, which must never implicitly add documents.
-// The caller holds LockLibrary throughout initialization.
+// OpenLibrary runs after desktop Reader migration and opens the resulting
+// library before deciding whether it needs an example. The caller holds
+// LockLibrary throughout initialization. OpenStore never seeds documents.
 func OpenLibrary(root string) (store *Store, err error) {
-	pending := filepath.Join(root, examplePending)
-	_, markerErr := os.Stat(pending)
-	seed := markerErr == nil
-	if markerErr != nil && !errors.Is(markerErr, os.ErrNotExist) {
-		return nil, markerErr
-	}
-	if !seed {
-		existing, e := hasLocalLibrary(root)
-		if e != nil {
-			return nil, e
-		}
-		if !existing {
-			if e = os.MkdirAll(root, 0700); e != nil {
-				return nil, e
-			}
-			if e = os.WriteFile(pending, []byte("v1\n"), 0600); e != nil {
-				return nil, e
-			}
-			seed = true
-		}
-	}
 	store, err = OpenStore(root)
 	if err != nil {
 		return nil, err
 	}
-	if !seed {
-		return store, nil
+	defer func() {
+		if err != nil {
+			store.DB.Close()
+			store = nil
+		}
+	}()
+	var count int
+	if err = store.DB.QueryRow("SELECT count(*) FROM documents").Scan(&count); err != nil {
+		return store, err
+	}
+	if count != 0 {
+		// Existing documents, including migrated papers and retained trash, identify
+		// an existing user. Keep release-note and manual-tour preferences intact.
+		_, err = store.DB.Exec(`INSERT INTO settings(key,value) VALUES('preferences:guide','{"onboarded":true}')
+   ON CONFLICT(key) DO UPDATE SET value=json_set(value,'$.onboarded',json('true'))`)
+		if err == nil {
+			slog.Info("library.example_skipped", "reasonCode", "existing_documents")
+		}
+		return store, err
 	}
 	started := time.Now()
 	slog.Info("library.example_started")
-	defer func() {
-		if err != nil {
-			slog.Error("library.example_failed", "errorCode", "initialization", "durationMs", time.Since(started).Milliseconds())
-			store.DB.Close()
-			store = nil
-		} else {
-			slog.Info("library.example_completed", "durationMs", time.Since(started).Milliseconds())
-		}
-	}()
-	if err = store.installExamplePaper(); err != nil {
-		return store, err
+	err = store.installExamplePaper()
+	if err != nil {
+		slog.Error("library.example_failed", "errorCode", "initialization", "durationMs", time.Since(started).Milliseconds())
+	} else {
+		slog.Info("library.example_completed", "durationMs", time.Since(started).Milliseconds())
 	}
-	err = os.Remove(pending)
 	return store, err
-}
-
-func hasLocalLibrary(root string) (bool, error) {
-	for _, name := range []string{"neoread.sqlite", "reader.sqlite"} {
-		if _, err := os.Lstat(filepath.Join(root, name)); err == nil {
-			return true, nil
-		} else if !errors.Is(err, os.ErrNotExist) {
-			return false, err
-		}
-	}
-	// Files left by a damaged/missing database are user data, not a fresh library.
-	for _, name := range []string{"books", "papers", "attachments", "cache", "ai-work"} {
-		entries, err := os.ReadDir(filepath.Join(root, name))
-		if err != nil && !errors.Is(err, os.ErrNotExist) {
-			return false, err
-		}
-		if len(entries) != 0 {
-			return true, nil
-		}
-	}
-	return false, nil
 }
 
 type bundledPaper struct {
@@ -102,13 +67,6 @@ type bundledPaper struct {
 }
 
 func (s *Store) installExamplePaper() error {
-	var installed int
-	if err := s.DB.QueryRow("SELECT count(*) FROM settings WHERE key=?", exampleInstalled).Scan(&installed); err != nil {
-		return err
-	}
-	if installed != 0 {
-		return nil
-	} // Committed before a crash while removing the marker.
 	var count int
 	if err := s.DB.QueryRow("SELECT count(*) FROM documents").Scan(&count); err != nil {
 		return err
@@ -204,7 +162,8 @@ func (s *Store) installExamplePaper() error {
 		return err
 	}
 	guide, _ := json.Marshal(map[string]any{"onboarded": false, "exampleDocumentId": paper.ID})
-	if _, err = tx.Exec("INSERT INTO settings(key,value) VALUES('preferences:guide',?),(?,'complete')", string(guide), exampleInstalled); err != nil {
+	if _, err = tx.Exec(`INSERT INTO settings(key,value) VALUES('preferences:guide',?)
+ ON CONFLICT(key) DO UPDATE SET value=json_set(value,'$.onboarded',json('false'),'$.exampleDocumentId',json_extract(excluded.value,'$.exampleDocumentId'))`, string(guide)); err != nil {
 		return err
 	}
 	return tx.Commit()
