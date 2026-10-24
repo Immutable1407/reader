@@ -1,4 +1,4 @@
-import type { Document } from "@reader/core";
+import type { Document } from "@neoread/core";
 import { toCSL } from "../papers/citation";
 import { paperURI, type CitationItem } from "./codes";
 import type { ItemSource } from "./session";

@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { toast } from "sonner";
-import { api, type CiteEvent } from "@reader/api";
+import { api, type CiteEvent } from "@neoread/api";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -10,7 +10,7 @@ import {
   AlertDialogFooter,
   AlertDialogHeader,
   AlertDialogTitle,
-} from "@reader/ui/components/alert-dialog";
+} from "@neoread/ui/components/alert-dialog";
 import { useReaderStore } from "../store";
 import { CitationEditor } from "./CitationEditor";
 import type { Citation, DocumentPrefs } from "./codes";
@@ -47,7 +47,7 @@ const commands: CiteCommand[] = [
   "removeCodes",
 ];
 
-const focusWindow = () => void window.readerDesktop?.focusWindow?.();
+const focusWindow = () => void window.neoreadDesktop?.focusWindow?.();
 
 /**
  * Receives commands from the Word and WPS plugins and runs them with the

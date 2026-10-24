@@ -34,17 +34,17 @@ beforeEach(() => {
 afterEach(async () => {
   await act(async () => root.unmount());
   host.remove();
-  delete (window as { readerDesktop?: unknown }).readerDesktop;
+  delete (window as { neoreadDesktop?: unknown }).neoreadDesktop;
 });
 const button = (label: string) =>
   [...host.querySelectorAll("button")].find((b) => b.textContent === label);
 
 it("installs the Word plugin and reports unsupported WPS", async () => {
   const install = vi.fn(async () => [{ ...word, installed: true }, wps]);
-  window.readerDesktop = {
+  window.neoreadDesktop = {
     citePlugins: async () => [word, wps],
     installCitePlugin: install,
-  } as unknown as typeof window.readerDesktop;
+  } as unknown as typeof window.neoreadDesktop;
   await act(async () => root.render(<CitePluginSettings open />));
   expect(host.textContent).toContain("安装前请先退出 Word。");
   expect(host.textContent).toContain("当前系统暂不支持。");
@@ -56,12 +56,12 @@ it("installs the Word plugin and reports unsupported WPS", async () => {
 });
 
 it("shows install failures", async () => {
-  window.readerDesktop = {
+  window.neoreadDesktop = {
     citePlugins: async () => [word, wps],
     installCitePlugin: async () => {
       throw new Error("Word 正在使用插件，请先退出 Word 再安装");
     },
-  } as unknown as typeof window.readerDesktop;
+  } as unknown as typeof window.neoreadDesktop;
   await act(async () => root.render(<CitePluginSettings open />));
   await act(async () => button("安装")!.click());
   expect(toast.error).toHaveBeenCalledWith(

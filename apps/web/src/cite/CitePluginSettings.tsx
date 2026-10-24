@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { toast } from "sonner";
-import { Button } from "@reader/ui/components/button";
+import { Button } from "@neoread/ui/components/button";
 import type { CitePluginStatus } from "./plugins";
 
 const names = { word: "Microsoft Word", wps: "WPS 文字" } as const;
@@ -21,7 +21,7 @@ function describe(plugin: CitePluginStatus) {
 
 /** Desktop only: installs the Word template and the WPS add-in. */
 export function CitePluginSettings({ open }: { open: boolean }) {
-  const desktop = window.readerDesktop;
+  const desktop = window.neoreadDesktop;
   const [plugins, setPlugins] = useState<CitePluginStatus[] | null>(null);
   const [busy, setBusy] = useState<string | null>(null);
   useEffect(() => {
