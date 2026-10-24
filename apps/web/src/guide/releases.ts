@@ -28,7 +28,11 @@ export function guideLaunch(
   version: string,
   hasDocuments: boolean,
 ): GuideLaunch {
-  if (!preferences.onboarded && !hasDocuments) return { kind: "onboarding" };
+  if (
+    !preferences.onboarded &&
+    (!hasDocuments || preferences.exampleDocumentId)
+  )
+    return { kind: "onboarding" };
   if (preferences.seenVersion === version)
     return preferences.onboarded
       ? { kind: "none" }

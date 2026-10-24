@@ -18,6 +18,8 @@ let ipc: EventEmitter;
 let handlers: Map<string, (...args: any[]) => any>;
 let migrate: ReturnType<typeof vi.fn>;
 let stop: ReturnType<typeof vi.fn>;
+let serverSpawn: ReturnType<typeof vi.fn>;
+let libraryDirectory: ReturnType<typeof vi.fn>;
 let legacyMigrate: ReturnType<typeof vi.fn>;
 let diagnostics: {
   record: ReturnType<typeof vi.fn>;
@@ -109,20 +111,19 @@ beforeEach(async ({ task }) => {
       }
     },
   }));
-  vi.doMock("node:child_process", () => ({
-    spawn: () => {
-      const child = Object.assign(new EventEmitter(), {
-        stdin: new PassThrough(),
-        stdout: new PassThrough(),
-        stderr: new PassThrough(),
-        kill: vi.fn(),
-      });
-      queueMicrotask(() =>
-        child.stdout.write('{"url":"http://127.0.0.1:1234"}\n'),
-      );
-      return child;
-    },
-  }));
+  serverSpawn = vi.fn(() => {
+    const child = Object.assign(new EventEmitter(), {
+      stdin: new PassThrough(),
+      stdout: new PassThrough(),
+      stderr: new PassThrough(),
+      kill: vi.fn(),
+    });
+    queueMicrotask(() =>
+      child.stdout.write('{"url":"http://127.0.0.1:1234"}\n'),
+    );
+    return child;
+  });
+  vi.doMock("node:child_process", () => ({ spawn: serverSpawn }));
   vi.doMock("node:fs/promises", () => ({
     readFile: vi.fn(),
     realpath: vi.fn(async (path: string) => path),
@@ -142,12 +143,13 @@ beforeEach(async ({ task }) => {
       await shutdown();
     },
   );
+  libraryDirectory = vi.fn(async () => {
+    if (task.name.startsWith("recovery:"))
+      throw new Error("无法访问书库（ENOENT）");
+    return "/old/library";
+  });
   vi.doMock("./library-location", () => ({
-    libraryDirectory: async () => {
-      if (task.name.startsWith("recovery:"))
-        throw new Error("无法访问书库（ENOENT）");
-      return "/old/library";
-    },
+    libraryDirectory,
     validateLibraryDirectory: validate,
     saveLibraryDirectory: saveLocation,
     migrateLibrary: migrate,
@@ -328,6 +330,30 @@ it("offers diagnostic export when legacy migration fails before opening the libr
     error,
   );
   expect(request).not.toHaveBeenCalled();
+});
+
+it("waits for Reader migration before choosing or opening the library", async () => {
+  vi.resetModules();
+  serverSpawn.mockClear();
+  libraryDirectory.mockClear();
+  legacyMigrate.mockClear();
+  let finish!: (state: { status: string }) => void;
+  legacyMigrate.mockImplementationOnce(
+    () =>
+      new Promise((resolve) => {
+        finish = resolve;
+      }),
+  );
+  await import("./index");
+  await vi.waitFor(() => expect(legacyMigrate).toHaveBeenCalledOnce());
+  expect(libraryDirectory).not.toHaveBeenCalled();
+  expect(serverSpawn).not.toHaveBeenCalled();
+  libraryDirectory.mockResolvedValue("/migrated/library");
+  finish({ status: "completed" });
+  await vi.waitFor(() => expect(serverSpawn).toHaveBeenCalledOnce());
+  expect(serverSpawn.mock.calls[0][1]).toEqual(
+    expect.arrayContaining(["--data", "/migrated/library"]),
+  );
 });
 
 const importLibrary = () => handlers.get("neoread:import-library")!(event());

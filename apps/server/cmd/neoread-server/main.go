@@ -100,7 +100,7 @@ func main() {
 		log.Fatal(err)
 	}
 	defer unlock()
-	store, err := neoread.OpenStore(root)
+	store, err := neoread.OpenLibrary(root)
 	if err != nil {
 		log.Fatal(err)
 	}
