@@ -125,7 +125,7 @@ beforeEach(async ({ task }) => {
   }));
   vi.doMock("node:fs/promises", () => ({
     readFile: vi.fn(),
-    realpath: async (path: string) => path,
+    realpath: vi.fn(async (path: string) => path),
     lstat: async () => {
       throw Object.assign(new Error("absent"), { code: "ENOENT" });
     },
@@ -388,4 +388,15 @@ it("recovery: restart retries without replacing the saved library", () => {
   ipc.emit("neoread:flushed", event(), null);
   expect(saveLocation).not.toHaveBeenCalled();
   expect(app.relaunch).toHaveBeenCalledOnce();
+});
+
+it("can select a replacement when the active library directory has disappeared", async () => {
+  const { realpath } = await import("node:fs/promises");
+  vi.mocked(realpath)
+    .mockResolvedValueOnce("/destination")
+    .mockRejectedValueOnce(new Error("ENOENT"));
+  showMessageBox.mockResolvedValueOnce({ response: 1 });
+  expect(await importLibrary()).toBe(false);
+  expect(validate).toHaveBeenCalledWith("/destination", expect.any(String));
+  expect(saveLocation).not.toHaveBeenCalled();
 });

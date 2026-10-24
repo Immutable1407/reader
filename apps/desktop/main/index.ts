@@ -593,8 +593,10 @@ app
         });
         if (selected.canceled || !selected.filePaths[0]) return false;
         const destination = await realpath(selected.filePaths[0]);
-        if (activeLibrary && destination === (await realpath(activeLibrary)))
-          return false;
+        const current = activeLibrary
+          ? await realpath(activeLibrary).catch(() => undefined)
+          : undefined;
+        if (destination === current) return false;
         await validateLibraryDirectory(destination, serverBinary());
         const confirmed = await dialog.showMessageBox(window!, {
           type: "question",
