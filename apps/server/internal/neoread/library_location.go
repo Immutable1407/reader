@@ -253,6 +253,19 @@ func ValidateLibrary(directory string) error {
 	if result != "ok" {
 		return fmt.Errorf("书库数据库校验失败")
 	}
+	rows, err := db.Query("PRAGMA foreign_key_check")
+	if err != nil {
+		return fmt.Errorf("书库外键检查失败：%w", err)
+	}
+	hasInvalidReference := rows.Next()
+	rowErr := rows.Err()
+	rows.Close()
+	if rowErr != nil {
+		return fmt.Errorf("书库外键检查失败：%w", rowErr)
+	}
+	if hasInvalidReference {
+		return fmt.Errorf("书库存在无效的数据关联（外键检查失败），未切换书库")
+	}
 	var tables int
 	if err = db.QueryRow("SELECT count(*) FROM sqlite_schema WHERE type='table' AND name='documents'").Scan(&tables); err != nil || tables != 1 {
 		return fmt.Errorf("所选目录不是有效的 NeoRead 书库")
