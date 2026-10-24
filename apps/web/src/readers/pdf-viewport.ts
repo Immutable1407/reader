@@ -3,6 +3,7 @@ import type { PDFViewer } from "pdfjs-dist/web/pdf_viewer.mjs";
 type Anchor = { page: HTMLElement; x: number; y: number };
 /** Preserve the page point under the viewport center through panel resizing. */
 export class PDFViewport {
+  private animation?: Animation;
   private size?: { width: number; height: number };
   private basis?: { width: number; scale: number };
   private anchor?: Anchor;
@@ -12,6 +13,7 @@ export class PDFViewport {
     private viewer: PDFViewer,
   ) {}
   reset() {
+    this.cancelAnimation();
     if (!this.visible()) return;
     this.size = {
       width: this.host.clientWidth,
@@ -24,7 +26,7 @@ export class PDFViewport {
     this.capture();
   }
   remember() {
-    if (!this.visible()) return;
+    if (this.animation || !this.visible()) return;
     if (!this.size) {
       this.reset();
       return;
@@ -92,7 +94,47 @@ export class PDFViewport {
         : undefined;
     this.scroll = { left: this.host.scrollLeft, top: this.host.scrollTop };
   }
+  cancelAnimation() {
+    this.animation?.cancel();
+    this.animation = undefined;
+  }
+  private animateScale(
+    oldScale: number,
+    scale: number,
+    offset: { x: number; y: number },
+  ) {
+    const element = this.viewer.viewer;
+    if (
+      !element?.animate ||
+      Math.abs(scale - oldScale) < 0.0001 ||
+      this.host.ownerDocument.defaultView?.matchMedia?.(
+        "(prefers-reduced-motion: reduce)",
+      ).matches
+    )
+      return;
+    const host = this.host.getBoundingClientRect();
+    const rect = element.getBoundingClientRect();
+    const origin = `${host.left + this.host.clientLeft + this.host.clientWidth / 2 - rect.left}px ${host.top + this.host.clientTop + this.host.clientHeight / 2 - rect.top}px`;
+    // Commit PDF.js geometry once; animate only its visual presentation.
+    const animation = element.animate(
+      [
+        {
+          transform: `translate(${offset.x}px, ${offset.y}px) scale(${oldScale / scale})`,
+          transformOrigin: origin,
+        },
+        { transform: "translate(0px, 0px) scale(1)", transformOrigin: origin },
+      ],
+      { duration: 160, easing: "cubic-bezier(0.32, 0.72, 0, 1)" },
+    );
+    this.animation = animation;
+    animation.onfinish = () => {
+      if (this.animation !== animation) return;
+      this.animation = undefined;
+      this.capture();
+    };
+  }
   resize(fitWidth: boolean, updateInsets: () => void) {
+    this.cancelAnimation();
     if (!this.visible()) return;
     if (!this.size || !this.basis) {
       this.reset();
@@ -105,6 +147,14 @@ export class PDFViewport {
       anchor = this.anchor,
       scroll = this.scroll;
     const oldScale = this.viewer.currentScale;
+    const oldPage = anchor?.page.getBoundingClientRect();
+    const oldPoint =
+      anchor && oldPage
+        ? {
+            x: oldPage.left + anchor.x * oldPage.width,
+            y: oldPage.top + anchor.y * oldPage.height,
+          }
+        : undefined;
     updateInsets();
     if (fitWidth) this.viewer.currentScaleValue = "page-width";
     else {
@@ -151,6 +201,16 @@ export class PDFViewport {
       height: this.host.clientHeight,
     };
     this.capture();
+    this.animateScale(
+      oldScale,
+      scale,
+      oldPoint
+        ? {
+            x: oldPoint.x - view.left - this.host.clientLeft - width / 2,
+            y: oldPoint.y - view.top - this.host.clientTop - height / 2,
+          }
+        : { x: 0, y: 0 },
+    );
     return {
       scale,
       widthRatio: width / before.width,
