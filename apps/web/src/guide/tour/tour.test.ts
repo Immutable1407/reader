@@ -233,7 +233,7 @@ describe("tour steps", () => {
     expect(view?.click).toEqual([
       '[data-tour="import-dialog"] > [data-slot="dialog-close"]',
     ]);
-    expect(view?.act).toBe(true);
+    expect(view?.next).toBeUndefined();
   });
   it("finishes after the last confirmation", () => {
     expect(
@@ -264,8 +264,8 @@ it("requires parallel mode before demonstrating source block focus", () => {
   );
   expect(
     at(index("focus-block"), { ...reading, parallel: true, sourceBlock: true })
-      .view?.act,
-  ).toBe(true);
+      .view?.pointer?.gesture,
+  ).toBe("click");
   const focused = at(index("focus-block"), {
     ...reading,
     parallel: true,
@@ -273,7 +273,8 @@ it("requires parallel mode before demonstrating source block focus", () => {
     blockFocused: true,
   });
   expect(focused.id).toBe("focus-block");
-  expect(focused.view?.act).toBeUndefined();
+  expect(focused.view?.next).toBeUndefined();
+  expect(focused.view?.advanceAfter).toBe(3000);
   expect(
     at(index("focus-block"), {
       ...reading,
@@ -288,4 +289,20 @@ it("requires parallel mode before demonstrating source block focus", () => {
       parallel: true,
     }).id,
   ).toBe("assistant");
+});
+
+it("only offers 下一步 at Agent configuration and permits continuing without a model", () => {
+  const state = { ...base, settings: true, agentPanel: true };
+  const nextSteps = tourSteps.filter(
+    (step) => step.view(state).next === "下一步",
+  );
+  expect(nextSteps.map((step) => step.id)).toEqual(["agent"]);
+  const next = at(index("agent"), {
+    ...state,
+    acknowledged: new Set(["agent"]),
+    taskModels: true,
+  });
+  expect(next.id).toBe("close-settings");
+  expect(next.view?.title).toBe("稍后配置 Agent");
+  expect(at(index("close-settings"), { settings: false }).id).toBe("import");
 });

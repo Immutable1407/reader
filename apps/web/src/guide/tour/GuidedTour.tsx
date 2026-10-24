@@ -376,23 +376,36 @@ export function GuidedTour({
     }
   }, [running]);
 
+  const activeStep = layout ? steps[layout.step]?.id : undefined;
+  const advanceOn = layout?.view.advanceOn;
+  const advanceAfter = layout?.view.advanceAfter;
+  useEffect(() => {
+    if (!running || !activeStep || confirmSkip) return;
+    const acknowledge = () =>
+      setAcknowledged((current) => new Set(current).add(activeStep));
+    const click = (event: MouseEvent) => {
+      if (
+        advanceOn &&
+        event.target instanceof Element &&
+        event.target.closest(advanceOn)
+      )
+        acknowledge();
+    };
+    document.addEventListener("click", click, true);
+    const timer = advanceAfter
+      ? window.setTimeout(acknowledge, advanceAfter)
+      : undefined;
+    return () => {
+      document.removeEventListener("click", click, true);
+      window.clearTimeout(timer);
+    };
+  }, [running, activeStep, advanceOn, advanceAfter, confirmSkip]);
+
   if (!running || !root || !layout) return null;
   const step = steps[layout.step];
   const { view, viewport } = layout;
   const confirm = () =>
     setAcknowledged((current) => new Set(current).add(step.id));
-  // Do what the pointer shows when the step allows it, otherwise move past.
-  const next = () => {
-    const p = view.pointer;
-    const target =
-      view.act && p && p.gesture !== "wander"
-        ? document.querySelector<HTMLElement>(p.target)
-        : null;
-    if (!target) return confirm();
-    if (p?.gesture === "double")
-      target.dispatchEvent(new MouseEvent("dblclick", { bubbles: true }));
-    else target.click();
-  };
   const progress = (layout.step + 1) / steps.length;
   return createPortal(
     <>
@@ -526,9 +539,11 @@ export function GuidedTour({
           >
             <span style={{ transform: `scaleX(${progress})` }} />
           </div>
-          <Button size="sm" onClick={next}>
-            {view.next ?? "下一步"}
-          </Button>
+          {view.next && (
+            <Button size="sm" onClick={confirm}>
+              {view.next}
+            </Button>
+          )}
         </div>
       </div>
       <Button

@@ -58,10 +58,12 @@ export interface TourView {
   /** Framed, lit and clickable; the rest of the window ignores the pointer. */
   click?: string[];
   pointer?: Pointer;
-  /** Label of the card's button that moves on; defaults to 下一步. */
+  /** Only steps with an explicit label show a card button. */
   next?: string;
-  /** The button performs the pointer's click instead of skipping the step. */
-  act?: boolean;
+  /** Advance after the user clicks this UI target. */
+  advanceOn?: string;
+  /** Allow time to observe a completed demonstration before continuing. */
+  advanceAfter?: number;
   /** What the card sits beside, if not the first lit area. */
   anchor?: string;
   side?: Side;
@@ -193,7 +195,6 @@ function agentView(s: TourState): TourView {
           body: "点击 API 卡片，进入 API 配置。Key 只保存在本机。",
           click: [card("api")],
           pointer: { gesture: "click", target: card("api") },
-          act: true,
           ...choice,
         };
   if (s.detecting || mine.some((a) => a.status === "pending"))
@@ -243,14 +244,12 @@ export const tourSteps: TourStep[] = [
             body: "问答和翻译都由 Agent 完成。点击「设置」。",
             click: [tour("open-settings")],
             pointer: { gesture: "click", target: tour("open-settings") },
-            act: true,
           }
         : {
             title: "打开侧栏",
             body: "设置在侧栏底部，先展开侧栏。",
             click: ['[aria-label="切换侧栏"]'],
             pointer: { gesture: "click", target: '[aria-label="切换侧栏"]' },
-            act: true,
           },
   },
   {
@@ -262,31 +261,37 @@ export const tourSteps: TourStep[] = [
       (!s.settings || (s.agentPanel && !s.detecting && !s.apiDetails)),
     skip: (s) => !s.settings && s.acknowledged.has("settings"),
     back: (s) => (s.settings || s.primaryReady ? undefined : "settings"),
-    view: agentView,
+    view: (s) => ({ ...agentView(s), next: "下一步" }),
   },
   {
     id: "models",
-    skip: (s) => !s.settings || !s.taskModels || s.apiDetails,
+    skip: (s) =>
+      !s.settings || !s.taskModels || s.apiDetails || !s.primaryReady,
+    done: (s) => !s.settings,
     view: () => ({
       title: "为任务选择模型",
-      body: "问答需要推理，选能力强的模型；翻译调用量大，选快速模型即可，Effort 也可以调低。保持默认也能使用。",
-      click: [tour("task-models")],
-      pointer: { gesture: "hover", target: tour("task-models") },
-      next: "下一步",
+      body: "问答需要推理，选能力强的模型；翻译调用量大，选快速模型即可，Effort 也可以调低。保持默认也能使用。设置好后，点击右上角关闭。",
+      click: [
+        tour("task-models"),
+        `${tour("settings")} > [data-slot="dialog-close"]`,
+      ],
+      pointer: {
+        gesture: "click",
+        target: `${tour("settings")} > [data-slot="dialog-close"]`,
+      },
     }),
   },
   {
     id: "close-settings",
     done: (s) => !s.settings,
-    view: () => ({
-      title: "Agent 已就绪",
-      body: "关闭设置，接下来导入第一篇论文。",
+    view: (s) => ({
+      title: s.primaryReady ? "Agent 已就绪" : "稍后配置 Agent",
+      body: "关闭设置，接下来了解导入入口并体验示例论文。",
       click: [`${tour("settings")} > [data-slot="dialog-close"]`],
       pointer: {
         gesture: "click",
         target: `${tour("settings")} > [data-slot="dialog-close"]`,
       },
-      act: true,
     }),
   },
   {
@@ -300,14 +305,12 @@ export const tourSteps: TourStep[] = [
             body: "点击「导入论文」。也可以随时把 PDF 拖进窗口。",
             click: [tour("import")],
             pointer: { gesture: "click", target: tour("import") },
-            act: true,
           }
         : {
             title: "打开侧栏",
             body: "导入按钮在侧栏底部，先展开侧栏。",
             click: ['[aria-label="切换侧栏"]'],
             pointer: { gesture: "click", target: '[aria-label="切换侧栏"]' },
-            act: true,
           },
   },
   {
@@ -319,7 +322,6 @@ export const tourSteps: TourStep[] = [
       focus: [tour("import-dialog")],
       click: [closeImport],
       pointer: { gesture: "click", target: closeImport },
-      act: true,
     }),
   },
   {
@@ -339,7 +341,6 @@ export const tourSteps: TourStep[] = [
         gesture: s.library === "book" ? "click" : "double",
         target: s.libraryTarget ?? libraryItem,
       },
-      act: true,
     }),
   },
   {
@@ -354,14 +355,13 @@ export const tourSteps: TourStep[] = [
             body: "点击「原文译文」，并排查看论文原文和中文翻译。",
             click: [readingModes],
             pointer: { gesture: "click", target: tour("parallel-mode") },
-            act: true,
           }
         : {
             title: "切换阅读模式",
             body: "在「仅原文」「原文译文」「仅译文」之间切换。对照模式下悬停句子，两侧对应高亮。",
             click: [readingModes],
             pointer: { gesture: "hover", target: readingModes },
-            next: "下一步",
+            advanceOn: readingModes,
           },
   },
   {
@@ -378,7 +378,7 @@ export const tourSteps: TourStep[] = [
               tour("source-block"),
               "[data-translation-block][data-focused]",
             ],
-            next: "下一步",
+            advanceAfter: 3000,
           }
         : s.sourceBlock
           ? {
@@ -386,13 +386,10 @@ export const tourSteps: TourStep[] = [
               body: "点击鼠标指向的原文段落，聚焦这一段，并让右侧译文定位到对应内容。",
               click: [tour("source-block")],
               pointer: { gesture: "click", target: tour("source-block") },
-              next: "聚焦这一段",
-              act: true,
             }
           : {
               title: "准备段落演示",
-              body: "段落加载后，会在这里演示原文与译文的聚焦效果。也可以跳过此步继续引导。",
-              next: "跳过此步",
+              body: "段落加载后，会在这里演示原文与译文的聚焦效果。",
             },
   },
   {
@@ -403,10 +400,11 @@ export const tourSteps: TourStep[] = [
       s.assistant
         ? {
             title: "向 AI 提问",
-            body: "选中文字后，在浮动工具栏点「问 AI」，回答会出现在这里。也可以引用多段文字，或直接在输入框提问。",
+            body: "选中文字后，在浮动工具栏点「问 AI」，回答会出现在这里。也可以引用多段文字，或直接在输入框提问。点击输入框继续。",
             focus: [tour("assistant")],
             click: [tour("compose")],
-            pointer: { gesture: "hover", target: tour("compose") },
+            advanceOn: tour("compose"),
+            pointer: { gesture: "click", target: tour("compose") },
             anchor: tour("assistant"),
             side: "left",
           }
@@ -415,7 +413,6 @@ export const tourSteps: TourStep[] = [
             body: "点击右上角的 Agent 按钮。",
             click: [assistantToggle],
             pointer: { gesture: "click", target: assistantToggle },
-            act: true,
           },
   },
   {
