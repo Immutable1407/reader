@@ -26,6 +26,7 @@
 
   function createDocument(app) {
     const doc = app.ActiveDocument;
+    let snapshot = null;
 
     /** Reader fields in reading order; note fields sort by their reference. */
     function collect() {
@@ -53,6 +54,34 @@
         }
       }
       return found.sort((a, b) => a.anchor - b.anchor || a.offset - b.offset);
+    }
+
+    // Indexes belong to the last state returned to Reader. Keep those objects;
+    // never apply old indexes to a newly collected list after the user edits.
+    function validateFields(indexes = []) {
+      const conflict = () => new Error("文档中的域已改变，请重试");
+      try {
+        if (snapshot === null) throw conflict();
+        const current = collect();
+        if (current.length !== snapshot.length) throw conflict();
+        snapshot.forEach((entry, index) => {
+          const live = current[index];
+          // Compare live ranges rather than JS proxy identity: hosts may return
+          // different wrappers for the same native field. Deleted objects throw.
+          if (
+            readerCode(entry.field.Code.Text) !== entry.code ||
+            live.code !== entry.code ||
+            live.field.Code.Start !== entry.field.Code.Start ||
+            live.field.Result.StoryType !== entry.field.Result.StoryType
+          )
+            throw conflict();
+        });
+        if (indexes.some((index) => !Number.isInteger(index) || !snapshot[index]))
+          throw conflict();
+      } catch (error) {
+        throw conflict();
+      }
+      return snapshot;
     }
 
     /** Main-text position of the selection, resolving notes to their reference. */
@@ -93,6 +122,7 @@
 
     function getState() {
       const fields = collect();
+      snapshot = fields;
       const selection = app.Selection;
       const anchor = selectionAnchor(selection);
       let cursor = null;
@@ -125,6 +155,7 @@
     }
 
     function insertField(op) {
+      if (snapshot !== null) validateFields();
       const range = app.Selection.Range;
       range.Collapse(wdCollapseEnd);
       let target = range;
@@ -144,7 +175,8 @@
       if (note) note.Reference.Select();
       else field.Select();
       app.Selection.Collapse(wdCollapseEnd);
-      const index = collect().findIndex(
+      snapshot = collect();
+      const index = snapshot.findIndex(
         (entry) => entry.code === "READER_TEMP",
       );
       if (index < 0) throw new Error("插入的域没有出现在文档中");
@@ -225,12 +257,13 @@
     }
 
     function updateFields(op) {
-      const fields = collect();
+      const fields = validateFields(op.updates.map((update) => update.index));
       for (const update of op.updates) {
         const entry = fields[update.index];
-        if (!entry) throw new Error("文档中的域已改变，请重试");
-        if (update.code !== undefined)
+        if (update.code !== undefined) {
           entry.field.Code.Text = " ADDIN " + update.code + " ";
+          entry.code = readerCode(entry.field.Code.Text);
+        }
         if (update.text) writeRuns(entry.field, [update.text]);
         if (update.bibliography) {
           formatBibliography(
@@ -243,14 +276,14 @@
     }
 
     function removeFields(op) {
-      const fields = collect();
-      const indexes = [...op.indexes].sort((a, b) => b - a);
+      const fields = validateFields(op.indexes);
+      const indexes = [...new Set(op.indexes)].sort((a, b) => b - a);
       for (const index of indexes) {
         const entry = fields[index];
-        if (!entry) continue;
         if (op.keepText) entry.field.Unlink();
         else entry.field.Delete();
       }
+      snapshot = fields.filter((_, index) => !indexes.includes(index));
       return {};
     }
 

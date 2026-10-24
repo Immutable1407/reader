@@ -361,3 +361,83 @@ it("bootstraps with a private installation path and uses only the runtime creden
     vi.unstubAllGlobals();
   }
 });
+
+function threeCitations() {
+  const word = fakeWord();
+  for (const [i, name] of ["A", "B", "C"].entries()) {
+    const field = word.doc.Fields.Add(
+      { StoryType: MAIN, Start: 100 * (i + 1) },
+      -1,
+      "ADDIN READER_CITATION " + name,
+    );
+    field.Result.Text = name;
+  }
+  const document = createDocument(word.app);
+  document.execute({ op: "Document.getState" });
+  return { word, document };
+}
+
+it.each(["update", "delete", "unlink"])(
+  "rejects %s after an earlier citation is deleted without touching other fields",
+  (operation) => {
+    const { word, document } = threeCitations();
+    const [, b, c] = word.mainFields;
+    word.mainFields[0].Delete();
+    const op = operation === "update"
+      ? { op: "Document.updateFields", updates: [{ index: 1, code: "READER_CITATION changed", text: [{ text: "changed" }] }] }
+      : { op: "Document.removeFields", indexes: [1], keepText: operation === "unlink" };
+    expect(() => document.execute(op)).toThrow("文档中的域已改变");
+    expect(word.mainFields).toEqual([b, c]);
+    expect(b.Result.Text).toBe("B");
+    expect(c.Result.Text).toBe("C");
+    expect(c.Code.Text).toContain("READER_CITATION C");
+  },
+);
+
+it("validates every field before applying any updates", () => {
+  const { word, document } = threeCitations();
+  word.mainFields[2].Code.Text = "ADDIN READER_CITATION edited";
+  expect(() => document.execute({
+    op: "Document.updateFields",
+    updates: [
+      { index: 0, code: "READER_CITATION changed" },
+      { index: 2, code: "READER_CITATION overwritten" },
+    ],
+  })).toThrow("文档中的域已改变");
+  expect(word.mainFields[0].Code.Text).toContain("READER_CITATION A");
+  expect(word.mainFields[2].Code.Text).toContain("READER_CITATION edited");
+});
+
+it("rejects invalid batch indexes before writing valid entries", () => {
+  const { word, document } = threeCitations();
+  expect(() => document.execute({
+    op: "Document.updateFields",
+    updates: [{ index: 0, code: "READER_CITATION changed" }, { index: 3, code: "READER_CITATION invalid" }],
+  })).toThrow("文档中的域已改变");
+  expect(word.mainFields[0].Code.Text).toContain("READER_CITATION A");
+});
+
+it("detects a replacement even when the field count stays unchanged", () => {
+  const { word, document } = threeCitations();
+  word.mainFields[1].Delete();
+  word.doc.Fields.Add({ StoryType: MAIN, Start: 200 }, -1, "ADDIN READER_CITATION replacement");
+  expect(() => document.execute({ op: "Document.removeFields", indexes: [1], keepText: false }))
+    .toThrow("文档中的域已改变");
+  expect(word.mainFields).toHaveLength(3);
+  expect(word.mainFields[1].Code.Text).toContain("replacement");
+});
+
+it("keeps captured fields valid when ordinary text shifts their ranges", () => {
+  const { word, document } = threeCitations();
+  for (const field of word.mainFields) field.Code.Start += 20;
+  document.execute({ op: "Document.updateFields", updates: [{ index: 1, code: "READER_CITATION changed" }] });
+  document.execute({ op: "Document.removeFields", indexes: [1], keepText: true });
+  expect(word.mainFields.map((field) => field.Result.Text)).toEqual(["A", "C"]);
+});
+
+it("validates removal indexes before deleting any field", () => {
+  const { word, document } = threeCitations();
+  expect(() => document.execute({ op: "Document.removeFields", indexes: [0, 3], keepText: false }))
+    .toThrow("文档中的域已改变");
+  expect(word.mainFields).toHaveLength(3);
+});
