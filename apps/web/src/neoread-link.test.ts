@@ -4,6 +4,7 @@ import { openLinkTarget, useReaderStore } from "./store";
 import { paper } from "./papers/fixtures";
 vi.mock("@neoread/api", () => ({
   api: {
+    processing: vi.fn(async () => [{ documentId: id, phase: "ready" }]),
     documents: vi.fn(async () => []),
     saveLibraryPreferences: vi.fn(async (value) => value),
   },

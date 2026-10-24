@@ -49,6 +49,7 @@ import {
   updateLibraryPreferences,
   refreshTrash,
   openLinkTarget,
+  openLibraryDocument,
 } from "./store";
 import { TrashView } from "./TrashView";
 import { PaperLibrary } from "./papers/PaperLibrary";
@@ -362,9 +363,13 @@ export function App() {
     }
   };
   const openDocument = (doc: Document) => {
-    setEditingLibrary(false);
-    open(doc);
-    void api.update(doc.id, {}).catch((e) => toast.error(e.message));
+    void openLibraryDocument(doc)
+      .then(async (opened) => {
+        if (!opened) return;
+        setEditingLibrary(false);
+        await api.update(doc.id, {});
+      })
+      .catch((e) => toast.error(e.message));
   };
   const filtered = filterDocuments(
     documents,

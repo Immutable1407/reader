@@ -9,6 +9,7 @@ import {
   type NeoReadLinkTarget,
 } from "@neoread/core";
 import { api } from "@neoread/api";
+let openRevision = 0;
 export const useReaderStore = create<{
   documents: Document[];
   active: Document | null;
@@ -41,7 +42,10 @@ export const useReaderStore = create<{
   setAIConfig: (aiConfig) => set({ aiConfig }),
   setAIModelSaving: (aiModelSaving) => set({ aiModelSaving }),
   setDocuments: (documents) => set({ documents }),
-  open: (active) => set({ active }),
+  open: (active) => {
+    ++openRevision;
+    set({ active });
+  },
   setTheme: (patch) =>
     set((state) => ({ theme: { ...state.theme, ...patch } })),
 }));
@@ -99,6 +103,27 @@ export async function refreshTrash() {
   const trash = await api.trash(libraryMode(state.libraryPreferences));
   if (revision === trashRevision) useReaderStore.getState().setTrash(trash);
 }
+/** Check the persisted parsing stage before entering a paper reader. */
+export async function openLibraryDocument(
+  doc: Document,
+  target?: NeoReadLinkTarget,
+) {
+  const revision = ++openRevision;
+  if (doc.library === "papers") {
+    const jobs = await api.processing();
+    if (revision !== openRevision) return false;
+    const job = jobs.find((job) => job.documentId === doc.id);
+    if (!job || job.phase === "learning" || job.incomplete)
+      throw new Error("论文飞速解析中，请稍等");
+  }
+  const state = useReaderStore.getState();
+  if (target && libraryMode(state.libraryPreferences) !== doc.library)
+    void updateLibraryPreferences({ mode: doc.library }).catch(() => {});
+  state.setLinkTarget(target ?? null);
+  state.open(doc);
+  return true;
+}
+
 /** Open the document a neoread:// link points to, in its own library. */
 export async function openLinkTarget(target: NeoReadLinkTarget) {
   let doc = useReaderStore.getState().documents.find((d) => d.id === target.id);
@@ -107,11 +132,7 @@ export async function openLinkTarget(target: NeoReadLinkTarget) {
     doc = useReaderStore.getState().documents.find((d) => d.id === target.id);
   }
   if (!doc) return false;
-  const state = useReaderStore.getState();
-  if (libraryMode(state.libraryPreferences) !== doc.library)
-    void updateLibraryPreferences({ mode: doc.library }).catch(() => {});
-  state.setLinkTarget(target);
-  if (state.active?.id !== doc.id) state.open(doc);
+  await openLibraryDocument(doc, target);
   return true;
 }
 
