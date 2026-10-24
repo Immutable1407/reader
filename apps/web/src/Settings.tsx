@@ -1,6 +1,7 @@
 import { PaperServiceSettings } from "./papers/PaperServiceSettings";
 import { AutoTranslationSettings } from "./papers/AutoTranslationSettings";
 import { TranslationPromptSettings } from "./TranslationPromptSettings";
+import { WebSearchSettings } from "./WebSearchSettings";
 import { useEffect, useRef, useState } from "react";
 import {
   ChevronLeft,
@@ -91,6 +92,7 @@ export function Settings({
   const checked = useRef(new Set<string>());
   const refreshing = useRef(false);
   const [saving, setSaving] = useState(false);
+  const [searchSaving, setSearchSaving] = useState(false);
   const [loading, setLoading] = useState(false);
   // Whether a detection has finished since the dialog opened.
   const [probed, setProbed] = useState(false);
@@ -351,7 +353,10 @@ export function Settings({
       setSaving(false);
     }
   };
-  const saveConfig = async (change: (latest: AIConfig) => AIConfig) => {
+  const saveConfig = async (
+    change: (latest: AIConfig) => AIConfig,
+    refreshAfter = true,
+  ) => {
     setSaving(true);
     try {
       setAIConfig(await api.saveAIConfig(change(await api.aiConfig())));
@@ -361,7 +366,7 @@ export function Settings({
     } finally {
       setSaving(false);
     }
-    await refresh();
+    if (refreshAfter) await refresh();
     return true;
   };
   const saveAPI = async (connection: APIConnection) => {
@@ -1156,9 +1161,26 @@ export function Settings({
                   )}
                 </div>
               )}
+              {config && (
+                <WebSearchSettings
+                  value={config.webSearch}
+                  disabled={aiModelSaving || (saving && !searchSaving)}
+                  onSave={async (webSearch) => {
+                    setSearchSaving(true);
+                    try {
+                      return await saveConfig(
+                        (latest) => ({ ...latest, webSearch }),
+                        false,
+                      );
+                    } finally {
+                      setSearchSaving(false);
+                    }
+                  }}
+                />
+              )}
               <div
                 data-tour="agent-cards"
-                className="grid grid-cols-1 items-start gap-3 sm:grid-cols-2"
+                className="mt-5 grid grid-cols-1 items-start gap-3 sm:grid-cols-2"
               >
                 {(["codex", "claude", "kimi", "api"] as const).map((name) => {
                   const p = providers.find((p) => p.id === name);

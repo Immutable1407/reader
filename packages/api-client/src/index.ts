@@ -1,5 +1,9 @@
 import { diagnosticFetch, reportDiagnostic } from "./diagnostics";
 import {
+  uploadAttachment,
+  type AttachmentUploadOptions,
+} from "./attachment-upload";
+import {
   diagnosticError,
   diagnosticRoute,
 } from "../../reader-core/src/diagnostics";
@@ -44,6 +48,16 @@ import type {
 let sessionToken = "";
 export function configureAPI(token: string) {
   sessionToken = token;
+}
+/** PDF.js reuses these credentials for both the initial request and byte ranges. */
+export function paperAttachmentSource(
+  documentId: string,
+  attachmentId: string,
+) {
+  return {
+    url: `/api/documents/${encodeURIComponent(documentId)}/attachments/${encodeURIComponent(attachmentId)}/file`,
+    httpHeaders: { Authorization: `Bearer ${sessionToken}` },
+  };
 }
 export function publicationURL(documentId: string, resource: string) {
   return `/pub/${encodeURIComponent(sessionToken)}/${encodeURIComponent(documentId)}/${resource}`;
@@ -141,7 +155,60 @@ function annotationRequest<T>(path: string, init: RequestInit): Promise<T> {
 }
 export type ZoteroScan = components["schemas"]["ZoteroScan"];
 export type ZoteroImportResult = components["schemas"]["ZoteroImportResult"];
+export type PaperAttachment = components["schemas"]["PaperAttachment"];
 export const api = {
+  paperAttachments: (id: string) =>
+    request<PaperAttachment[]>(
+      `/api/documents/${encodeURIComponent(id)}/attachments`,
+    ),
+  addPaperAttachment: (
+    id: string,
+    file: File,
+    options?: AttachmentUploadOptions,
+  ) =>
+    uploadAttachment<PaperAttachment>(
+      `/api/documents/${encodeURIComponent(id)}/attachments`,
+      sessionToken,
+      file,
+      options,
+    ),
+  addPaperLink: (id: string, title: string, url: string) =>
+    request<PaperAttachment>(
+      `/api/documents/${encodeURIComponent(id)}/attachments`,
+      {
+        method: "POST",
+        body: JSON.stringify({ title, url }),
+      },
+    ),
+  renamePaperAttachment: (id: string, attachment: string, title: string) =>
+    request<PaperAttachment>(
+      `/api/documents/${encodeURIComponent(id)}/attachments/${encodeURIComponent(attachment)}`,
+      {
+        method: "PATCH",
+        body: JSON.stringify({ title }),
+      },
+    ),
+  removePaperAttachment: (id: string, attachment: string) =>
+    request<void>(
+      `/api/documents/${encodeURIComponent(id)}/attachments/${encodeURIComponent(attachment)}`,
+      { method: "DELETE" },
+    ),
+  downloadPaperAttachment: async (
+    id: string,
+    attachment: string,
+    signal?: AbortSignal,
+  ): Promise<Blob> => {
+    const source = paperAttachmentSource(id, attachment);
+    const response = await diagnosticFetch(source.url, {
+      headers: source.httpHeaders,
+      signal,
+    });
+    if (!response.ok) {
+      const data = await response.json().catch(() => ({}));
+      throw new RequestError(data.error || `附件下载失败 (${response.status})`);
+    }
+    return response.blob();
+  },
   navigation: (id: string) =>
     request<import("@reader/core").DocumentNavigation>(
       `/api/documents/${encodeURIComponent(id)}/navigation`,
@@ -605,6 +672,7 @@ export const api = {
       prompt: string;
       context: string;
       userMessageId?: string;
+      webSearch?: boolean;
       references: SourceReference[];
       attachments: string[];
       readingLocation?: DocumentLocation;
@@ -686,6 +754,7 @@ export async function chat(
   onEvent?: (event: ChatStreamEvent) => void,
   readingLocation?: DocumentLocation,
   userMessageId?: string,
+  webSearch?: boolean,
 ) {
   const response = await diagnosticFetch(`/api/documents/${id}/chat`, {
     method: "POST",
@@ -701,6 +770,7 @@ export async function chat(
       readingLocation,
       attachments,
       userMessageId,
+      webSearch,
     }),
     signal,
   });

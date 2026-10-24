@@ -7,6 +7,7 @@ import (
 	"log/slog"
 	"net/http"
 	"os"
+	"strings"
 	"sync"
 	"time"
 )
@@ -94,6 +95,16 @@ func (s *Server) streamChat(ctx context.Context, cancel context.CancelFunc, w ht
 	var firstText time.Time
 	var finalErr error
 	out := &chatStreamWriter{w: w, cancel: cancel}
+	if in.Chat != nil {
+		in.Chat.toolEvent = func(v ToolActivity) error { return out.send("tool", v) }
+		defer func() {
+			status := "failed"
+			if ctx.Err() != nil {
+				status = "cancelled"
+			}
+			in.Chat.settleTools(status)
+		}()
+	}
 	defer func() {
 		attrs := []any{"requestId", requestID, "durationMs", time.Since(started).Milliseconds()}
 		if !firstText.IsZero() {
@@ -142,7 +153,15 @@ func (s *Server) streamChat(ctx context.Context, cancel context.CancelFunc, w ht
 						return
 					}
 				} else {
-					in.Chat.Agent = &documentAgent{sessionID: in.Chat.SessionID, codexCache: documentCache, server: s, corpus: corpus, ctx: ctx, ID: id(), activity: func(phase, tool, message string) error {
+					in.Chat.Agent = &documentAgent{chat: in.Chat, sessionID: in.Chat.SessionID, codexCache: documentCache, server: s, corpus: corpus, ctx: ctx, ID: id(), activity: func(phase, tool, message string) error {
+						for _, step := range in.Chat.toolSnapshot() {
+							if step.Status == "running" && (step.Tool == tool || strings.HasSuffix(step.Tool, "/"+tool)) {
+								step.Target = message
+								if err := in.Chat.recordTool(step); err != nil {
+									return err
+								}
+							}
+						}
 						return out.send("activity", map[string]string{"phase": phase, "tool": tool, "message": message})
 					}}
 				}
@@ -166,6 +185,7 @@ func (s *Server) streamChat(ctx context.Context, cancel context.CancelFunc, w ht
 		return
 	}
 	service.usageSink = s.processingUsageSink(documentID, "chat", requestID)
+	citations := &webCitationStream{normalize: func(text string) string { return in.Chat.normalizeWebCitations(text) }}
 	result, err := service.Generate(ctx, in, true, func(e ProviderEvent) error {
 		if e.Reasoning != "" {
 			return out.send("reasoning", map[string]string{"text": e.Reasoning})
@@ -179,13 +199,37 @@ func (s *Server) streamChat(ctx context.Context, cancel context.CancelFunc, w ht
 		if e.Fallback != "" {
 			return out.send("fallback", map[string]string{"message": e.Fallback})
 		}
+
+		text := e.Text
+		if in.Chat != nil && in.Chat.WebSearch {
+			text = citations.feed(text)
+		}
+		if text == "" {
+			return nil
+		}
 		if firstText.IsZero() {
 			firstText = time.Now()
 		}
-		return out.send("delta", map[string]string{"text": e.Text})
+		return out.send("delta", map[string]string{"text": text})
 	})
+	if err == nil && in.Chat != nil && in.Chat.WebSearch {
+		if tail := citations.finish(); tail != "" {
+			err = out.send("delta", map[string]string{"text": tail})
+		}
+		result.Text = in.Chat.normalizeWebCitations(result.Text)
+	}
 	if err == nil {
 		err = ctx.Err()
+	}
+	if in.Chat != nil {
+		status := "completed"
+		if err != nil {
+			status = "failed"
+		}
+		if ctx.Err() != nil {
+			status = "cancelled"
+		}
+		in.Chat.settleTools(status)
 	}
 	if err == nil {
 		if _, err = s.Store.Document(documentID); err != nil {

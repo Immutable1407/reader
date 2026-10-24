@@ -1,11 +1,5 @@
 import { useEffect, useState } from "react";
-import { ChevronRight } from "lucide-react";
-import { Button } from "@reader/ui/components/button";
-import {
-  Collapsible,
-  CollapsibleTrigger,
-  CollapsibleContent,
-} from "@reader/ui/components/collapsible";
+import { ChatDisclosure } from "./ChatDisclosure";
 
 export function Thinking({
   text,
@@ -21,21 +15,16 @@ export function Thinking({
     if (!active) setOpen(false);
   }, [active]);
   return (
-    <Collapsible open={open} onOpenChange={setOpen} className="chat-thinking">
-      <CollapsibleTrigger
-        render={<Button variant="ghost" size="sm" />}
-        className="chat-thinking-toggle"
-      >
-        <ChevronRight
-          size={14}
-          className={open ? "rotate-90" : ""}
-          aria-hidden="true"
-        />
-        {active ? "正在思考…" : incomplete ? "思考过程（未完成）" : "思考过程"}
-      </CollapsibleTrigger>
-      <CollapsibleContent className="chat-thinking-content">
-        {text}
-      </CollapsibleContent>
-    </Collapsible>
+    <ChatDisclosure
+      open={open}
+      onOpenChange={setOpen}
+      active={active}
+      className="chat-thinking"
+      label={
+        active ? "正在思考…" : incomplete ? "思考过程（未完成）" : "思考过程"
+      }
+    >
+      {text}
+    </ChatDisclosure>
   );
 }

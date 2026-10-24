@@ -298,6 +298,9 @@ func TestPiReadingToolsAndAcceptedContinuation(t *testing.T) {
 	if len(messages) != 4 || !strings.Contains(string(messages[1].References), "corpusRevision") || messages[1].Reasoning != "private-continuation" {
 		t.Fatal(messages)
 	}
+	if len(messages[1].Tools) != 1 || messages[1].Tools[0].Target == "read_passage" {
+		t.Fatalf("lost actual reading target: %s", jsonText(messages[1].Tools))
+	}
 }
 
 func TestRunConcurrencyLimitAndRestartReconciliation(t *testing.T) {

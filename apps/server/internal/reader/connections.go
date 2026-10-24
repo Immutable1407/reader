@@ -12,6 +12,7 @@ import (
 	"image"
 	"image/color"
 	"image/png"
+	"log/slog"
 	"net/http"
 	"net/url"
 	"os"
@@ -46,9 +47,10 @@ type Capability struct {
 	Fingerprint         string `json:"-"`
 }
 type AIConfig struct {
-	Primary string                       `json:"primary"`
-	Models  map[string]string            `json:"models"`
-	Efforts map[string]map[string]string `json:"efforts,omitempty"`
+	WebSearch *WebSearchConfig             `json:"webSearch,omitempty"`
+	Primary   string                       `json:"primary"`
+	Models    map[string]string            `json:"models"`
+	Efforts   map[string]map[string]string `json:"efforts,omitempty"`
 	// Translation choices are independent of chat. An empty model means
 	// Reader picks the fast tier from the live catalog.
 	TranslationModels  map[string]string            `json:"translationModels,omitempty"`
@@ -197,6 +199,12 @@ func capable(c AIConfig, p string, vision bool) bool {
 	return v.Fingerprint == configPrint(c, p) && v.Text && (!vision || v.Vision)
 }
 func publicConfig(c AIConfig) AIConfig {
+	if c.WebSearch != nil {
+		search := *c.WebSearch
+		search.HasKey = search.Key != ""
+		search.Key = ""
+		c.WebSearch = &search
+	}
 	c.API.HasKey = c.API.Key != ""
 	c.API.Key = ""
 	c.TextAPI.HasKey = c.TextAPI.Key != ""
@@ -281,6 +289,13 @@ func (s *Server) putAIConfig(w http.ResponseWriter, r *http.Request) {
 	s.configMu.Lock()
 	defer s.configMu.Unlock()
 	old := s.readAIConfig()
+	if c.WebSearch == nil {
+		c.WebSearch = old.WebSearch
+	} else if err := mergeWebSearchConfig(c.WebSearch, old.WebSearch); err != nil {
+		s.diagnosticEvent(slog.LevelWarn, "web.search.config_rejected", "requestId", requestID(r.Context()), "reason", "invalid_config")
+		fail(w, 400, err.Error())
+		return
+	}
 	if c.TranslationPrompt == nil {
 		c.TranslationPrompt = old.TranslationPrompt
 	}
@@ -354,6 +369,9 @@ func (s *Server) putAIConfig(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	respond(w, 200, publicConfig(c))
+	if c.WebSearch != nil {
+		s.diagnosticEvent(slog.LevelInfo, "web.search.config_saved", "requestId", requestID(r.Context()), "cliEnabled", c.WebSearch.CLIEnabled, "searchProvider", c.WebSearch.Provider, "hasKey", c.WebSearch.Key != "")
+	}
 	s.wakeProcessing()
 }
 func (s *Server) testConnection(w http.ResponseWriter, r *http.Request) {

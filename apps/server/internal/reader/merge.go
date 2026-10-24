@@ -171,6 +171,12 @@ func (s *Server) mergeDocuments(w http.ResponseWriter, r *http.Request) {
 	}
 	// Links to the duplicates now point at the version kept.
 	for _, d := range others {
+		// Copy ownership, preserving attachments on a duplicate if it is restored.
+		// File bytes remain shared until the last attachment is removed.
+		if _, err = tx.Exec(`INSERT OR IGNORE INTO paper_attachments(id,document_id,kind,title,filename,media_type,size,sha256,url,created_at) SELECT lower(hex(randomblob(16))),?,kind,title,filename,media_type,size,sha256,url,created_at FROM paper_attachments WHERE document_id=?`, id, d.ID); err != nil {
+			fail(w, 500, "合并附件失败")
+			return
+		}
 		for _, rel := range d.Related {
 			if rel == id || seen[rel] {
 				continue

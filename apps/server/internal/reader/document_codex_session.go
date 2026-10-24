@@ -76,6 +76,9 @@ func (c *documentCodexCache) acquire(ctx context.Context, a *documentAgent, root
 	}
 	state := a.conversation
 	key := state.ID + "\x00" + model
+	if a.chat != nil && a.chat.WebSearch {
+		key += "\x00web"
+	}
 	if c.entry != nil && c.entry.key != key {
 		c.discardLocked()
 	}
@@ -96,14 +99,14 @@ func (c *documentCodexCache) acquire(ctx context.Context, a *documentAgent, root
 	if err != nil {
 		return nil, err
 	}
-	session, err := isolatedDocumentCodex(ctx, work, model, url, token)
+	session, err := isolatedDocumentCodex(ctx, work, model, url, token, a.chat != nil && a.chat.WebSearch)
 	if err != nil {
 		closeMCP()
 		return nil, err
 	}
 	session.persistent = true
 	session.finalMessagesOnly = true
-	session.baseInstructions = documentReadingInstructions
+	session.baseInstructions = webInstructions(documentReadingInstructions, session.webSearch)
 	if state.NativeThread != "" {
 		if err = session.resumeDocument(ctx, state.NativeThread); err != nil {
 			session.close()
@@ -117,7 +120,7 @@ func (c *documentCodexCache) acquire(ctx context.Context, a *documentAgent, root
 	return e, nil
 }
 func (s *codexSession) resumeDocument(ctx context.Context, threadID string) error {
-	params := map[string]any{"threadId": threadID, "excludeTurns": true, "cwd": s.work, "approvalPolicy": "never", "sandbox": "read-only", "baseInstructions": documentReadingInstructions}
+	params := map[string]any{"threadId": threadID, "excludeTurns": true, "cwd": s.work, "approvalPolicy": "never", "sandbox": "read-only", "baseInstructions": s.baseInstructions}
 	if s.model != "" {
 		params["model"] = s.model
 	}

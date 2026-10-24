@@ -55,6 +55,8 @@ func runTranslationSessionProcess() {
 		_ = f.Close()
 		reply := func(v any) { _ = enc.Encode(map[string]any{"id": req.ID, "result": v}) }
 		switch req.Method {
+		case "config/read":
+			reply(map[string]any{"config": map[string]any{"mcp_servers": map[string]any{}, "features": map[string]bool{}, "web_search": "disabled"}})
 		case "initialize":
 			reply(map[string]any{})
 		case "thread/start":
@@ -237,6 +239,14 @@ func TestTranslationCodexWorkersReuseSelectedModelAndEffort(t *testing.T) {
 			if r.Params.Effort != "high" || r.Params.ThreadID != "thread" {
 				t.Fatal("wrong effort or thread")
 			}
+		}
+	}
+	for pid, count := range processes {
+		if count.turns == 0 {
+			if count.starts != 0 {
+				t.Fatal("preflight started a generation thread")
+			}
+			delete(processes, pid)
 		}
 	}
 	if len(processes) != 3 {

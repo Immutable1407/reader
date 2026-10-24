@@ -41,7 +41,7 @@ func (c *codexChatCache) close() {
 	c.closed = true
 	c.discardLocked()
 }
-func (c *codexChatCache) acquire(root, model string, in AIInput) (*codexSession, AIInput, error) {
+func (c *codexChatCache) acquire(ctx context.Context, root, model string, in AIInput) (*codexSession, AIInput, error) {
 	c.mu.Lock()
 	defer c.mu.Unlock()
 	if c.closed {
@@ -50,6 +50,9 @@ func (c *codexChatCache) acquire(root, model string, in AIInput) (*codexSession,
 	chat := in.Chat
 	executable, _ := exec.LookPath("codex")
 	key := executable + "\x00" + model + "\x00" + in.Effort + "\x00" + chat.Title
+	if chat.WebSearch {
+		key += "\x00web"
+	}
 	e := c.entry
 	// A reused session keeps every source it has seen, so count this turn's new
 	// sources too; a fresh session receives only the budgeted list.
@@ -70,11 +73,12 @@ func (c *codexChatCache) acquire(root, model string, in AIInput) (*codexSession,
 		if err != nil {
 			return nil, in, err
 		}
-		session, err := newCodexSession(work, model)
+		session, err := isolatedDocumentCodex(ctx, work, model, "", "", chat.WebSearch)
 		if err != nil {
 			_ = os.RemoveAll(work)
 			return nil, in, err
 		}
+		session.finalMessagesOnly = true
 		e = &codexChatEntry{session: session, work: work, key: key, document: chat.DocumentID, seen: map[string]bool{}}
 		c.entry = e
 	} else {
@@ -159,7 +163,7 @@ func (a codexChatAdapter) Stream(ctx context.Context, req GenerateRequest, emit 
 		return a.configuredCLIAdapter.Stream(ctx, req, emit)
 	}
 	return a.streamWith(ctx, req, emit, func(cli cliAdapter, req GenerateRequest, emit func(ProviderEvent) error) (GenerateResult, error) {
-		session, in, err := a.cache.acquire(cli.root, cli.model, req.Input)
+		session, in, err := a.cache.acquire(ctx, cli.root, cli.model, req.Input)
 		if err != nil {
 			return GenerateResult{}, err
 		}

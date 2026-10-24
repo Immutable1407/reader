@@ -73,7 +73,7 @@ func (a *translationCodexAdapter) stream(ctx context.Context, cli cliAdapter, re
 			return GenerateResult{}, generationError(ErrorConfiguration, "无法创建隔离的翻译工作目录")
 		}
 		a.work = work
-		a.session, err = newCodexSession(work, cli.model)
+		a.session, err = isolatedDocumentCodex(ctx, work, cli.model, "", "")
 		if err != nil {
 			a.close()
 			return GenerateResult{}, err
