@@ -32,6 +32,7 @@ vi.mock("pdfjs-dist/web/pdf_viewer.mjs", () => ({
     setDocument() {}
   },
   PDFViewer: class {
+    refresh = vi.fn();
     constructor(
       private options: { eventBus: { listeners: Map<string, () => void> } },
     ) {}

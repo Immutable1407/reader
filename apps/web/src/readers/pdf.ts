@@ -1,3 +1,4 @@
+import { reportDiagnostic } from "../diagnostics";
 import { PDFResizeObserver } from "./pdf-resize";
 import { readPDFOutline } from "./pdf-outline";
 import { PDFFigureLinks } from "./pdf-figure-links";
@@ -36,24 +37,9 @@ import { zoomCommand } from "@neoread/core";
 import { selectSentence } from "./sentence-selection";
 import { installPDFExternalLinks } from "./pdf-external-links";
 import { resolvePDFCitation } from "./pdf-citations";
-import {
-  cropPDFRegions,
-  imageRegions,
-  processPDFPagePixels,
-  type PDFDarkRegion,
-} from "./pdf-dark-mode";
+import { pdfObjectColors } from "./pdf-dark-mode";
 import { defaultTheme } from "@neoread/core";
 pdfjs.GlobalWorkerOptions.workerSrc = workerURL;
-
-interface DarkPage {
-  canvas: HTMLCanvasElement;
-  width: number;
-  height: number;
-  bitmapRegions: PDFDarkRegion[];
-  figureRegions: PDFDarkRegion[];
-  version: number;
-  epoch: number;
-}
 
 export class PDFReaderAdapter implements ReaderAdapter {
   private pdf?: pdfjs.PDFDocumentProxy;
@@ -77,6 +63,7 @@ export class PDFReaderAdapter implements ReaderAdapter {
   private wheelScale?: number;
   private wheelAppliedScale?: number;
   private disposed = false;
+  private renderErrorReported = false;
   private navigationRequest = 0;
   private blocks: PDFBlockOverlay;
   private blockData: PDFBlock[] = [];
@@ -84,14 +71,6 @@ export class PDFReaderAdapter implements ReaderAdapter {
   private navigation: PDFReadingNavigation;
   private pointer?: { x: number; y: number };
   private theme: ReaderTheme = defaultTheme;
-  private darkWorker?: Worker;
-  private darkWorkerFailed = false;
-  private darkWorkerRequest = 0;
-  private darkProcessedCanvases = new WeakSet<HTMLCanvasElement>();
-  private darkCanvasRequests = new WeakMap<HTMLCanvasElement, number>();
-  private darkRenderEpoch = 0;
-  private queuedDarkPages = new Map<HTMLCanvasElement, DarkPage>();
-  private activeDarkPage?: DarkPage & { id: number };
   private figureLinks: PDFFigureLinks;
   constructor(
     private container: HTMLElement,
@@ -119,7 +98,6 @@ export class PDFReaderAdapter implements ReaderAdapter {
       (preview) => this.events.linkPreview?.(preview),
       () => this.events.internalLink?.(this.getLocation()),
       () => this.theme,
-      (page) => this.figureRegions(page),
     );
     this.blocks = new PDFBlockOverlay(
       container,
@@ -146,14 +124,14 @@ export class PDFReaderAdapter implements ReaderAdapter {
       eventBus: this.bus,
       linkService: this.links,
       textLayerMode: 1,
+      pageColors: pdfObjectColors(this.theme) ?? undefined,
       annotationMode: pdfjs.AnnotationMode.ENABLE,
       removePageBorders: true,
       // Cap each PDF canvas so large zoom levels cannot allocate dozens of
       // megapixel textures. PDF.js keeps detail rendering for the visible area.
       maxCanvasPixels: 4 * 1024 * 1024,
       maxCanvasDim: 4096,
-      // Infinity records every image location without enabling an image menu.
-      imagesRightClickMinSize: Number.POSITIVE_INFINITY,
+      imagesRightClickMinSize: -1,
     });
     this.links.setViewer(this.viewer);
     this.viewport = new PDFViewport(container, this.viewer);
@@ -184,28 +162,21 @@ export class PDFReaderAdapter implements ReaderAdapter {
     });
     this.bus.on(
       "pagerendered",
-      (event: {
-        pageNumber: number;
-        isDetailView?: boolean;
-        source: {
-          canvas?: HTMLCanvasElement;
-          imageCoordinates?: ArrayLike<number> | null;
-          pageView?: { imageCoordinates?: ArrayLike<number> | null };
-        };
-      }) => {
-        this.processDarkPage(
-          event.pageNumber,
-          event.source,
-          !!event.isDetailView,
-        );
+      (event: { error?: unknown; isDetailView?: boolean }) => {
+        if (event?.error && !this.renderErrorReported) {
+          this.renderErrorReported = true;
+          reportDiagnostic({
+            level: "error",
+            event: "pdf.render.failed",
+            detail: `pipeline=${pdfObjectColors(this.theme) ? "object-colors" : "original"}; layer=${event.isDetailView ? "detail" : "page"}`,
+          });
+        }
+        this.paintHighlights();
+        this.locationHighlight.paint();
+        this.navigation.repaint();
+        this.blocks.repaint();
       },
     );
-    this.bus.on("pagerendered", () => {
-      this.paintHighlights();
-      this.locationHighlight.paint();
-      this.navigation.repaint();
-      this.blocks.repaint();
-    });
     this.bus.on("textlayerrendered", () => {
       this.navigation.repaint();
       this.figureLinks.repaint();
@@ -249,6 +220,7 @@ export class PDFReaderAdapter implements ReaderAdapter {
   }
   preferTheme(theme: ReaderTheme) {
     this.theme = theme;
+    this.viewer.pageColors = pdfObjectColors(theme);
     this.container.dataset.theme = theme.mode;
     this.container.dataset.darkContrast = theme.pdfDarkContrast ?? "soft";
   }
@@ -390,7 +362,6 @@ export class PDFReaderAdapter implements ReaderAdapter {
   };
   private onScroll = () => {
     this.clearSelection();
-    this.processNextDarkPage();
     cancelAnimationFrame(this.viewportFrame);
     this.viewportFrame = requestAnimationFrame(() => this.viewport.remember());
   };
@@ -570,229 +541,19 @@ export class PDFReaderAdapter implements ReaderAdapter {
   private paintHighlights() {
     this.annotationLayer.paint();
   }
-  private figureRegions(pageNumber: number): PDFDarkRegion[] {
-    return this.blockData
-      .filter(
-        (block) =>
-          block.page === pageNumber &&
-          (block.label === "chart" || block.label === "image"),
-      )
-      .map(({ bounds }) => bounds);
-  }
-  private figureRegionSignature(blocks: PDFBlock[]) {
-    return JSON.stringify(
-      blocks
-        .filter((block) => block.label === "chart" || block.label === "image")
-        .map(({ page, label, bounds }) => [page, label, bounds]),
-    );
-  }
-  private processDarkPage(
-    pageNumber: number,
-    source: {
-      canvas?: HTMLCanvasElement;
-      imageCoordinates?: ArrayLike<number> | null;
-      pageView?: { imageCoordinates?: ArrayLike<number> | null };
-    },
-    isDetailView: boolean,
-  ) {
-    if (this.theme.mode !== "dark" || this.disposed) return;
-    const canvas = source.canvas;
-    const context = canvas?.getContext("2d");
-    if (
-      !canvas ||
-      !context ||
-      this.darkProcessedCanvases.has(canvas) ||
-      !canvas.width ||
-      !canvas.height
-    )
-      return;
-    this.darkProcessedCanvases.add(canvas);
-    const pageView = isDetailView
-      ? source.pageView
-      : (this.viewer.getPageView(pageNumber - 1) as {
-          imageCoordinates?: ArrayLike<number> | null;
-        } | null);
-    const bitmapRegions = imageRegions({
-      coordinates: pageView?.imageCoordinates,
-    });
-    const figureRegions = this.figureRegions(pageNumber);
-    const canvasViewport = isDetailView
-      ? {
-          x: Number.parseFloat(canvas.style.left) / 100,
-          y: Number.parseFloat(canvas.style.top) / 100,
-          width: Number.parseFloat(canvas.style.width) / 100,
-          height: Number.parseFloat(canvas.style.height) / 100,
-        }
-      : null;
-    const bitmaps = canvasViewport
-      ? cropPDFRegions(bitmapRegions, canvasViewport)
-      : bitmapRegions;
-    const figures = canvasViewport
-      ? cropPDFRegions(figureRegions, canvasViewport)
-      : figureRegions;
-    const version = (this.darkCanvasRequests.get(canvas) ?? 0) + 1;
-    this.darkCanvasRequests.set(canvas, version);
-    const pending: DarkPage = {
-      canvas,
-      width: canvas.width,
-      height: canvas.height,
-      bitmapRegions: bitmaps,
-      figureRegions: figures,
-      version,
-      epoch: this.darkRenderEpoch,
-    };
-    if (isDetailView) canvas.dataset.pdfDarkDetail = "true";
-    this.pruneDarkPages();
-    this.queuedDarkPages.set(canvas, pending);
-    this.processNextDarkPage();
-  }
-  private isCurrentDarkPage(pending: DarkPage) {
-    return (
-      !this.disposed &&
-      this.theme.mode === "dark" &&
-      pending.epoch === this.darkRenderEpoch &&
-      pending.version === this.darkCanvasRequests.get(pending.canvas) &&
-      this.container.contains(pending.canvas) &&
-      pending.canvas.isConnected &&
-      pending.canvas.width === pending.width &&
-      pending.canvas.height === pending.height
-    );
-  }
-  private pruneDarkPages() {
-    for (const [canvas, pending] of this.queuedDarkPages) {
-      if (this.isCurrentDarkPage(pending)) continue;
-      this.queuedDarkPages.delete(canvas);
-    }
-  }
-  private processNextDarkPage() {
-    this.pruneDarkPages();
-    if (this.activeDarkPage || this.disposed || this.theme.mode !== "dark")
-      return;
-    const viewport = this.container.getBoundingClientRect();
-    // Choose from the latest viewport instead of enqueueing every full-size
-    // pixel buffer in a worker FIFO. Fast scrolling cannot bury visible pages
-    // behind work for all the pages the user has just passed.
-    const priority = (pending: DarkPage) => {
-      const bounds = pending.canvas.getBoundingClientRect();
-      const visible =
-        bounds.bottom > viewport.top &&
-        bounds.top < viewport.bottom &&
-        bounds.right > viewport.left &&
-        bounds.left < viewport.right;
-      return (
-        (visible ? 0 : 1_000_000) +
-        Math.abs(
-          (bounds.top + bounds.bottom - viewport.top - viewport.bottom) / 2,
-        )
-      );
-    };
-    const pending = [...this.queuedDarkPages.values()].sort(
-      (a, b) => priority(a) - priority(b),
-    )[0];
-    if (!pending) return;
-    this.queuedDarkPages.delete(pending.canvas);
-    const context = pending.canvas.getContext("2d");
-    if (!context) {
-      this.processNextDarkPage();
-      return;
-    }
-    let worker = this.darkWorker;
-    if (!worker && !this.darkWorkerFailed) {
-      try {
-        worker = new Worker(
-          new URL("./pdf-dark-mode.worker.ts", import.meta.url),
-          { type: "module" },
-        );
-        worker.onmessage = (
-          event: MessageEvent<{ id: number; pixels: ArrayBuffer }>,
-        ) => {
-          const active = this.activeDarkPage;
-          if (!active || active.id !== event.data.id) return;
-          this.activeDarkPage = undefined;
-          if (this.isCurrentDarkPage(active)) {
-            const context = active.canvas.getContext("2d");
-            if (context) {
-              context.putImageData(
-                new ImageData(
-                  new Uint8ClampedArray(event.data.pixels),
-                  active.width,
-                  active.height,
-                ),
-                0,
-                0,
-              );
-              active.canvas.dataset.pdfDarkReady = "true";
-            }
-          }
-          this.processNextDarkPage();
-        };
-        worker.onerror = () => {
-          if (this.darkWorker !== worker) return;
-          this.darkWorkerFailed = true;
-          if (!this.disposed) this.redrawDarkPages();
-        };
-        this.darkWorker = worker;
-      } catch {
-        this.darkWorkerFailed = true;
-      }
-    }
-    const image = context.getImageData(0, 0, pending.width, pending.height);
-    if (!worker) {
-      processPDFPagePixels(
-        image.data,
-        pending.width,
-        pending.height,
-        pending.bitmapRegions,
-        pending.figureRegions,
-        this.theme.pdfDarkImageMode ?? "adaptive",
-        this.theme.pdfDarkContrast ?? "soft",
-      );
-      context.putImageData(image, 0, 0);
-      pending.canvas.dataset.pdfDarkReady = "true";
-      this.processNextDarkPage();
-      return;
-    }
-    const id = ++this.darkWorkerRequest;
-    this.activeDarkPage = { ...pending, id };
-    worker.postMessage(
-      {
-        id,
-        pixels: image.data.buffer,
-        width: pending.width,
-        height: pending.height,
-        bitmapRegions: pending.bitmapRegions,
-        figureRegions: pending.figureRegions,
-        mode: this.theme.pdfDarkImageMode ?? "adaptive",
-        contrast: this.theme.pdfDarkContrast ?? "soft",
-      },
-      [image.data.buffer],
-    );
-  }
-  private clearDarkPages() {
-    this.darkRenderEpoch++;
-    this.darkWorker?.terminate();
-    this.darkWorker = undefined;
-    this.activeDarkPage = undefined;
-    this.queuedDarkPages.clear();
-  }
-  private redrawDarkPages() {
-    this.clearDarkPages();
-    for (let page = 1; page <= (this.pdf?.numPages ?? 0); page++) {
-      if (typeof this.viewer.getPageView !== "function") break;
-      this.viewer.getPageView(page - 1)?.reset();
-    }
-    if (typeof this.viewer.refresh === "function")
-      this.viewer.refresh(false, { scale: this.viewer.currentScale });
-  }
   async setTheme(theme: ReaderTheme) {
     const previous = this.theme;
+    const colorsChanged = pdfObjectColors(previous) !== pdfObjectColors(theme);
     this.theme = theme;
-    if (
-      previous.mode !== theme.mode ||
-      previous.pdfDarkImageMode !== theme.pdfDarkImageMode ||
-      previous.pdfDarkContrast !== theme.pdfDarkContrast
-    )
-      this.linkPreview.invalidate();
+    const pageColors = pdfObjectColors(theme);
+    this.viewer.pageColors = pageColors;
+    this.container
+      .querySelector<HTMLElement>(".pdfViewer")
+      ?.style.setProperty(
+        "--page-bg-color",
+        pageColors?.background ?? "#ffffff",
+      );
+    if (colorsChanged) this.linkPreview.invalidate();
     if (this.pdf && this.appliedZoom !== theme.zoom) {
       this.navigation.stop();
       this.fitWidth = theme.zoom === "width";
@@ -805,13 +566,11 @@ export class PDFReaderAdapter implements ReaderAdapter {
     }
     this.container.dataset.theme = theme.mode;
     this.container.dataset.darkContrast = theme.pdfDarkContrast ?? "soft";
-    if (
-      this.pdf &&
-      (previous.mode !== theme.mode ||
-        previous.pdfDarkImageMode !== theme.pdfDarkImageMode ||
-        previous.pdfDarkContrast !== theme.pdfDarkContrast)
-    ) {
-      this.redrawDarkPages();
+    if (this.pdf && colorsChanged) {
+      // PDF.js keeps completed canvases until the recolored render is ready.
+      this.viewer.refresh(false, { pageColors } as Parameters<
+        PDFViewer["refresh"]
+      >[1]);
     }
     this.clearSelection();
   }
@@ -819,15 +578,9 @@ export class PDFReaderAdapter implements ReaderAdapter {
     return this.pageText(this.location.page);
   }
   setBlocks(blocks: PDFBlock[]) {
-    const figuresChanged =
-      this.figureRegionSignature(this.blockData) !==
-      this.figureRegionSignature(blocks);
     this.blockData = blocks;
     this.blocks.setBlocks(blocks);
     this.figureLinks.repaint();
-    if (figuresChanged) this.linkPreview.invalidate();
-    if (figuresChanged && this.theme.mode === "dark" && this.pdf)
-      this.redrawDarkPages();
   }
   async focusReference(location: DocumentLocation, text: string) {
     this.viewport.cancelAnimation();
@@ -919,7 +672,10 @@ export class PDFReaderAdapter implements ReaderAdapter {
   hoverBlock(blockId: string | null) {
     this.blocks.setLinkedBlock(blockId);
   }
-  focusPassages(passages: import("@neoread/core").PDFPassage[], scroll = false) {
+  focusPassages(
+    passages: import("@neoread/core").PDFPassage[],
+    scroll = false,
+  ) {
     return this.navigation.focusPassages(passages, scroll);
   }
   matchSentences(
@@ -1003,7 +759,6 @@ export class PDFReaderAdapter implements ReaderAdapter {
     this.container.removeEventListener("scroll", this.onScroll);
     this.clearSelection();
     this.viewer.setDocument(null as unknown as pdfjs.PDFDocumentProxy);
-    this.clearDarkPages();
     await this.task?.destroy();
     this.container.replaceChildren();
   }

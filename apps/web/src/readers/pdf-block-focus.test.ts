@@ -79,6 +79,7 @@ function setup() {
   );
   const viewer = {
     currentPageNumber: 1,
+    refresh: vi.fn(),
     get currentScale() {
       return scale;
     },
@@ -253,6 +254,25 @@ it("cancels motion on wheel input and supports clicking again after manual zoom"
     s.nav.destroy();
     await finish(last);
     expect(s.focus).toHaveBeenLastCalledWith(null);
+  } finally {
+    s.nav.destroy();
+  }
+});
+
+it("coalesces focus zoom into one final redraw and does not redraw on an identical second focus", async () => {
+  const s = setup();
+  try {
+    const pending = s.nav.focusBlock("a");
+    await vi.advanceTimersByTimeAsync(128);
+    expect(s.viewer.refresh).not.toHaveBeenCalled();
+    for (const [options] of vi.mocked(s.viewer.updateScale).mock.calls)
+      expect(options?.drawingDelay).toBe(300);
+    await finish(pending);
+    expect(s.viewer.refresh).toHaveBeenCalledTimes(1);
+    vi.mocked(s.viewer.updateScale).mockClear();
+    await finish(s.nav.focusBlock("a"));
+    expect(s.viewer.updateScale).not.toHaveBeenCalled();
+    expect(s.viewer.refresh).toHaveBeenCalledTimes(1);
   } finally {
     s.nav.destroy();
   }
