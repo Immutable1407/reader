@@ -28,6 +28,10 @@ export interface TourState {
   library?: "paper" | "book";
   reading: boolean;
   readingModes: boolean;
+  pdfReading?: boolean;
+  parallel?: boolean;
+  sourceBlock?: boolean;
+  blockFocused?: boolean;
   assistant: boolean;
   /** Where the user runs CLI commands: 终端, or PowerShell on Windows. */
   shell: string;
@@ -311,7 +315,7 @@ export const tourSteps: TourStep[] = [
     done: (s) => !s.importDialog,
     view: () => ({
       title: "粘贴链接或选择 PDF",
-      body: "NeoRead 支持导入本地 pdf、粘贴论文链接、arXiv 编号，也可以选择直接从 Zotero 中迁移完整的论文库。\n**这里先了解导入入口，点右上角关闭。引导结束后，可以导入自己的论文；已有论文时，接下来会演示阅读功能。**",
+      body: "NeoRead 支持导入本地 pdf、粘贴论文链接、arXiv 编号，也可以选择直接从 Zotero 中迁移完整的论文库。\n**可以在新手引导结束后，导入自己的论文，接下来直接用示例论文演示。**",
       focus: [tour("import-dialog")],
       click: [closeImport],
       pointer: { gesture: "click", target: closeImport },
@@ -340,15 +344,56 @@ export const tourSteps: TourStep[] = [
   },
   {
     id: "modes",
+    done: (s) => !!s.pdfReading && !!s.parallel,
     skip: (s) => !s.readingModes,
     back: (s) => (!s.reading && s.library ? "open" : undefined),
-    view: () => ({
-      title: "切换阅读模式",
-      body: "在「仅原文」「原文译文」「仅译文」之间切换。对照模式下悬停句子，两侧对应高亮。",
-      click: [readingModes],
-      pointer: { gesture: "hover", target: readingModes },
-      next: "下一步",
-    }),
+    view: (s) =>
+      s.pdfReading
+        ? {
+            title: "切换到原文译文",
+            body: "点击「原文译文」，并排查看论文原文和中文翻译。",
+            click: [readingModes],
+            pointer: { gesture: "click", target: tour("parallel-mode") },
+            act: true,
+          }
+        : {
+            title: "切换阅读模式",
+            body: "在「仅原文」「原文译文」「仅译文」之间切换。对照模式下悬停句子，两侧对应高亮。",
+            click: [readingModes],
+            pointer: { gesture: "hover", target: readingModes },
+            next: "下一步",
+          },
+  },
+  {
+    id: "focus-block",
+    skip: (s) => !s.pdfReading,
+    back: (s) =>
+      !s.reading && s.library ? "open" : !s.parallel ? "modes" : undefined,
+    view: (s) =>
+      s.blockFocused
+        ? {
+            title: "聚焦原文段落",
+            body: "原文段落已聚焦，右侧译文也定位到对应段落。阅读时可以点击其他段落，继续对照查看。",
+            focus: [
+              tour("source-block"),
+              "[data-translation-block][data-focused]",
+            ],
+            next: "下一步",
+          }
+        : s.sourceBlock
+          ? {
+              title: "聚焦原文段落",
+              body: "点击鼠标指向的原文段落，聚焦这一段，并让右侧译文定位到对应内容。",
+              click: [tour("source-block")],
+              pointer: { gesture: "click", target: tour("source-block") },
+              next: "聚焦这一段",
+              act: true,
+            }
+          : {
+              title: "准备段落演示",
+              body: "段落加载后，会在这里演示原文与译文的聚焦效果。也可以跳过此步继续引导。",
+              next: "跳过此步",
+            },
   },
   {
     id: "assistant",

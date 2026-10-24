@@ -104,6 +104,11 @@ function readState(
       : undefined,
     reading: !!active,
     readingModes: !!rectOf(q(readingModes)),
+    pdfReading: !!q(".pdf-reading"),
+    parallel:
+      q(".pdf-reading")?.getAttribute("data-reading-mode") === "parallel",
+    sourceBlock: shown(q('[data-tour="source-block"]')),
+    blockFocused: !!q('[data-tour="source-block"][data-demonstrated="true"]'),
     assistant: assistant?.dataset.open === "true",
     shell: navigator.userAgent.includes("Windows") ? " PowerShell " : "终端",
     method,
@@ -312,6 +317,11 @@ export function GuidedTour({
 
   useEffect(() => {
     if (!running) return;
+    document
+      .querySelectorAll<HTMLElement>('[data-tour="source-block"]')
+      .forEach((target) => {
+        delete target.dataset.demonstrated;
+      });
     const startCount = useReaderStore.getState().documents.length;
     let index = 0;
     let previous = "";

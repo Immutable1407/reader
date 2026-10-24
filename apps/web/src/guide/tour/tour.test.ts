@@ -244,3 +244,48 @@ describe("tour steps", () => {
     ).toBe(tourSteps.length);
   });
 });
+
+it("requires parallel mode before demonstrating source block focus", () => {
+  const reading = {
+    reading: true,
+    readingModes: true,
+    pdfReading: true,
+    library: "paper" as const,
+  };
+  expect(at(index("modes"), reading).view?.pointer).toMatchObject({
+    gesture: "click",
+    target: '[data-tour="parallel-mode"]',
+  });
+  expect(
+    at(index("modes"), { ...reading, parallel: true, sourceBlock: true }).id,
+  ).toBe("focus-block");
+  expect(at(index("focus-block"), { ...reading, parallel: false }).id).toBe(
+    "modes",
+  );
+  expect(
+    at(index("focus-block"), { ...reading, parallel: true, sourceBlock: true })
+      .view?.act,
+  ).toBe(true);
+  const focused = at(index("focus-block"), {
+    ...reading,
+    parallel: true,
+    sourceBlock: true,
+    blockFocused: true,
+  });
+  expect(focused.id).toBe("focus-block");
+  expect(focused.view?.act).toBeUndefined();
+  expect(
+    at(index("focus-block"), {
+      ...reading,
+      parallel: true,
+      acknowledged: new Set(["focus-block"]),
+    }).id,
+  ).toBe("assistant");
+  expect(
+    at(index("focus-block"), {
+      reading: true,
+      pdfReading: false,
+      parallel: true,
+    }).id,
+  ).toBe("assistant");
+});
