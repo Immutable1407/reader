@@ -16,7 +16,7 @@
   position: fixed;
   inset: 0;
 }
-.tour-shade rect:last-child {
+.tour-shade > rect {
   fill: var(--tour-shade);
 }
 .tour-shade {

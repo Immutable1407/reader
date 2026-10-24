@@ -308,7 +308,7 @@ export const tourSteps: TourStep[] = [
     done: (s) => !s.importDialog,
     view: () => ({
       title: "粘贴链接或选择 PDF",
-      body: "Reader 支持导入本地 pdf、粘贴论文链接、arXiv 编号，也可以选择直接从 Zotero 中迁移完整的论文库。\n**我们先用内置的示例论文给大家演示，点右上角关闭。**",
+      body: "Reader 支持导入本地 pdf、粘贴论文链接、arXiv 编号，也可以选择直接从 Zotero 中迁移完整的论文库。\n**这里先了解导入入口，点右上角关闭。引导结束后，可以导入自己的论文；已有论文时，接下来会演示阅读功能。**",
       focus: [tour("import-dialog")],
       click: [closeImport],
       pointer: { gesture: "click", target: closeImport },
