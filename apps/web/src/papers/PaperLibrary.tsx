@@ -1099,7 +1099,9 @@ export function PaperLibrary({
                                     c,
                                     false,
                                     <>
-                                      {c === "title" ? "标题" : columnLabels[c]}
+                                      <span className="min-w-0 truncate">
+                                        {c === "title" ? "标题" : columnLabels[c]}
+                                      </span>
                                       {active && <Arrow />}
                                     </>,
                                     sortKey ? () => sortBy(sortKey) : undefined,

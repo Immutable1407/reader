@@ -2795,6 +2795,7 @@ body[data-resizing] * {
   user-select: none;
 }
 .paper-table-sort.paper-table-sort {
+  justify-content: flex-start;
   gap: 2px;
   padding-inline: 6px;
   color: inherit;
