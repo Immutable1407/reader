@@ -198,8 +198,10 @@ export class PDFReaderAdapter implements ReaderAdapter {
         this.resizingViewport = true;
         let result;
         try {
-          result = this.viewport.resize(this.fitWidth, () =>
-            this.navigation.resizeViewport(),
+          result = this.viewport.resize(
+            this.fitWidth,
+            () => this.navigation.resizeViewport(),
+            this.navigation.isNavigating,
           );
         } finally {
           this.resizingViewport = false;

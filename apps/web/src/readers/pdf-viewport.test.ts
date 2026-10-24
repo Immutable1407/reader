@@ -121,6 +121,33 @@ it("keeps explicit fit-width mode and preserves the reading point when height ch
   s.viewport.resize(true, () => {});
   expect(s.viewer.currentScale).toBe(0.4);
 });
+it("does not take over a height change during navigation before the next scale event", () => {
+  const s = setup(0.25);
+  s.viewer.currentScaleValue = "1.37";
+  s.size.height -= 6;
+  const adapt = vi.fn();
+  const scroll = { left: s.host.scrollLeft, top: s.host.scrollTop };
+  expect(s.viewport.resize(false, adapt, true)).toBeUndefined();
+  expect(adapt).not.toHaveBeenCalled();
+  expect(s.viewer.currentScale).toBe(1.37);
+  expect(s.host.scrollLeft).toBe(scroll.left);
+  expect(s.host.scrollTop).toBe(scroll.top);
+  s.size.width = 400;
+  s.viewport.resize(false, adapt, true);
+  expect(adapt).toHaveBeenCalledOnce();
+  expect(s.viewer.currentScale).toBe(0.69);
+});
+it("records a zoom as the resize basis even when available height has changed", () => {
+  const s = setup();
+  s.size.width = 400;
+  s.resize();
+  s.viewer.currentScaleValue = "1.5";
+  s.size.height -= 6;
+  s.viewport.scaleChanged();
+  s.size.width = 800;
+  s.resize();
+  expect(s.viewer.currentScale).toBe(3);
+});
 it("does not overwrite its pre-resize anchor when layout has already changed before a scroll callback", () => {
   const s = setup();
   const before = s.point();

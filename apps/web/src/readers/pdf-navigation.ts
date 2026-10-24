@@ -21,6 +21,9 @@ export class PDFReadingNavigation {
   private operation = 0;
   private focus: PDFPassage[] = [];
   private linkedRanges: Range[] = [];
+  get isNavigating() {
+    return this.moving;
+  }
   constructor(
     private host: HTMLElement,
     private viewer: PDFViewer,
