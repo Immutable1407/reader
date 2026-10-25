@@ -13,6 +13,7 @@ import {
   Library,
   LoaderCircle,
   Monitor,
+  Pencil,
   RefreshCw,
   TriangleAlert,
   X,
@@ -20,7 +21,7 @@ import {
 import { DiagnosticExport } from "./DiagnosticExport";
 import { LibraryLocationSettings } from "./LibraryLocationSettings";
 import { CommandLineSettings } from "./CommandLineSettings";
-import { ProviderIdentity } from "./ProviderIdentity";
+import { ProviderIdentity, providerLabel } from "./ProviderIdentity";
 import { TaskModels } from "./TaskModels";
 import { APIAgentForm, APIModelForm } from "./APIAgentForm";
 import { api } from "@neoread/api";
@@ -35,6 +36,7 @@ import type {
   Provider,
 } from "@neoread/core";
 import { Button } from "@neoread/ui/components/button";
+import { cn } from "@neoread/ui/lib/utils";
 import { Input } from "@neoread/ui/components/input";
 import {
   Dialog,
@@ -417,7 +419,7 @@ export function Settings({
                 <Tooltip>
                   <TooltipTrigger
                     render={<Button variant="ghost" size="icon" />}
-                    className="size-4 p-0 text-inherit hover:bg-transparent hover:text-inherit"
+                    className="pointer-events-auto size-4 p-0 text-inherit hover:bg-transparent hover:text-inherit"
                     aria-label={`${label}未通过：查看详情`}
                   >
                     <TriangleAlert />
@@ -460,18 +462,62 @@ export function Settings({
     });
   const apiPending = () =>
     loading || [...testing.keys()].some((id) => id.startsWith("api:"));
+  const cliReady = (name: string, kind: "text" | "vision") =>
+    !errors[`${name}:text`] &&
+    !errors[`${name}:${kind}`] &&
+    !!config?.capabilities[name]?.[kind];
+  // Why an agent card cannot be selected, or "" once it passed every check.
+  const agentBlocker = (name: string) => {
+    const installed = providers.find((p) => p.id === name)?.installed;
+    if (name === "api") {
+      if (!installed) return "需要先配置 API Key";
+      if (apiReady("text") && apiReady("vision")) return "";
+      if (apiPending()) return "正在检测，请稍候";
+      if (apiModelsError) return "无法获取模型列表，请检查 API 配置";
+      return apiReady("text")
+        ? "没有图片理解能力"
+        : "没有通过文本推理检测的模型";
+    }
+    if (loading || testing.has(name)) return "正在检测，请稍候";
+    if (!installed) return "未安装 CLI";
+    if (!cliReady(name, "text")) return "文本推理未通过检测";
+    return cliReady(name, "vision") ? "" : "没有图片理解能力";
+  };
   // Read by the first-run tour to point at an agent that works.
   const agentStatus = (name: string) => {
     const installed = providers.find((p) => p.id === name)?.installed;
     if (name === "api") {
       if (!installed) return "missing";
-      return apiReady("text") ? "ready" : apiPending() ? "pending" : "failed";
+      return !agentBlocker(name)
+        ? "ready"
+        : apiPending()
+          ? "pending"
+          : "failed";
     }
     if (loading || testing.has(name)) return "pending";
     if (!installed) return "missing";
-    return config?.capabilities[name]?.text && !errors[`${name}:text`]
-      ? "ready"
-      : "failed";
+    return agentBlocker(name) ? "failed" : "ready";
+  };
+  const selectAgent = async (name: string) => {
+    const blocker = agentBlocker(name);
+    if (blocker) {
+      toast.warning(`${providerLabel(name)} 未配置好：${blocker}`);
+      return;
+    }
+    if (config?.primary === name) return;
+    if (testing.size) {
+      toast.info("正在检测 Agent，请稍候");
+      return;
+    }
+    setSaving(true);
+    try {
+      const latest = await api.aiConfig();
+      setAIConfig(await api.saveAIConfig({ ...latest, primary: name }));
+    } catch (e) {
+      toast.error((e as Error).message);
+    } finally {
+      setSaving(false);
+    }
   };
   const apiCardStatus = () => (
     <span className="flex flex-wrap gap-x-5">
@@ -1061,54 +1107,89 @@ export function Settings({
                   <RefreshCw className={loading ? "animate-spin" : ""} />
                 </Button>
               </div>
-              {config && (
-                <div className="mb-4 flex flex-col gap-2">
-                  <Select
-                    value={config.primary || null}
-                    disabled={saving || aiModelSaving || testing.size > 0}
-                    onValueChange={async (value) => {
-                      if (!value) return;
-                      setSaving(true);
-                      try {
-                        const latest = await api.aiConfig();
-                        const saved = await api.saveAIConfig({
-                          ...latest,
-                          primary: value,
-                        });
-                        setAIConfig(saved);
-                      } catch (e) {
-                        toast.error((e as Error).message);
-                      } finally {
-                        setSaving(false);
-                      }
-                    }}
-                  >
-                    <SelectTrigger
-                      data-tour="agent-select"
-                      aria-label="Agent SDK"
-                      className="w-full"
+              <div
+                data-tour="agent-cards"
+                role="radiogroup"
+                aria-label="Agent"
+                className="grid grid-cols-1 items-start gap-3 sm:grid-cols-2"
+              >
+                {(["codex", "claude", "kimi", "api"] as const).map((name) => {
+                  const p = providers.find((p) => p.id === name);
+                  const capability = config?.capabilities[name];
+                  const pending = testing.has(name);
+                  const selected = config?.primary === name;
+                  const blocked = !!agentBlocker(name);
+
+                  return (
+                    <div
+                      key={name}
+                      className={cn(
+                        "relative min-h-28 min-w-0 rounded-xl border p-4 transition-[box-shadow,background-color,border-color] duration-200 ease-out motion-reduce:transition-none",
+                        selected
+                          ? "border-primary/40 bg-primary/5 shadow-md"
+                          : !blocked &&
+                              "hover:shadow-sm has-[[data-slot=agent-select]:active]:shadow-none",
+                      )}
+                      data-tour="agent-card"
+                      data-agent={name}
+                      data-status={agentStatus(name)}
+                      data-selected={selected || undefined}
                     >
-                      <SelectValue placeholder="请选择 Agent SDK">
-                        {config.primary ? (
-                          <ProviderIdentity provider={config.primary} />
-                        ) : undefined}
-                      </SelectValue>
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="codex" data-agent="codex">
-                        <ProviderIdentity provider="codex" />
-                      </SelectItem>
-                      <SelectItem value="claude" data-agent="claude">
-                        <ProviderIdentity provider="claude" />
-                      </SelectItem>
-                      <SelectItem value="kimi" data-agent="kimi">
-                        <ProviderIdentity provider="kimi" />
-                      </SelectItem>
-                      <SelectItem value="api" data-agent="api">
-                        <ProviderIdentity provider="api" />
-                      </SelectItem>
-                    </SelectContent>
-                  </Select>
+                      {/* The whole card selects the agent; controls inside sit above it. */}
+                      <Button
+                        variant="ghost"
+                        data-slot="agent-select"
+                        role="radio"
+                        aria-checked={selected}
+                        aria-disabled={blocked}
+                        aria-label={`使用 ${providerLabel(name)}`}
+                        className="absolute inset-0 h-auto rounded-xl p-0 hover:bg-transparent dark:hover:bg-transparent"
+                        disabled={!config || saving || aiModelSaving}
+                        onClick={() => void selectAgent(name)}
+                      />
+                      <div className="pointer-events-none relative flex items-center gap-3">
+                        <span className="flex-1 text-base font-medium">
+                          <ProviderIdentity provider={name} size={36} />
+                        </span>
+                        {!loading && !p?.installed && (
+                          <Badge variant="outline">
+                            {name === "api" ? "未配置" : "未安装"}
+                          </Badge>
+                        )}
+                        {name === "api" && (
+                          <Button
+                            variant="ghost"
+                            size="icon-sm"
+                            className="pointer-events-auto -my-1 -mr-1"
+                            aria-label="配置 API Key"
+                            title="配置 API Key"
+                            data-tour="api-edit"
+                            onClick={() => setAPIDetails(true)}
+                          >
+                            <Pencil />
+                          </Button>
+                        )}
+                      </div>
+                      <div className="pointer-events-none relative">
+                        {name === "api" ? (
+                          p?.installed ? (
+                            apiCardStatus()
+                          ) : (
+                            <span className="mt-3 block text-xs text-muted-foreground">
+                              点击右上角配置你的 API Key
+                            </span>
+                          )
+                        ) : (
+                          (pending || p?.installed || capability) &&
+                          checkStatus(name, capability)
+                        )}
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+              {config && (
+                <div className="mt-4 flex flex-col gap-2">
                   <div data-tour="task-models">
                     <TaskModels disabled={saving || testing.size > 0} />
                   </div>
@@ -1119,67 +1200,6 @@ export function Settings({
                   )}
                 </div>
               )}
-              <div
-                data-tour="agent-cards"
-                className="mt-5 grid grid-cols-1 items-start gap-3 sm:grid-cols-2"
-              >
-                {(["codex", "claude", "kimi", "api"] as const).map((name) => {
-                  const p = providers.find((p) => p.id === name);
-                  const capability = config?.capabilities[name];
-                  const pending = testing.has(name);
-
-                  if (name === "api")
-                    return (
-                      <Button
-                        key={name}
-                        variant="outline"
-                        className="h-auto min-h-28 min-w-0 flex-col items-stretch justify-start gap-0 rounded-xl border-border bg-transparent p-4 text-left font-normal whitespace-normal hover:bg-muted/50 dark:border-border dark:bg-transparent"
-                        onClick={() => setAPIDetails(true)}
-                        aria-label="配置 API Key"
-                        data-tour="agent-card"
-                        data-agent={name}
-                        data-status={agentStatus(name)}
-                      >
-                        <span className="flex w-full items-center gap-3">
-                          <span className="flex-1 text-base font-medium">
-                            <ProviderIdentity provider={name} size={36} />
-                          </span>
-                          {!loading && !p?.installed && (
-                            <Badge variant="outline">未配置</Badge>
-                          )}
-                        </span>
-                        {p?.installed ? (
-                          apiCardStatus()
-                        ) : (
-                          <span className="mt-3 text-xs text-muted-foreground">
-                            点击卡片配置你的apikey
-                          </span>
-                        )}
-                      </Button>
-                    );
-
-                  return (
-                    <div
-                      key={name}
-                      className="min-h-28 min-w-0 rounded-xl border p-4"
-                      data-tour="agent-card"
-                      data-agent={name}
-                      data-status={agentStatus(name)}
-                    >
-                      <div className="flex items-center gap-3">
-                        <span className="flex-1 text-base font-medium">
-                          <ProviderIdentity provider={name} size={36} />
-                        </span>
-                        {!loading && !p?.installed && (
-                          <Badge variant="outline">未安装</Badge>
-                        )}
-                      </div>
-                      {(pending || p?.installed || capability) &&
-                        checkStatus(name, capability)}
-                    </div>
-                  );
-                })}
-              </div>
               <p className="mt-4 flex gap-2 text-xs leading-5 text-muted-foreground">
                 <CircleHelp className="mt-0.5 size-4 shrink-0" />
                 NeoRead 调用已安装的 CLI，不读取账号凭据。

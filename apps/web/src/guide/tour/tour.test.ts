@@ -75,7 +75,6 @@ const base: TourState = {
   detecting: false,
   apiDetails: false,
   agents: [],
-  selectOpen: false,
   primaryReady: false,
   taskModels: false,
   sidebar: true,
@@ -131,7 +130,8 @@ describe("tour steps", () => {
     });
     expect(view?.pointer).toEqual({
       gesture: "click",
-      target: '[data-tour="agent-card"][data-agent="api"]',
+      target:
+        '[data-tour="agent-card"][data-agent="api"] [data-tour="api-edit"]',
     });
   });
   it("points at the key field and DeepSeek inside the API settings", () => {
@@ -154,20 +154,19 @@ describe("tour steps", () => {
     expect(id).toBe("agent");
     expect(view?.pointer?.gesture).toBe("wander");
   });
-  it("points at a detected agent in the selector", () => {
+  it("points at a detected agent card", () => {
     const agents = [
       { id: "codex", status: "missing" as const },
       { id: "claude", status: "ready" as const },
     ];
-    const closed = at(1, { ...local, agents }).view;
-    expect(closed?.title).toBe("检测到 Claude Code 可用");
-    expect(closed?.pointer).toEqual({
+    const view = at(1, { ...local, agents }).view;
+    expect(view?.title).toBe("选择 Claude Code");
+    expect(view?.click).toEqual([
+      '[data-tour="agent-card"][data-agent="claude"]',
+    ]);
+    expect(view?.pointer).toEqual({
       gesture: "click",
-      target: '[data-tour="agent-select"]',
-    });
-    const open = at(1, { ...local, agents, selectOpen: true }).view;
-    expect(open?.pointer).toMatchObject({
-      target: '[data-slot="select-item"][data-agent="claude"]',
+      target: '[data-tour="agent-card"][data-agent="claude"]',
     });
   });
   it("suggests logging in or an API key when nothing works", () => {

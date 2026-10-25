@@ -12,7 +12,6 @@ export interface TourState {
   detecting: boolean;
   apiDetails: boolean;
   agents: { id: string; status: AgentStatus }[];
-  selectOpen: boolean;
   primary?: string;
   /** The selected agent passed the text check. */
   primaryReady: boolean;
@@ -99,6 +98,7 @@ export const readingModes =
 const assistantToggle = '[aria-label="Agent 与批注"]';
 const closeImport = `${tour("import-dialog")} > [data-slot="dialog-close"]`;
 const card = (id: string) => `${tour("agent-card")}[data-agent="${id}"]`;
+const apiEdit = `${card("api")} ${tour("api-edit")}`;
 const apiKey = `${tour("api-form")} input[aria-label="API Key"]`;
 const deepseek = "https://platform.deepseek.com/api_keys";
 const localAgents = ["codex", "claude", "kimi"];
@@ -156,28 +156,14 @@ function agentView(s: TourState): TourView {
   if (ready.length) {
     const first = ready.includes(s.primary ?? "") ? s.primary! : ready[0];
     const names = join(ready.map((id) => agentNames[id]));
-    if (s.selectOpen)
-      return {
-        title: `选择 ${agentNames[first]}`,
-        body: api
-          ? "API 已有模型通过检测，问答和翻译会使用这个 Key。"
-          : `${names} 已通过检测。问答和翻译会使用它当前的登录账户与计费方式。`,
-        focus: ready.map(card),
-        click: [tour("agent-select")],
-        pointer: {
-          gesture: "click",
-          target: `[data-slot="select-item"][data-agent="${first}"]`,
-        },
-        ...choice,
-      };
     return {
-      title: `检测到 ${names} 可用`,
+      title: `选择 ${agentNames[first]}`,
       body: api
-        ? "点开上方的下拉框，选择 API。"
-        : `${names} 的 CLI 已在${s.shell}中登录，NeoRead 用的是 CLI，不是 Codex App。点开上方的下拉框，选择要使用的 Agent。`,
+        ? "API 已有模型通过检测，点击 API 卡片选择它，问答和翻译会使用这个 Key。"
+        : `${names} 的 CLI 已在${s.shell}中登录，NeoRead 用的是 CLI，不是 Codex App。点击卡片选择要使用的 Agent，问答和翻译会使用它当前的登录账户与计费方式。`,
       focus: ready.map(card),
-      click: [tour("agent-select")],
-      pointer: { gesture: "click", target: tour("agent-select") },
+      click: ready.map(card),
+      pointer: { gesture: "click", target: card(first) },
       ...choice,
     };
   }
@@ -192,9 +178,10 @@ function agentView(s: TourState): TourView {
         }
       : {
           title: "配置 API Key",
-          body: "点击 API 卡片，进入 API 配置。Key 只保存在本机。",
-          click: [card("api")],
-          pointer: { gesture: "click", target: card("api") },
+          body: "点击 API 卡片右上角的铅笔，进入 API 配置。Key 只保存在本机。",
+          focus: [card("api")],
+          click: [apiEdit],
+          pointer: { gesture: "click", target: apiEdit },
           ...choice,
         };
   if (s.detecting || mine.some((a) => a.status === "pending"))

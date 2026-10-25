@@ -88,7 +88,6 @@ function readState(
       id: el.dataset.agent ?? "",
       status: (el.dataset.status ?? "missing") as AgentStatus,
     })),
-    selectOpen: !!q('[data-slot="select-content"]:not([data-closed])'),
     primary: aiConfig?.primary || undefined,
     primaryReady: capable(aiConfig),
     taskModels: !!rectOf(q('[data-tour="task-models"]')),

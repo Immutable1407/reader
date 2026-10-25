@@ -25,7 +25,9 @@ vi.mock("@neoread/api", () => ({
     saveLibraryPreferences: vi.fn(async (value) => value),
   },
 }));
-vi.mock("sonner", () => ({ toast: { error: vi.fn(), warning: vi.fn() } }));
+vi.mock("sonner", () => ({
+  toast: { error: vi.fn(), warning: vi.fn(), info: vi.fn() },
+}));
 vi.mock("@neoread/ui/components/dialog", () => {
   const Content = ({ children }: { children: ReactNode }) => (
     <div>{children}</div>
@@ -80,6 +82,13 @@ const openAPI = async () =>
   act(async () =>
     (
       host.querySelector('[aria-label="配置 API Key"]') as HTMLButtonElement
+    ).click(),
+  );
+const apiCard = '[data-tour="agent-card"][data-agent="api"]';
+const selectAPI = async () =>
+  act(async () =>
+    (
+      host.querySelector(`${apiCard} [role="radio"]`) as HTMLButtonElement
     ).click(),
   );
 beforeEach(() => {
@@ -274,9 +283,40 @@ it("warns when no listed model passes the vision check", async () => {
       host.querySelector('[aria-label="返回 Agent 设置"]') as HTMLButtonElement
     ).click(),
   );
-  const card = host.querySelector('[aria-label="配置 API Key"]')!;
+  const card = host.querySelector(apiCard)!;
   expect(card.querySelector('[aria-label="文本推理：已通过"]')).not.toBeNull();
   expect(card.querySelector('[aria-label="图片理解：未通过"]')).not.toBeNull();
+  // A card that failed a check cannot be selected.
+  vi.mocked(api.saveAIConfig).mockClear();
+  await selectAPI();
+  expect(toast.warning).toHaveBeenLastCalledWith(
+    "API 未配置好：没有图片理解能力",
+  );
+  expect(api.saveAIConfig).not.toHaveBeenCalled();
+});
+it("selects the API agent from its card once a model passes", async () => {
+  config.primary = "";
+  config.api = { url: "https://api.example.com", model: "", hasKey: true };
+  config.capabilities = {
+    "api:deepseek-flash": { text: true, vision: true, checkedAt: "saved" },
+    "api:deepseek-v4-pro": { text: true, vision: false, checkedAt: "saved" },
+  };
+  await act(async () => root.render(<Settings open onOpenChange={() => {}} />));
+  await selectAPI();
+  expect(toast.warning).not.toHaveBeenCalled();
+  expect(api.saveAIConfig).toHaveBeenLastCalledWith(
+    expect.objectContaining({ primary: "api" }),
+  );
+  expect(host.querySelector(apiCard)?.hasAttribute("data-selected")).toBe(true);
+});
+it("asks for an API key before the card can be selected", async () => {
+  config.primary = "";
+  await act(async () => root.render(<Settings open onOpenChange={() => {}} />));
+  await selectAPI();
+  expect(toast.warning).toHaveBeenLastCalledWith(
+    "API 未配置好：需要先配置 API Key",
+  );
+  expect(api.saveAIConfig).not.toHaveBeenCalled();
 });
 it("adds and removes a model ID by hand and checks it", async () => {
   config.api = { url: "https://api.example.com", model: "", hasKey: true };
