@@ -98,7 +98,7 @@ func detachReaderData(source, id string, runtimeFiles map[string][]byte) (string
 	parent := filepath.Dir(source)
 	tombstone := filepath.Join(parent, ".reader-cleanup-"+id)
 	if pathExists(tombstone) {
-		return "", fmt.Errorf("旧数据清理目录已存在，未覆盖：%s", tombstone)
+		return "", migrationErrorf("target_conflict", "旧数据清理目录已存在，未覆盖：%s", tombstone)
 	}
 	replacement := ""
 	if len(runtimeFiles) > 0 {

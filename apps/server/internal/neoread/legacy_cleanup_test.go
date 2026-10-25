@@ -128,6 +128,9 @@ func TestReaderCleanupStillRejectsOtherChanges(t *testing.T) {
 			if _, err := CleanupReaderData(old, current, "delete"); err == nil {
 				t.Fatal("deleted changed or unverifiable reading data")
 			}
+			if _, err := RetryReaderCleanup(old, current); err == nil {
+				t.Fatal("retry bypassed source verification")
+			}
 			if !pathExists(filepath.Join(old, "library", "reader.sqlite")) {
 				t.Fatal("lost original library")
 			}
@@ -198,5 +201,54 @@ func TestReaderCleanupKeepsDataWhenQuarantineExists(t *testing.T) {
 	}
 	if !pathExists(filepath.Join(old, "cite-credential")) {
 		t.Fatal("lost live Word credential")
+	}
+}
+
+func TestReaderCleanupRetryIsExplicit(t *testing.T) {
+	for _, status := range []string{"failed", "kept"} {
+		t.Run(status, func(t *testing.T) {
+			old, current, _ := cleanupWithCitation(t, false)
+			file, state, err := readMigration(current)
+			if err != nil {
+				t.Fatal(err)
+			}
+			state.LegacyCleanup.Status = status
+			if err := saveMigration(current, file, state); err != nil {
+				t.Fatal(err)
+			}
+			if _, err := CleanupReaderData(old, current, "delete"); err != nil {
+				t.Fatal(err)
+			}
+			if !pathExists(filepath.Join(old, "library", "reader.sqlite")) {
+				t.Fatal("automatically retried cleanup")
+			}
+			result, err := RetryReaderCleanup(old, current)
+			if status == "kept" {
+				if err == nil || !pathExists(filepath.Join(old, "library", "reader.sqlite")) {
+					t.Fatal("overrode decision to keep data")
+				}
+			} else {
+				if err != nil || result.LegacyCleanup.Status != "deleted" {
+					t.Fatal("explicit retry failed", err)
+				}
+				if pathExists(filepath.Join(old, "library")) || !pathExists(filepath.Join(old, "cite-credential")) {
+					t.Fatal("retry removed the wrong data")
+				}
+			}
+		})
+	}
+}
+
+func TestReaderCleanupRetryDoesNotReplaceInitialChoice(t *testing.T) {
+	old, current, _ := cleanupWithCitation(t, false)
+	if _, err := RetryReaderCleanup(old, current); err == nil {
+		t.Fatal("used retry before initial cleanup decision")
+	}
+	if !pathExists(filepath.Join(old, "library", "reader.sqlite")) {
+		t.Fatal("deleted data before initial decision")
+	}
+	_, state, err := readMigration(current)
+	if err != nil || state.LegacyCleanup.Status != "pending" {
+		t.Fatal("changed initial cleanup decision")
 	}
 }

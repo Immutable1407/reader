@@ -90,6 +90,17 @@ Word/WPS 已安装插件固定读取旧 `Reader` 目录中的 `cite-credential` 
 
 删除时先准备只含当前连接文件的私有目录，再将旧应用目录重命名到同级 `.reader-cleanup-<ID>`，将私有目录放回原固定路径，最后删除旧数据副本。清理完成后，旧 `Reader` 目录可能仍包含这两个连接文件，但旧书库、缓存和其他阅读数据已移除；Word/WPS 可继续读取原固定路径。替换失败时尝试恢复旧目录，未能恢复的旧数据保留在清理临时目录并报告路径。此流程避免误删旧程序随后重新创建的原路径。失败时显示可手动处理的目录。Windows 如果拒绝重命名被锁定的目录，保留旧数据并提示手动删除。清理失败不撤销已成功的迁移。
 
+对于 0.9.1 已留下的 `failed` 清理记录，普通启动和普通清理命令仍不会自动重试。用户重新确认删除后，可使用 `--cleanup-reader-data delete --retry-reader-cleanup` 显式重试；只允许重试失败记录，不覆盖 `kept` 决定，并重新执行全部数据、路径与锁校验。macOS 默认安装位置示例：
+
+```sh
+"/Applications/NeoRead.app/Contents/Resources/bin/neoread-server" \
+  --cleanup-reader-data delete --retry-reader-cleanup \
+  --reader-data "$HOME/Library/Application Support/Reader" \
+  --data "$HOME/Library/Application Support/NeoRead"
+```
+
+该参数需要包含此修复的构建。
+
 ## 验证与发布验收
 
 自动化测试使用临时目录，覆盖默认/内部自定义/外部书库、无旧数据、已有 NeoRead 数据、跳版本和重复启动、WAL 数据、旧表结构、路径指纹、损坏数据库与配置、离线设备、目标冲突、缺失原文、符号链接、旧进程锁、复制失败重试、部分启用恢复、标志位保留、清理选择和删除保护。

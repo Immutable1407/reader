@@ -889,11 +889,21 @@ func checkStageOwner(path, id string) error {
 
 // CleanupReaderData never finds/uninstalls apps and never deletes external
 // libraries. Only the exact source recorded by a completed migration is eligible.
-func CleanupReaderData(source, target, choice string) (result *ReaderMigration, failure error) {
+func CleanupReaderData(source, target, choice string) (*ReaderMigration, error) {
+	return cleanupReaderData(source, target, choice, false)
+}
+
+// RetryReaderCleanup requires a new explicit deletion request. Startup never
+// calls it, and a previous decision to keep data is not a failed cleanup.
+func RetryReaderCleanup(source, target string) (*ReaderMigration, error) {
+	return cleanupReaderData(source, target, "delete", true)
+}
+
+func cleanupReaderData(source, target, choice string, retry bool) (result *ReaderMigration, failure error) {
 	started := time.Now()
 	phase := "prepare"
 	preservedFiles := 0
-	slog.Info("migration.cleanup_start")
+	slog.Info("migration.cleanup_start", "retry", retry)
 	defer func() {
 		if failure != nil {
 			slog.Error("migration.cleanup_failed", "phase", phase, "reasonCode", migrationFailureReason(failure), "durationMs", time.Since(started).Milliseconds())
@@ -932,11 +942,17 @@ func CleanupReaderData(source, target, choice string) (result *ReaderMigration, 
 	if state == nil || state.Status != "completed" || state.LegacyCleanup == nil {
 		return nil, fmt.Errorf("迁移尚未完成，不能清理旧数据")
 	}
-	if state.LegacyCleanup.Status != "pending" {
-		return state, nil
-	}
 	if err = validateMigrationState(source, target, state); err != nil {
 		return nil, err
+	}
+	if retry && state.LegacyCleanup.Status == "pending" {
+		return nil, migrationErrorf("cleanup_not_failed", "清理尚未失败，请使用普通清理操作")
+	}
+	if retry && state.LegacyCleanup.Status == "kept" {
+		return nil, migrationErrorf("cleanup_kept", "旧数据已选择保留，未执行重试")
+	}
+	if state.LegacyCleanup.Status != "pending" && !(retry && state.LegacyCleanup.Status == "failed") {
+		return state, nil
 	}
 	if choice == "keep" {
 		state.LegacyCleanup.Status = "kept"
