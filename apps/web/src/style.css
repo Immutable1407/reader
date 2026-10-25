@@ -44,6 +44,7 @@
   --border: #423e42;
   --input: #4d494d;
   --ring: #777477;
+  --destructive: #f87171;
 }
 /* Pure black keeps the neutral dark palette, without paper texture. */
 .dark[data-dark-contrast="high"] {
