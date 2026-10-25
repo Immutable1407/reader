@@ -459,6 +459,10 @@ export interface ReaderEvents {
   internalLink?: (origin: DocumentLocation) => void;
   epubInteraction?: () => void;
   epubReadingAnchor?: (blockId: string) => void;
+  /** Pointer over an EPUB paragraph, or null when it leaves. */
+  epubBlockHover?: (blockId: string | null) => void;
+  /** A click on an EPUB paragraph; the default centers it in the source. */
+  epubBlockFocus?: (blockId: string) => void;
   blockHover?: (block: PDFBlock | null) => void;
   annotation?: (target: ReaderAnnotationTarget | null) => void;
   /** Hover preview only; never select or copy annotation text. */

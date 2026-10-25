@@ -29,6 +29,7 @@ import {
   blockRange,
   resolveEPUBLocation,
 } from "./epub-web-location";
+import { EPUBBlockOverlay } from "./epub-block-focus";
 import "./epub-web.css";
 
 let sequence = 0;
@@ -65,6 +66,7 @@ export class EPUBReaderAdapter implements ReaderAdapter {
   private opening = true;
   private interacted = false;
   private selecting = false;
+  private blockOverlay: EPUBBlockOverlay;
 
   constructor(
     private container: HTMLElement,
@@ -74,6 +76,14 @@ export class EPUBReaderAdapter implements ReaderAdapter {
     container.tabIndex = 0;
     container.setAttribute("aria-label", "EPUB 正文");
     document.head.append(this.style);
+    this.blockOverlay = new EPUBBlockOverlay(
+      container,
+      (id) => this.events.epubBlockHover?.(id),
+      (id) => {
+        if (this.events.epubBlockFocus) this.events.epubBlockFocus(id);
+        else void this.focusBlock(id);
+      },
+    );
     const signal = this.abort.signal;
     container.addEventListener("scroll", this.onScroll, {
       passive: true,
@@ -854,6 +864,8 @@ export class EPUBReaderAdapter implements ReaderAdapter {
           }
         : null,
     );
+    // Marked text opens its annotation; any other click focuses the block.
+    if (!hits.length) this.blockOverlay.click(event);
   };
   async highlight(annotations: Annotation[]) {
     this.annotations = annotations;
@@ -930,6 +942,19 @@ export class EPUBReaderAdapter implements ReaderAdapter {
     }
     if (!this.disposed) this.paint();
   }
+  hoverBlock(blockId: string | null) {
+    this.blockOverlay.setLinkedBlock(blockId);
+  }
+  async focusBlock(blockId: string) {
+    const block = this.blocks.find((b) => b.id === blockId);
+    const chapter = block && this.chapter(block.location.href);
+    if (!chapter || this.disposed) return;
+    await this.load(chapter);
+    if (!this.disposed) await this.blockOverlay.focus(blockId);
+  }
+  cancelBlockFocus() {
+    this.blockOverlay.cancel();
+  }
   setEPUBBlocks(_blocks: EPUBReadingBlock[]) {
     /* Sanitized chapter metadata owns the source block order. */
   }
@@ -974,6 +999,7 @@ export class EPUBReaderAdapter implements ReaderAdapter {
     this.events.annotationHover?.(null);
     this.disposed = true;
     this.navigation++;
+    this.blockOverlay.destroy();
     this.abort.abort();
     this.observer?.disconnect();
     this.resize?.disconnect();
