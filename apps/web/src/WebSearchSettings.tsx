@@ -138,7 +138,7 @@ export function WebSearchSettings({
         <p className="text-xs leading-5 text-muted-foreground">
           目前支持 Codex，使用 CLI 自身的联网能力。
         </p>
-        <div className="space-y-2">
+        <div className="grid grid-cols-[auto_minmax(0,1fr)] items-center gap-x-4 gap-y-2">
           <label id={`${id}-provider`} className="text-sm">
             搜索 API
           </label>
@@ -161,12 +161,10 @@ export function WebSearchSettings({
               <SelectItem value="deepseek">DeepSeek</SelectItem>
             </SelectContent>
           </Select>
-        </div>
-        {provider && (
-          <>
-            <div className="space-y-2">
+          {provider && (
+            <>
               <label htmlFor={`${id}-url`} className="text-sm">
-                搜索 API 地址
+                API 地址
               </label>
               <Input
                 id={`${id}-url`}
@@ -181,10 +179,8 @@ export function WebSearchSettings({
                 spellCheck={false}
                 placeholder={defaultURL}
               />
-            </div>
-            <div className="space-y-2">
               <label htmlFor={`${id}-key`} className="text-sm">
-                搜索 API Key
+                API Key
               </label>
               <Input
                 id={`${id}-key`}
@@ -203,15 +199,17 @@ export function WebSearchSettings({
                     : "填写此搜索服务的 API Key"
                 }
               />
-            </div>
-            <p className="text-xs leading-5 text-muted-foreground">
-              {needsNewKey
-                ? "地址已更改，填写此服务的 API Key 后自动保存。"
-                : !value?.hasKey && !key
-                  ? "填写搜索 API Key 后自动启用。"
-                  : "支持 DeepSeek Search / Fetch 协议，聊天模型与搜索服务分别配置。"}
-            </p>
-          </>
+            </>
+          )}
+        </div>
+        {provider && (
+          <p className="text-xs leading-5 text-muted-foreground">
+            {needsNewKey
+              ? "地址已更改，填写此服务的 API Key 后自动保存。"
+              : !value?.hasKey && !key
+                ? "填写搜索 API Key 后自动启用。"
+                : "支持 DeepSeek Search / Fetch 协议，聊天模型与搜索服务分别配置。"}
+          </p>
         )}
         {value?.hasKey && (
           <div className="flex justify-end">

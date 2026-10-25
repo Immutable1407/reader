@@ -42,19 +42,10 @@ export function PaperServiceSettings({ open }: { open: boolean }) {
           }
         }}
       >
-        <label htmlFor="crossref-email" className="text-sm">
-          Crossref 联系邮箱（可选）
-        </label>
-        <p
-          id="crossref-email-help"
-          className="mb-3 mt-1 text-xs text-muted-foreground"
-        >
-          Crossref 用于查询 DOI
-          和补全论文信息。填写可联系到你的邮箱后，可使用服务商提供的更高请求额度，无需注册。
-          请求额度由 Crossref 限制，NeoRead 不额外设置此项额度。邮箱仅随
-          Crossref 查询发送给该服务商；填写后仍可能触发限流。留空并保存可清除。
-        </p>
-        <div className="flex gap-2">
+        <div className="flex items-center gap-2">
+          <label htmlFor="crossref-email" className="shrink-0 text-sm">
+            Crossref 联系邮箱
+          </label>
           <Input
             id="crossref-email"
             name="crossrefEmail"
@@ -75,6 +66,15 @@ export function PaperServiceSettings({ open }: { open: boolean }) {
             {saving ? "保存中…" : "保存"}
           </Button>
         </div>
+        <p
+          id="crossref-email-help"
+          className="mt-2 text-xs leading-5 text-muted-foreground"
+        >
+          可选。Crossref 用于查询 DOI
+          和补全论文信息。填写可联系到你的邮箱后，可使用服务商提供的更高请求额度，无需注册。
+          请求额度由 Crossref 限制，NeoRead 不额外设置此项额度。邮箱仅随
+          Crossref 查询发送给该服务商；填写后仍可能触发限流。留空并保存可清除。
+        </p>
       </form>
     </section>
   );
