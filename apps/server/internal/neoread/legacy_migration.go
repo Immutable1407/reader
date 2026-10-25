@@ -25,12 +25,26 @@ import (
 
 const migrationKey = "reader-to-neoread"
 const migrationStage = ".reader-to-neoread"
+const migrationDigestVersion = 1
+
+// Error classification is separate from messages, which may contain user paths.
+type migrationError struct {
+	reason string
+	err    error
+}
+
+func (e *migrationError) Error() string { return e.err.Error() }
+func (e *migrationError) Unwrap() error { return e.err }
+func migrationErrorf(reason, format string, args ...any) error {
+	return &migrationError{reason: reason, err: fmt.Errorf(format, args...)}
+}
 
 type LegacyCleanup struct {
 	Status string `json:"status"`
 }
 type ReaderMigration struct {
 	Status        string            `json:"status"`
+	DigestVersion int               `json:"digestVersion,omitempty"`
 	Reason        string            `json:"reason,omitempty"`
 	ID            string            `json:"id,omitempty"`
 	Source        string            `json:"source,omitempty"`
@@ -86,7 +100,7 @@ func readMigration(target string) (*migrationFile, *ReaderMigration, error) {
 		return nil, nil, err
 	}
 	if json.Unmarshal(data, file) != nil || file.SchemaVersion != 1 || file.Migrations == nil {
-		return nil, nil, fmt.Errorf("迁移记录损坏或版本不受支持，未改动旧数据")
+		return nil, nil, migrationErrorf("invalid_record", "迁移记录损坏或版本不受支持，未改动旧数据")
 	}
 	raw, exists := file.Migrations[migrationKey]
 	if !exists {
@@ -94,12 +108,12 @@ func readMigration(target string) (*migrationFile, *ReaderMigration, error) {
 	}
 	var state ReaderMigration
 	if json.Unmarshal(raw, &state) != nil {
-		return nil, nil, fmt.Errorf("迁移记录损坏，未改动旧数据")
+		return nil, nil, migrationErrorf("invalid_record", "迁移记录损坏，未改动旧数据")
 	}
 	switch state.Status {
 	case "copying", "verified", "completed", "not-needed":
 	default:
-		return nil, nil, fmt.Errorf("无法识别迁移状态，未改动旧数据")
+		return nil, nil, migrationErrorf("invalid_record", "无法识别迁移状态，未改动旧数据")
 	}
 	return file, &state, nil
 }
@@ -183,7 +197,7 @@ func lockOldLibrary(path string) (func(), error) {
 		return nil, err
 	}
 	if !ok {
-		return nil, fmt.Errorf("请先退出旧 Reader，旧书库仍在使用中")
+		return nil, migrationErrorf("source_busy", "请先退出旧 Reader，旧书库仍在使用中")
 	}
 	return func() { _ = lock.Unlock() }, nil
 }
@@ -202,7 +216,31 @@ func migrationExcluded(rel string) bool {
 	}
 	return false
 }
+
+// Version zero is the v0.9.0 hash policy. Keep it stable for old journals
+// and cleanup checks; new cache exclusions must not change recorded hashes.
 func treeDigest(root string) (string, int64, error) {
+	return treeDigestWithPolicy(root, migrationExcluded)
+}
+func migrationRuntimeCache(rel string) bool {
+	switch strings.Split(filepath.ToSlash(rel), "/")[0] {
+	case "GPUPersistentCache", "GraphiteDawnCache":
+		return true
+	}
+	return false
+}
+func (state *ReaderMigration) runtimeCache(rel string) bool {
+	first := strings.Split(filepath.ToSlash(rel), "/")[0]
+	// A user-selected library can live inside an otherwise cache-like directory.
+	return migrationRuntimeCache(rel) && !containsPath(filepath.Join(state.Source, first), state.SourceLibrary)
+}
+func (state *ReaderMigration) excluded(rel string) bool {
+	return migrationExcluded(rel) || (state.DigestVersion >= 1 && state.runtimeCache(rel))
+}
+func (state *ReaderMigration) treeDigest(root string) (string, int64, error) {
+	return treeDigestWithPolicy(root, state.excluded)
+}
+func treeDigestWithPolicy(root string, excluded func(string) bool) (string, int64, error) {
 	hash := sha256.New()
 	var size int64
 	err := filepath.WalkDir(root, func(path string, e fs.DirEntry, err error) error {
@@ -216,7 +254,7 @@ func treeDigest(root string) (string, int64, error) {
 		if rel == "." {
 			return nil
 		}
-		if migrationExcluded(rel) {
+		if excluded(rel) {
 			if e.IsDir() {
 				return filepath.SkipDir
 			}
@@ -245,7 +283,7 @@ func treeDigest(root string) (string, int64, error) {
 	})
 	return hex.EncodeToString(hash.Sum(nil)), size, err
 }
-func copyMigrationTree(source, target string) error {
+func copyMigrationTree(source, target string, excluded func(string) bool) error {
 	if err := os.Mkdir(target, 0700); err != nil {
 		return err
 	}
@@ -257,7 +295,7 @@ func copyMigrationTree(source, target string) error {
 		if err != nil || rel == "." {
 			return err
 		}
-		if migrationExcluded(rel) {
+		if excluded(rel) {
 			if e.IsDir() {
 				return filepath.SkipDir
 			}
@@ -398,30 +436,33 @@ func externalStage(state *ReaderMigration) string {
 	return filepath.Join(filepath.Dir(state.Library), ".neoread-migration-"+state.ID)
 }
 func validateMigrationState(source, target string, state *ReaderMigration) error {
+	if state.DigestVersion < 0 || state.DigestVersion > migrationDigestVersion {
+		return migrationErrorf("invalid_record", "不支持的迁移校验版本")
+	}
 	if state.Source != source || !regexp.MustCompile(`^[0-9a-f]{32}$`).MatchString(state.ID) {
-		return fmt.Errorf("迁移记录与当前目录不匹配")
+		return migrationErrorf("invalid_record", "迁移记录与当前目录不匹配")
 	}
 	if !filepath.IsAbs(state.SourceLibrary) || !filepath.IsAbs(state.Library) {
-		return fmt.Errorf("迁移书库路径无效")
+		return migrationErrorf("invalid_record", "迁移书库路径无效")
 	}
 	expected := filepath.Join(target, "library")
 	if containsPath(source, state.SourceLibrary) {
 		rel, _ := filepath.Rel(source, state.SourceLibrary)
 		expected = filepath.Join(target, rel)
 		if state.External {
-			return fmt.Errorf("迁移路径状态不一致")
+			return migrationErrorf("invalid_record", "迁移路径状态不一致")
 		}
 	} else {
 		expected = filepath.Join(filepath.Dir(state.SourceLibrary), "NeoRead Library")
 		if !state.External {
-			return fmt.Errorf("迁移路径状态不一致")
+			return migrationErrorf("invalid_record", "迁移路径状态不一致")
 		}
 	}
 	if expected != state.Library || containsPath(source, state.Library) || containsPath(state.Library, source) {
-		return fmt.Errorf("新旧书库路径重叠或无效")
+		return migrationErrorf("invalid_record", "新旧书库路径重叠或无效")
 	}
 	if state.External && (containsPath(state.SourceLibrary, source) || containsPath(state.SourceLibrary, target) || containsPath(target, state.SourceLibrary) || containsPath(target, state.Library) || containsPath(state.Library, target)) {
-		return fmt.Errorf("外置书库不能与应用数据目录重叠")
+		return migrationErrorf("invalid_record", "外置书库不能与应用数据目录重叠")
 	}
 	if state.Status != "copying" {
 		validHash := func(value string) bool {
@@ -429,30 +470,30 @@ func validateMigrationState(source, target string, state *ReaderMigration) error
 			return e == nil && len(decoded) == sha256.Size
 		}
 		if !validHash(state.SourceHash) || len(state.Entries) == 0 || (state.External && !validHash(state.ExternalHash)) {
-			return fmt.Errorf("迁移校验记录不完整")
+			return migrationErrorf("invalid_record", "迁移校验记录不完整")
 		}
 		for _, hash := range state.Entries {
 			if !validHash(hash) {
-				return fmt.Errorf("迁移条目校验记录无效")
+				return migrationErrorf("invalid_record", "迁移条目校验记录无效")
 			}
 		}
 	}
 	if state.Status == "completed" {
 		if _, err := time.Parse(time.RFC3339, state.CompletedAt); err != nil {
-			return fmt.Errorf("迁移完成时间无效")
+			return migrationErrorf("invalid_record", "迁移完成时间无效")
 		}
 		if state.LegacyCleanup == nil {
-			return fmt.Errorf("迁移清理记录缺失")
+			return migrationErrorf("invalid_record", "迁移清理记录缺失")
 		}
 		switch state.LegacyCleanup.Status {
 		case "pending", "kept", "deleted", "failed":
 		default:
-			return fmt.Errorf("迁移清理记录无效")
+			return migrationErrorf("invalid_record", "迁移清理记录无效")
 		}
 	}
 	for name := range state.Entries {
-		if name == "." || name == ".." || filepath.Base(name) != name || migrationExcluded(name) {
-			return fmt.Errorf("迁移条目无效")
+		if name == "." || name == ".." || filepath.Base(name) != name || state.excluded(name) {
+			return migrationErrorf("invalid_record", "迁移条目无效")
 		}
 	}
 	return nil
@@ -468,7 +509,10 @@ func MigrateReaderData(source, target string) (result *ReaderMigration, failure 
 	defer func() {
 		if failure != nil {
 			reason := "operation_failed"
+			var classified *migrationError
 			switch {
+			case errors.As(failure, &classified):
+				reason = classified.reason
 			case errors.Is(failure, syscall.ENOSPC):
 				reason = "no_space"
 			case errors.Is(failure, os.ErrPermission):
@@ -502,7 +546,7 @@ func MigrateReaderData(source, target string) (result *ReaderMigration, failure 
 		return nil, err
 	}
 	if !ok {
-		return nil, fmt.Errorf("另一个 NeoRead 正在迁移数据")
+		return nil, migrationErrorf("migration_busy", "另一个 NeoRead 正在迁移数据")
 	}
 	defer lock.Unlock()
 	file, state, err := readMigration(target)
@@ -557,7 +601,7 @@ func MigrateReaderData(source, target string) (result *ReaderMigration, failure 
 			return nil, err
 		}
 		if state.External && pathExists(state.Library) {
-			return nil, fmt.Errorf("目标书库目录已存在，未覆盖：%s", state.Library)
+			return nil, migrationErrorf("target_conflict", "目标书库目录已存在，未覆盖：%s", state.Library)
 		}
 		if err = saveMigration(target, file, state); err != nil {
 			return nil, err
@@ -578,6 +622,7 @@ func MigrateReaderData(source, target string) (result *ReaderMigration, failure 
 	defer unlock()
 	stage := filepath.Join(target, migrationStage)
 	if state.Status == "copying" {
+		state.DigestVersion = migrationDigestVersion
 		// These exact staging locations belong to the journal. Never remove the final
 		// target or any directory merely because its name resembles a staging path.
 		if pathExists(stage) {
@@ -596,29 +641,29 @@ func MigrateReaderData(source, target string) (result *ReaderMigration, failure 
 		}
 		stageEvent("copy_app")
 		var sourceBytes int64
-		state.SourceHash, sourceBytes, err = treeDigest(source)
+		state.SourceHash, sourceBytes, err = state.treeDigest(source)
 		if err != nil {
 			return nil, err
 		}
 		if err = checkMigrationSpace(target, sourceBytes); err != nil {
 			return nil, err
 		}
-		if err = copyMigrationTree(source, filepath.Join(stage, "app")); err != nil {
+		if err = copyMigrationTree(source, filepath.Join(stage, "app"), state.excluded); err != nil {
 			return nil, err
 		}
-		copied, _, err := treeDigest(filepath.Join(stage, "app"))
+		copied, _, err := state.treeDigest(filepath.Join(stage, "app"))
 		if err != nil {
 			return nil, err
 		}
 		if copied != state.SourceHash {
-			return nil, fmt.Errorf("应用数据复制校验失败")
+			return nil, migrationErrorf("copy_hash_mismatch", "应用数据复制校验失败")
 		}
 		copiedLib := filepath.Join(stage, "app", "library")
 		if state.External {
 			stageEvent("copy_external_library")
 			ext := externalStage(state)
 			if pathExists(state.Library) {
-				return nil, fmt.Errorf("目标书库已存在，未覆盖：%s", state.Library)
+				return nil, migrationErrorf("target_conflict", "目标书库已存在，未覆盖：%s", state.Library)
 			}
 			if pathExists(ext) {
 				if err = checkStageOwner(ext, state.ID); err != nil {
@@ -642,7 +687,7 @@ func MigrateReaderData(source, target string) (result *ReaderMigration, failure 
 				return nil, err
 			}
 			copiedLib = filepath.Join(ext, "library")
-			if err = copyMigrationTree(state.SourceLibrary, copiedLib); err != nil {
+			if err = copyMigrationTree(state.SourceLibrary, copiedLib, migrationExcluded); err != nil {
 				return nil, err
 			}
 			after, _, err := treeDigest(copiedLib)
@@ -650,7 +695,7 @@ func MigrateReaderData(source, target string) (result *ReaderMigration, failure 
 				return nil, err
 			}
 			if before != after {
-				return nil, fmt.Errorf("外置书库复制校验失败")
+				return nil, migrationErrorf("copy_hash_mismatch", "外置书库复制校验失败")
 			}
 		} else {
 			rel, _ := filepath.Rel(source, state.SourceLibrary)
@@ -717,7 +762,7 @@ func MigrateReaderData(source, target string) (result *ReaderMigration, failure 
 		staged := filepath.Join(externalStage(state), "library")
 		if pathExists(staged) {
 			if pathExists(state.Library) {
-				return nil, fmt.Errorf("目标书库已存在，未覆盖")
+				return nil, migrationErrorf("target_conflict", "目标书库已存在，未覆盖")
 			}
 			if err = os.Rename(staged, state.Library); err != nil {
 				return nil, err
@@ -731,7 +776,7 @@ func MigrateReaderData(source, target string) (result *ReaderMigration, failure 
 			return nil, err
 		}
 		if hash != state.ExternalHash {
-			return nil, fmt.Errorf("外置书库启用校验失败")
+			return nil, migrationErrorf("entry_hash_mismatch", "外置书库启用校验失败")
 		}
 	}
 	names := make([]string, 0, len(state.Entries))
@@ -740,17 +785,22 @@ func MigrateReaderData(source, target string) (result *ReaderMigration, failure 
 	}
 	sort.Strings(names)
 	for _, name := range names {
+		// Old journals can have caches staged, already changed by Chromium, or
+		// removed. Never move or verify live caches during activation recovery.
+		if state.runtimeCache(name) {
+			continue
+		}
 		from, to := filepath.Join(stage, "app", name), filepath.Join(target, name)
 		if pathExists(from) {
 			if pathExists(to) {
 				switch name {
 				case "Local State", "Preferences", "Network", "Session Storage", "Local Storage", "logs":
 				default:
-					return nil, fmt.Errorf("迁移目标出现已有数据，未覆盖：%s", to)
+					return nil, migrationErrorf("target_conflict", "迁移目标出现已有数据，未覆盖：%s", to)
 				}
 				backup := filepath.Join(stage, "initial", name)
 				if pathExists(backup) {
-					return nil, fmt.Errorf("目标数据发生变化，未覆盖：%s", name)
+					return nil, migrationErrorf("target_conflict", "目标数据发生变化，未覆盖：%s", name)
 				}
 				if err = os.MkdirAll(filepath.Dir(backup), 0700); err != nil {
 					return nil, err
@@ -768,7 +818,7 @@ func MigrateReaderData(source, target string) (result *ReaderMigration, failure 
 			return nil, err
 		}
 		if hash != state.Entries[name] {
-			return nil, fmt.Errorf("应用数据启用校验失败：%s", name)
+			return nil, migrationErrorf("entry_hash_mismatch", "应用数据启用校验失败：%s", name)
 		}
 	}
 	if err = syncMigrationDirectory(target); err != nil {
@@ -791,7 +841,7 @@ func checkStageOwner(path, id string) error {
 		}
 	}
 	if err != nil || string(data) != id {
-		return fmt.Errorf("临时目录无法确认归属，未删除：%s", path)
+		return migrationErrorf("stage_owner_mismatch", "临时目录无法确认归属，未删除：%s", path)
 	}
 	return nil
 }
@@ -861,7 +911,7 @@ func CleanupReaderData(source, target, choice string) (*ReaderMigration, error) 
 		return nil, err
 	}
 	defer unlock()
-	hash, _, err := treeDigest(source)
+	hash, _, err := state.treeDigest(source)
 	if err != nil {
 		return nil, err
 	}
@@ -946,7 +996,7 @@ func checkMigrationSpace(path string, bytes int64) error {
 	}
 	required := uint64(bytes) + (64 << 20)
 	if available < required {
-		return fmt.Errorf("迁移目标空间不足：至少需要 %d MiB，可用 %d MiB。旧数据未删除", (required+(1<<20)-1)>>20, available>>20)
+		return migrationErrorf("no_space", "迁移目标空间不足：至少需要 %d MiB，可用 %d MiB。旧数据未删除", (required+(1<<20)-1)>>20, available>>20)
 	}
 	return nil
 }

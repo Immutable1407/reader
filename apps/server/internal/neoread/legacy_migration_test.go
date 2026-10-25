@@ -4,6 +4,8 @@ import (
 	"bytes"
 	"database/sql"
 	"encoding/json"
+	"errors"
+	"fmt"
 	"log/slog"
 	"os"
 	"path/filepath"
@@ -520,5 +522,231 @@ func TestReaderMigrationLogsFailurePhaseWithoutSourceContent(t *testing.T) {
 	}
 	if strings.Contains(log, "PRIVATE_DOCUMENT_SENTINEL") || strings.Contains(log, old) {
 		t.Fatal("private source in logs")
+	}
+}
+
+func writeMigrationCache(t *testing.T, root, name, content string) {
+	t.Helper()
+	if err := os.MkdirAll(filepath.Join(root, name), 0700); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(root, name, "cache"), []byte(content), 0600); err != nil {
+		t.Fatal(err)
+	}
+}
+
+func TestReaderMigrationIgnoresChromiumStartupCaches(t *testing.T) {
+	old, current, _ := legacyFixture(t, false)
+	for _, name := range []string{"GPUPersistentCache", "GraphiteDawnCache"} {
+		writeMigrationCache(t, old, name, "old cache")
+		writeMigrationCache(t, current, name, "new Chromium cache")
+	}
+	before, _, err := treeDigest(old)
+	if err != nil {
+		t.Fatal(err)
+	}
+	state, err := MigrateReaderData(old, current)
+	if err != nil {
+		t.Fatal(err)
+	}
+	assertMigrated(t, state.Library)
+	for _, name := range []string{"GPUPersistentCache", "GraphiteDawnCache"} {
+		if _, found := state.Entries[name]; found || pathExists(filepath.Join(current, migrationStage, "app", name)) {
+			t.Fatal("copied runtime cache", name)
+		}
+		data, err := os.ReadFile(filepath.Join(current, name, "cache"))
+		if err != nil || string(data) != "new Chromium cache" {
+			t.Fatal("overwrote live cache", name, err)
+		}
+	}
+	after, _, err := treeDigest(old)
+	if err != nil || before != after {
+		t.Fatal("modified source", err)
+	}
+	// Cleanup must use the same hash policy as this migration.
+	if _, err := CleanupReaderData(old, current, "delete"); err != nil {
+		t.Fatal(err)
+	}
+}
+
+func TestReaderMigrationResumesVerifiedWithLegacyCaches(t *testing.T) {
+	for _, external := range []bool{false, true} {
+		for _, location := range []string{"staged", "installed", "missing"} {
+			t.Run(fmt.Sprintf("external=%v/%s", external, location), func(t *testing.T) {
+				old, current, _ := legacyFixture(t, external)
+				state, err := MigrateReaderData(old, current)
+				if err != nil {
+					t.Fatal(err)
+				}
+				// Recreate a v0.9.0 verified journal: unversioned hashes include caches.
+				encoded, _ := json.Marshal(state)
+				var fields map[string]json.RawMessage
+				json.Unmarshal(encoded, &fields)
+				delete(fields, "digestVersion")
+				encoded, _ = json.Marshal(fields)
+				state = new(ReaderMigration)
+				if err := json.Unmarshal(encoded, state); err != nil {
+					t.Fatal(err)
+				}
+				for _, name := range []string{"GPUPersistentCache", "GraphiteDawnCache"} {
+					writeMigrationCache(t, old, name, "legacy cache")
+					hash, _, err := treeDigest(filepath.Join(old, name))
+					if err != nil {
+						t.Fatal(err)
+					}
+					state.Entries[name] = hash
+					switch location {
+					case "staged":
+						writeMigrationCache(t, filepath.Join(current, migrationStage, "app"), name, "legacy cache")
+						writeMigrationCache(t, current, name, "live cache")
+					case "installed":
+						writeMigrationCache(t, current, name, "cache changed after installation")
+					}
+				}
+				state.SourceHash, _, err = treeDigest(old)
+				if err != nil {
+					t.Fatal(err)
+				}
+				// Also leave one real application entry pending activation.
+				if err := os.Rename(filepath.Join(current, "proxy-settings.json"), filepath.Join(current, migrationStage, "app", "proxy-settings.json")); err != nil {
+					t.Fatal(err)
+				}
+				file, _, _ := readMigration(current)
+				state.Status, state.CompletedAt, state.LegacyCleanup = "verified", "", nil
+				if err := saveMigration(current, file, state); err != nil {
+					t.Fatal(err)
+				}
+				state, err = MigrateReaderData(old, current)
+				if err != nil || state.Status != "completed" {
+					t.Fatal(state, err)
+				}
+				assertMigrated(t, state.Library)
+				if !pathExists(filepath.Join(current, "proxy-settings.json")) {
+					t.Fatal("did not activate settings")
+				}
+				// Completed old journals and their cleanup hashes remain valid too.
+				if _, err := MigrateReaderData(old, current); err != nil {
+					t.Fatal(err)
+				}
+				if _, err := CleanupReaderData(old, current, "delete"); err != nil {
+					t.Fatal(err)
+				}
+			})
+		}
+	}
+}
+
+func TestReaderMigrationDiagnosticReasons(t *testing.T) {
+	for _, scenario := range []string{"migration_busy", "source_busy", "target_conflict", "entry_hash_mismatch", "stage_owner_mismatch", "invalid_record"} {
+		t.Run(scenario, func(t *testing.T) {
+			old, current, lib := legacyFixture(t, false)
+			switch scenario {
+			case "migration_busy":
+				os.MkdirAll(current, 0700)
+				lock := flock.New(filepath.Join(current, ".migration.lock"))
+				ok, err := lock.TryLock()
+				if err != nil || !ok {
+					t.Fatal(ok, err)
+				}
+				defer lock.Unlock()
+			case "source_busy":
+				lock := flock.New(filepath.Join(lib, "reader.lock"))
+				ok, err := lock.TryLock()
+				if err != nil || !ok {
+					t.Fatal(ok, err)
+				}
+				defer lock.Unlock()
+			case "invalid_record":
+				if err := os.MkdirAll(current, 0700); err != nil {
+					t.Fatal(err)
+				}
+				if err := os.WriteFile(filepath.Join(current, "migrations.json"), []byte("PRIVATE_RECORD_SENTINEL"), 0600); err != nil {
+					t.Fatal(err)
+				}
+			case "target_conflict":
+				writeMigrationCache(t, old, "PRIVATE_ENTRY_SENTINEL", "private contents")
+				writeMigrationCache(t, current, "PRIVATE_ENTRY_SENTINEL", "existing data")
+			case "entry_hash_mismatch", "stage_owner_mismatch":
+				state, err := MigrateReaderData(old, current)
+				if err != nil {
+					t.Fatal(err)
+				}
+				file, _, _ := readMigration(current)
+				state.Status = "verified"
+				if err := saveMigration(current, file, state); err != nil {
+					t.Fatal(err)
+				}
+				path := filepath.Join(current, "proxy-settings.json")
+				if scenario == "stage_owner_mismatch" {
+					path = filepath.Join(current, migrationStage, "owner")
+				}
+				if err := os.WriteFile(path, []byte("PRIVATE_CONTENT_SENTINEL"), 0600); err != nil {
+					t.Fatal(err)
+				}
+			}
+			var output bytes.Buffer
+			previous := slog.Default()
+			slog.SetDefault(slog.New(slog.NewJSONHandler(&output, nil)))
+			defer slog.SetDefault(previous)
+			if _, err := MigrateReaderData(old, current); err == nil {
+				t.Fatal("accepted conflict or modified data")
+			}
+			log := output.String()
+			if !strings.Contains(log, `"reasonCode":"`+scenario+`"`) {
+				t.Fatal(log)
+			}
+			if strings.Contains(log, "PRIVATE_") || strings.Contains(log, old) || strings.Contains(log, current) {
+				t.Fatal("private migration data in logs")
+			}
+		})
+	}
+}
+
+func TestReaderMigrationPreservesCacheNamedCustomLibrary(t *testing.T) {
+	for _, collision := range []bool{false, true} {
+		t.Run(fmt.Sprintf("collision=%v", collision), func(t *testing.T) {
+			old, current, lib := legacyFixture(t, false)
+			custom := filepath.Join(old, "GraphiteDawnCache")
+			if err := os.Rename(lib, custom); err != nil {
+				t.Fatal(err)
+			}
+			if err := atomicMigrationJSON(filepath.Join(old, "library-location.json"), map[string]string{"directory": custom}); err != nil {
+				t.Fatal(err)
+			}
+			if collision {
+				writeMigrationCache(t, current, "GraphiteDawnCache", "live cache")
+			}
+			state, err := MigrateReaderData(old, current)
+			if collision {
+				var classified *migrationError
+				if !errors.As(err, &classified) || classified.reason != "target_conflict" {
+					t.Fatal(err)
+				}
+				if !pathExists(filepath.Join(custom, "reader.sqlite")) {
+					t.Fatal("lost source library")
+				}
+				return
+			}
+			if err != nil {
+				t.Fatal(err)
+			}
+			assertMigrated(t, state.Library)
+		})
+	}
+}
+
+func TestReaderMigrationRejectsUnknownDigestVersion(t *testing.T) {
+	old, current, _ := legacyFixture(t, false)
+	state, err := MigrateReaderData(old, current)
+	if err != nil {
+		t.Fatal(err)
+	}
+	file, _, _ := readMigration(current)
+	state.DigestVersion = 99
+	if err := saveMigration(current, file, state); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := MigrateReaderData(old, current); err == nil {
+		t.Fatal("accepted unknown hash policy")
 	}
 }
