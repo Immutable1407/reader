@@ -223,13 +223,15 @@ export function ProxySettings({ open }: { open: boolean }) {
             检测连接
           </Button>
         </div>
-        <p className="mt-2 text-xs text-muted-foreground">
-          {mode === "system" &&
+        {!(
+          mode === "system" &&
           state?.settings.mode === "system" &&
           !state.restartRequired
-            ? "检测当前已生效的系统代理配置。"
-            : "检测上方配置；修改后保存并重启生效。"}
-        </p>
+        ) && (
+          <p className="mt-2 text-xs text-muted-foreground">
+            检测上方配置；修改后保存并重启生效。
+          </p>
+        )}
         {result && (
           <div
             className="mt-3 flex items-start gap-2 text-sm"

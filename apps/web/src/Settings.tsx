@@ -716,12 +716,14 @@ export function Settings({
               </div>
             )}
             <section>
-              <h3 className="mb-3 text-sm font-medium">本地日志</h3>
-              <p className="mb-4 text-xs leading-5 text-muted-foreground">
+              <div className="flex items-start justify-between gap-3">
+                <h3 className="shrink-0 pt-2 text-sm font-medium">本地日志</h3>
+                <DiagnosticExport />
+              </div>
+              <p className="mt-2 text-xs leading-5 text-muted-foreground">
                 导出全部已保留日志和运行环境供开发者排查。凭据、用户路径和翻译诊断中的正文会脱敏；不包含文档、聊天或批注。日志最多保留
                 7 天、100 MiB，仅在本机保存。
               </p>
-              <DiagnosticExport />
             </section>
           </TabsContent>
           <TabsContent value="display" className="settings-panel" keepMounted>
