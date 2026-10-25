@@ -103,6 +103,17 @@ func TestBookImportParsesChaptersInTheBackgroundWithoutTranslating(t *testing.T)
 	}
 }
 
+func TestBookChaptersSkipAnUnresolvedTitleBookmark(t *testing.T) {
+	s := testServer(t)
+	s.Token = "test-secret"
+	fakeLayout(t)
+	fakeOutline(t, `[{"title":"Book","page":2,"depth":1},{"title":"One","page":2,"depth":2},{"title":"1.1","page":3,"depth":3},{"title":"Two","page":40,"depth":2}]`)
+	d := uploadBook(t, s)
+	if starts := s.bookChapterStarts(context.Background(), d); fmt.Sprint(starts) != "[2 40]" {
+		t.Fatalf("chapter starts %v", starts)
+	}
+}
+
 func TestBookLayoutProgressAndChapterRequestShareParsedPages(t *testing.T) {
 	s := testServer(t)
 	s.Token = "test-secret"

@@ -305,15 +305,21 @@ func (s *Server) bookChapterStarts(ctx context.Context, d Document) []int {
 				Depth int `json:"depth"`
 			} `json:"outline"`
 		}
-		if json.Unmarshal(data, &extracted) == nil {
-			depth, roots := 0, 0
+		if json.Unmarshal(data, &extracted) == nil && len(extracted.Outline) > 0 {
+			// A title bookmark without a destination is dropped, leaving its
+			// children as the shallowest entries.
+			depth := extracted.Outline[0].Depth
 			for _, o := range extracted.Outline {
-				if o.Depth == 0 {
+				depth = min(depth, o.Depth)
+			}
+			roots := 0
+			for _, o := range extracted.Outline {
+				if o.Depth == depth {
 					roots++
 				}
 			}
 			if roots == 1 {
-				depth = 1
+				depth++
 			}
 			for _, o := range extracted.Outline {
 				if o.Depth == depth && o.Page > 0 && !slices.Contains(starts, o.Page) {
