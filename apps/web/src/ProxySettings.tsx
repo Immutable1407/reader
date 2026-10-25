@@ -205,17 +205,24 @@ export function ProxySettings({ open }: { open: boolean }) {
         )}
       </div>
       <div>
-        <h3 className="mb-3 text-sm font-medium">连接检测</h3>
-        <p className="text-xs text-muted-foreground">chatgpt.com/robots.txt</p>
-        <Button
-          className="mt-3"
-          variant="outline"
-          disabled={pending || !state}
-          onClick={() => void perform("check")}
-        >
-          {operation === "check" && <LoaderCircle className="animate-spin" />}
-          检测连接
-        </Button>
+        <div className="flex items-center justify-between gap-3">
+          <div className="flex min-w-0 flex-wrap items-baseline gap-x-2 gap-y-1">
+            <h3 className="text-sm font-medium">连接检测</h3>
+            <span className="text-xs text-muted-foreground">
+              chatgpt.com/robots.txt
+            </span>
+          </div>
+          <Button
+            className="shrink-0"
+            size="sm"
+            variant="outline"
+            disabled={pending || !state}
+            onClick={() => void perform("check")}
+          >
+            {operation === "check" && <LoaderCircle className="animate-spin" />}
+            检测连接
+          </Button>
+        </div>
         <p className="mt-2 text-xs text-muted-foreground">
           {mode === "system" &&
           state?.settings.mode === "system" &&
