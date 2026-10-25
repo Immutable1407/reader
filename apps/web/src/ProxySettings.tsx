@@ -103,8 +103,8 @@ export function ProxySettings({ open }: { open: boolean }) {
     }
   };
   return (
-    <section className="space-y-5">
-      <div>
+    <>
+      <section>
         <h3 id="proxy-mode-label" className="mb-3 text-sm font-medium">
           代理
         </h3>
@@ -203,26 +203,35 @@ export function ProxySettings({ open }: { open: boolean }) {
         {state?.warning && (
           <p className="mt-2 text-xs text-muted-foreground">{state.warning}</p>
         )}
-      </div>
-      <div>
-        <h3 className="mb-3 text-sm font-medium">连接检测</h3>
-        <p className="text-xs text-muted-foreground">chatgpt.com/robots.txt</p>
-        <Button
-          className="mt-3"
-          variant="outline"
-          disabled={pending || !state}
-          onClick={() => void perform("check")}
-        >
-          {operation === "check" && <LoaderCircle className="animate-spin" />}
-          检测连接
-        </Button>
-        <p className="mt-2 text-xs text-muted-foreground">
-          {mode === "system" &&
+      </section>
+      <section>
+        <div className="flex items-center justify-between gap-3">
+          <div className="flex min-w-0 flex-wrap items-baseline gap-x-2 gap-y-1">
+            <h3 className="text-sm font-medium">连接检测</h3>
+            <span className="text-xs text-muted-foreground">
+              chatgpt.com/robots.txt
+            </span>
+          </div>
+          <Button
+            className="shrink-0"
+            size="sm"
+            variant="outline"
+            disabled={pending || !state}
+            onClick={() => void perform("check")}
+          >
+            {operation === "check" && <LoaderCircle className="animate-spin" />}
+            检测连接
+          </Button>
+        </div>
+        {!(
+          mode === "system" &&
           state?.settings.mode === "system" &&
           !state.restartRequired
-            ? "检测当前已生效的系统代理配置。"
-            : "检测上方配置；修改后保存并重启生效。"}
-        </p>
+        ) && (
+          <p className="mt-2 text-xs text-muted-foreground">
+            检测上方配置；修改后保存并重启生效。
+          </p>
+        )}
         {result && (
           <div
             className="mt-3 flex items-start gap-2 text-sm"
@@ -255,12 +264,12 @@ export function ProxySettings({ open }: { open: boolean }) {
             </div>
           </div>
         )}
-      </div>
-      {error && (
-        <p className="text-sm text-destructive" role="alert">
-          {error}
-        </p>
-      )}
-    </section>
+        {error && (
+          <p className="mt-3 text-sm text-destructive" role="alert">
+            {error}
+          </p>
+        )}
+      </section>
+    </>
   );
 }

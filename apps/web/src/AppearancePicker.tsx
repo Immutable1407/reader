@@ -1,4 +1,3 @@
-import { Check } from "lucide-react";
 import type { ReaderTheme } from "@neoread/core";
 import { Button } from "@neoread/ui/components/button";
 import { Tabs, TabsList, TabsTrigger } from "@neoread/ui/components/tabs";
@@ -35,7 +34,6 @@ function Choices<T extends string>({
             onClick={() => onChange(option)}
           >
             {text}
-            {value === option && <Check className="size-3" />}
           </Button>
         ))}
       </div>

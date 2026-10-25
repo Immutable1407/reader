@@ -15,12 +15,12 @@ export function TranslationPromptSettings({
   const [draft, setDraft] = useState(value);
   useEffect(() => setDraft(value), [value]);
   return (
-    <div className="mt-4 space-y-2">
-      <label htmlFor={id} className="text-sm font-medium">
+    <section>
+      <h3 id={`${id}-title`} className="mb-3 text-sm font-medium">
         翻译提示词
-      </label>
+      </h3>
       <Textarea
-        id={id}
+        aria-labelledby={`${id}-title`}
         value={draft}
         onChange={(event) => setDraft(event.target.value)}
         disabled={disabled}
@@ -29,10 +29,13 @@ export function TranslationPromptSettings({
         placeholder="例如：用自然流畅的中文翻译，保留关键英文术语。"
         aria-describedby={`${id}-help`}
       />
-      <p id={`${id}-help`} className="text-xs leading-5 text-muted-foreground">
+      <p
+        id={`${id}-help`}
+        className="mt-2 text-xs leading-5 text-muted-foreground"
+      >
         补充翻译风格和术语要求。留空使用默认规则；已完成的译文需重新翻译才会应用。
       </p>
-      <div className="flex justify-end gap-2">
+      <div className="mt-2 flex justify-end gap-2">
         <Button
           variant="ghost"
           size="sm"
@@ -52,6 +55,6 @@ export function TranslationPromptSettings({
           保存提示词
         </Button>
       </div>
-    </div>
+    </section>
   );
 }

@@ -54,9 +54,9 @@ export function CitePluginSettings({ open }: { open: boolean }) {
   };
 
   return (
-    <div className="mb-5 rounded-md border p-3 text-sm">
-      <div className="font-medium">Word / WPS 引用插件</div>
-      <p className="mt-1 text-xs text-muted-foreground">
+    <section className="text-sm">
+      <h3 className="mb-3 font-medium">Word / WPS 引用插件</h3>
+      <p className="text-xs text-muted-foreground">
         在文档中插入论文库中的引注和参考文献表。使用时需保持 Reader 运行。
       </p>
       <ul className="mt-3 flex flex-col gap-3">
@@ -91,6 +91,6 @@ export function CitePluginSettings({ open }: { open: boolean }) {
           </li>
         ))}
       </ul>
-    </div>
+    </section>
   );
 }

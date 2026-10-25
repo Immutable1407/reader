@@ -29,6 +29,9 @@ const providers = {
   api: { Icon: APIIcon, Avatar: APIAvatar, label: "API" },
 };
 
+export const providerLabel = (provider: string) =>
+  providers[provider as keyof typeof providers]?.label ?? provider;
+
 export function ProviderGlyph({
   provider,
   size = 24,

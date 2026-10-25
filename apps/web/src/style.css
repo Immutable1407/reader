@@ -3550,13 +3550,40 @@ textarea.paper-note-input {
   padding: 2px 4px 24px;
   scrollbar-width: none;
 }
+/* Every block in a settings tab is a titled section; dividers come from here. */
+.settings-panel > * + * {
+  margin-top: 1.5rem;
+  padding-top: 1.25rem;
+  border-top: 1px solid var(--border);
+}
 .settings-panel::-webkit-scrollbar {
   display: none;
 }
 .highlight-color-row {
+  position: relative;
   display: flex;
   align-items: center;
   gap: 8px;
+  border-radius: calc(var(--radius) - 2px);
+}
+.highlight-color-row[data-dragging] {
+  z-index: 1;
+  background: var(--background);
+  box-shadow: 0 6px 16px -6px rgb(0 0 0 / 0.25);
+}
+@media (prefers-reduced-motion: no-preference) {
+  .highlight-color-row[data-reordering]:not([data-dragging]) {
+    transition: transform 160ms ease;
+  }
+}
+.highlight-color-handle.highlight-color-handle {
+  margin-left: -6px;
+  cursor: grab;
+  touch-action: none;
+  color: var(--muted-foreground);
+}
+.highlight-color-row[data-dragging] .highlight-color-handle {
+  cursor: grabbing;
 }
 .highlight-color-picker.highlight-color-picker {
   width: 36px;

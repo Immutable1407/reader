@@ -13,6 +13,7 @@ import {
   Library,
   LoaderCircle,
   Monitor,
+  Pencil,
   RefreshCw,
   TriangleAlert,
   X,
@@ -20,7 +21,7 @@ import {
 import { DiagnosticExport } from "./DiagnosticExport";
 import { LibraryLocationSettings } from "./LibraryLocationSettings";
 import { CommandLineSettings } from "./CommandLineSettings";
-import { ProviderIdentity } from "./ProviderIdentity";
+import { ProviderIdentity, providerLabel } from "./ProviderIdentity";
 import { TaskModels } from "./TaskModels";
 import { APIAgentForm, APIModelForm } from "./APIAgentForm";
 import { api } from "@neoread/api";
@@ -35,6 +36,7 @@ import type {
   Provider,
 } from "@neoread/core";
 import { Button } from "@neoread/ui/components/button";
+import { cn } from "@neoread/ui/lib/utils";
 import { Input } from "@neoread/ui/components/input";
 import {
   Dialog,
@@ -417,7 +419,7 @@ export function Settings({
                 <Tooltip>
                   <TooltipTrigger
                     render={<Button variant="ghost" size="icon" />}
-                    className="size-4 p-0 text-inherit hover:bg-transparent hover:text-inherit"
+                    className="pointer-events-auto size-4 p-0 text-inherit hover:bg-transparent hover:text-inherit"
                     aria-label={`${label}未通过：查看详情`}
                   >
                     <TriangleAlert />
@@ -460,18 +462,62 @@ export function Settings({
     });
   const apiPending = () =>
     loading || [...testing.keys()].some((id) => id.startsWith("api:"));
+  const cliReady = (name: string, kind: "text" | "vision") =>
+    !errors[`${name}:text`] &&
+    !errors[`${name}:${kind}`] &&
+    !!config?.capabilities[name]?.[kind];
+  // Why an agent card cannot be selected, or "" once it passed every check.
+  const agentBlocker = (name: string) => {
+    const installed = providers.find((p) => p.id === name)?.installed;
+    if (name === "api") {
+      if (!installed) return "需要先配置 API Key";
+      if (apiReady("text") && apiReady("vision")) return "";
+      if (apiPending()) return "正在检测，请稍候";
+      if (apiModelsError) return "无法获取模型列表，请检查 API 配置";
+      return apiReady("text")
+        ? "没有图片理解能力"
+        : "没有通过文本推理检测的模型";
+    }
+    if (loading || testing.has(name)) return "正在检测，请稍候";
+    if (!installed) return "未安装 CLI";
+    if (!cliReady(name, "text")) return "文本推理未通过检测";
+    return cliReady(name, "vision") ? "" : "没有图片理解能力";
+  };
   // Read by the first-run tour to point at an agent that works.
   const agentStatus = (name: string) => {
     const installed = providers.find((p) => p.id === name)?.installed;
     if (name === "api") {
       if (!installed) return "missing";
-      return apiReady("text") ? "ready" : apiPending() ? "pending" : "failed";
+      return !agentBlocker(name)
+        ? "ready"
+        : apiPending()
+          ? "pending"
+          : "failed";
     }
     if (loading || testing.has(name)) return "pending";
     if (!installed) return "missing";
-    return config?.capabilities[name]?.text && !errors[`${name}:text`]
-      ? "ready"
-      : "failed";
+    return agentBlocker(name) ? "failed" : "ready";
+  };
+  const selectAgent = async (name: string) => {
+    const blocker = agentBlocker(name);
+    if (blocker) {
+      toast.warning(`${providerLabel(name)} 未配置好：${blocker}`);
+      return;
+    }
+    if (config?.primary === name) return;
+    if (testing.size) {
+      toast.info("正在检测 Agent，请稍候");
+      return;
+    }
+    setSaving(true);
+    try {
+      const latest = await api.aiConfig();
+      setAIConfig(await api.saveAIConfig({ ...latest, primary: name }));
+    } catch (e) {
+      toast.error((e as Error).message);
+    } finally {
+      setSaving(false);
+    }
   };
   const apiCardStatus = () => (
     <span className="flex flex-wrap gap-x-5">
@@ -711,21 +757,21 @@ export function Settings({
             keepMounted
           >
             {window.neoreadDesktop?.proxySettings && (
-              <div className="mb-6">
-                <ProxySettings open={open} />
-              </div>
+              <ProxySettings open={open} />
             )}
             <section>
-              <h3 className="mb-3 text-sm font-medium">本地日志</h3>
-              <p className="mb-4 text-xs leading-5 text-muted-foreground">
+              <div className="flex items-start justify-between gap-3">
+                <h3 className="shrink-0 pt-2 text-sm font-medium">本地日志</h3>
+                <DiagnosticExport />
+              </div>
+              <p className="mt-2 text-xs leading-5 text-muted-foreground">
                 导出全部已保留日志和运行环境供开发者排查。凭据、用户路径和翻译诊断中的正文会脱敏；不包含文档、聊天或批注。日志最多保留
                 7 天、100 MiB，仅在本机保存。
               </p>
-              <DiagnosticExport />
             </section>
           </TabsContent>
           <TabsContent value="display" className="settings-panel" keepMounted>
-            <section className="mb-6">
+            <section>
               <h3
                 id="primary-library-label"
                 className="mb-3 text-sm font-medium"
@@ -765,7 +811,43 @@ export function Settings({
               <h3 className="mb-3 text-sm font-medium">界面主题</h3>
               <AppearancePicker theme={theme} setTheme={setTheme} buttons />
             </section>
-            <section className="mt-7 border-t pt-5">
+            <section>
+              <fieldset>
+                <legend className="mb-1 text-sm font-medium">表格显示列</legend>
+                <p className="mb-3 text-xs text-muted-foreground">
+                  标题始终显示。以下选择应用于论文库的表格视图。
+                </p>
+                <div className="grid grid-cols-2 gap-x-4 gap-y-3">
+                  {(Object.keys(columnLabels) as PaperColumn[]).map(
+                    (column) => (
+                      <label
+                        key={column}
+                        htmlFor={`paper-column-${column}`}
+                        className="flex items-center gap-2 text-sm"
+                      >
+                        <Checkbox
+                          id={`paper-column-${column}`}
+                          checked={(
+                            paperPreferences.columns ?? defaultColumns
+                          ).includes(column)}
+                          onCheckedChange={() =>
+                            void savePaperPreferences((prefs) => ({
+                              ...prefs,
+                              columns: toggleColumn(
+                                prefs.columns ?? defaultColumns,
+                                column,
+                              ),
+                            }))
+                          }
+                        />
+                        {columnLabels[column]}
+                      </label>
+                    ),
+                  )}
+                </div>
+              </fieldset>
+            </section>
+            <section>
               <h3 className="mb-3 text-sm font-medium">期刊指标</h3>
               <label className="flex items-start gap-2 text-sm">
                 <Checkbox
@@ -893,39 +975,44 @@ export function Settings({
             </section>
           </TabsContent>
           <TabsContent value="reading" className="settings-panel" keepMounted>
-            <section className="mb-6 space-y-4">
-              <label className="block text-sm">
-                文档上下文上限（可选）
-                <Input
-                  className="mt-2 max-w-48"
-                  type="number"
-                  min={8192}
-                  max={1048576}
-                  step={1024}
-                  defaultValue={theme.documentContextTokens || ""}
-                  placeholder="自动获取"
-                  key={theme.documentContextTokens}
-                  onBlur={(e) => {
-                    const n = Number(e.currentTarget.value);
-                    if (
-                      Number.isInteger(n) &&
-                      (n === 0 || n >= 8192) &&
-                      n <= 1048576
-                    )
-                      setTheme({ documentContextTokens: n });
-                    else
-                      e.currentTarget.value = String(
-                        theme.documentContextTokens || "",
-                      );
-                  }}
-                />
-                <span className="mt-1 block text-xs text-muted-foreground">
-                  优先读取模型信息或 Codex 配置；留空为自动，未知时采用
-                  64K。填写后只限制上限。
-                </span>
-              </label>
+            <section>
+              <h3
+                id="document-context-label"
+                className="mb-3 text-sm font-medium"
+              >
+                文档上下文上限
+              </h3>
+              <Input
+                aria-labelledby="document-context-label"
+                className="max-w-48"
+                type="number"
+                min={8192}
+                max={1048576}
+                step={1024}
+                defaultValue={theme.documentContextTokens || ""}
+                placeholder="自动获取"
+                key={theme.documentContextTokens}
+                onBlur={(e) => {
+                  const n = Number(e.currentTarget.value);
+                  if (
+                    Number.isInteger(n) &&
+                    (n === 0 || n >= 8192) &&
+                    n <= 1048576
+                  )
+                    setTheme({ documentContextTokens: n });
+                  else
+                    e.currentTarget.value = String(
+                      theme.documentContextTokens || "",
+                    );
+                }}
+              />
+              <p className="mt-2 text-xs text-muted-foreground">
+                优先读取模型信息或 Codex 配置；留空为自动，未知时采用
+                64K。填写后只限制上限。
+              </p>
             </section>
-            <section className="mb-6">
+            <section className="space-y-4">
+              <h3 className="text-sm font-medium">阅读交互</h3>
               <label className="flex items-start gap-2 text-sm">
                 <Checkbox
                   checked={theme.autoCopySelection === true}
@@ -940,8 +1027,6 @@ export function Settings({
                   </span>
                 </span>
               </label>
-            </section>
-            <section className="mb-6">
               <label className="flex items-start gap-2 text-sm">
                 <Checkbox
                   checked={theme.linkTranslationAnnotations !== false}
@@ -958,15 +1043,12 @@ export function Settings({
               </label>
             </section>
             <section>
-              <h3 className="mb-3 text-sm font-medium">高亮颜色</h3>
               <HighlightColorsEditor />
             </section>
           </TabsContent>
           <TabsContent value="papers" className="settings-panel" keepMounted>
             {window.neoreadDesktop?.libraryLocation && (
-              <div className="mb-6">
-                <LibraryLocationSettings open={open} />
-              </div>
+              <LibraryLocationSettings open={open} />
             )}
             <CitePluginSettings open={open} />
             <section>
@@ -1007,45 +1089,13 @@ export function Settings({
               <AutoTranslationSettings theme={theme} setTheme={setTheme} />
             </section>
             <PaperServiceSettings open={open} />
-            <fieldset className="mt-7 border-t pt-5">
-              <legend className="text-sm font-medium">表格显示列</legend>
-              <p className="mb-3 text-xs text-muted-foreground">
-                标题始终显示。以下选择应用于论文库的表格视图。
-              </p>
-              <div className="grid grid-cols-2 gap-x-4 gap-y-3">
-                {(Object.keys(columnLabels) as PaperColumn[]).map((column) => (
-                  <label
-                    key={column}
-                    htmlFor={`paper-column-${column}`}
-                    className="flex items-center gap-2 text-sm"
-                  >
-                    <Checkbox
-                      id={`paper-column-${column}`}
-                      checked={(
-                        paperPreferences.columns ?? defaultColumns
-                      ).includes(column)}
-                      onCheckedChange={() =>
-                        void savePaperPreferences((prefs) => ({
-                          ...prefs,
-                          columns: toggleColumn(
-                            prefs.columns ?? defaultColumns,
-                            column,
-                          ),
-                        }))
-                      }
-                    />
-                    {columnLabels[column]}
-                  </label>
-                ))}
-              </div>
-            </fieldset>
           </TabsContent>
           <TabsContent value="agent" className="settings-panel" keepMounted>
             <section
               data-tour="agent-section"
               data-detecting={!probed || loading || testing.size > 0}
             >
-              <div className="mb-4 flex items-center justify-between">
+              <div className="mb-3 flex items-center justify-between">
                 <h3 className="text-sm font-medium">Agent 连接</h3>
                 <Button
                   variant="ghost"
@@ -1059,54 +1109,89 @@ export function Settings({
                   <RefreshCw className={loading ? "animate-spin" : ""} />
                 </Button>
               </div>
-              {config && (
-                <div className="mb-4 flex flex-col gap-2">
-                  <Select
-                    value={config.primary || null}
-                    disabled={saving || aiModelSaving || testing.size > 0}
-                    onValueChange={async (value) => {
-                      if (!value) return;
-                      setSaving(true);
-                      try {
-                        const latest = await api.aiConfig();
-                        const saved = await api.saveAIConfig({
-                          ...latest,
-                          primary: value,
-                        });
-                        setAIConfig(saved);
-                      } catch (e) {
-                        toast.error((e as Error).message);
-                      } finally {
-                        setSaving(false);
-                      }
-                    }}
-                  >
-                    <SelectTrigger
-                      data-tour="agent-select"
-                      aria-label="Agent SDK"
-                      className="w-full"
+              <div
+                data-tour="agent-cards"
+                role="radiogroup"
+                aria-label="Agent"
+                className="grid grid-cols-1 items-start gap-3 sm:grid-cols-2"
+              >
+                {(["codex", "claude", "kimi", "api"] as const).map((name) => {
+                  const p = providers.find((p) => p.id === name);
+                  const capability = config?.capabilities[name];
+                  const pending = testing.has(name);
+                  const selected = config?.primary === name;
+                  const blocked = !!agentBlocker(name);
+
+                  return (
+                    <div
+                      key={name}
+                      className={cn(
+                        "relative min-h-28 min-w-0 rounded-xl border p-4 transition-[box-shadow,background-color,border-color] duration-200 ease-out motion-reduce:transition-none",
+                        selected
+                          ? "border-primary/40 bg-primary/5 shadow-md"
+                          : !blocked &&
+                              "hover:shadow-sm has-[[data-slot=agent-select]:active]:shadow-none",
+                      )}
+                      data-tour="agent-card"
+                      data-agent={name}
+                      data-status={agentStatus(name)}
+                      data-selected={selected || undefined}
                     >
-                      <SelectValue placeholder="请选择 Agent SDK">
-                        {config.primary ? (
-                          <ProviderIdentity provider={config.primary} />
-                        ) : undefined}
-                      </SelectValue>
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="codex" data-agent="codex">
-                        <ProviderIdentity provider="codex" />
-                      </SelectItem>
-                      <SelectItem value="claude" data-agent="claude">
-                        <ProviderIdentity provider="claude" />
-                      </SelectItem>
-                      <SelectItem value="kimi" data-agent="kimi">
-                        <ProviderIdentity provider="kimi" />
-                      </SelectItem>
-                      <SelectItem value="api" data-agent="api">
-                        <ProviderIdentity provider="api" />
-                      </SelectItem>
-                    </SelectContent>
-                  </Select>
+                      {/* The whole card selects the agent; controls inside sit above it. */}
+                      <Button
+                        variant="ghost"
+                        data-slot="agent-select"
+                        role="radio"
+                        aria-checked={selected}
+                        aria-disabled={blocked}
+                        aria-label={`使用 ${providerLabel(name)}`}
+                        className="absolute inset-0 h-auto rounded-xl p-0 hover:bg-transparent dark:hover:bg-transparent"
+                        disabled={!config || saving || aiModelSaving}
+                        onClick={() => void selectAgent(name)}
+                      />
+                      <div className="pointer-events-none relative flex items-center gap-3">
+                        <span className="flex-1 text-base font-medium">
+                          <ProviderIdentity provider={name} size={36} />
+                        </span>
+                        {!loading && !p?.installed && (
+                          <Badge variant="outline">
+                            {name === "api" ? "未配置" : "未安装"}
+                          </Badge>
+                        )}
+                        {name === "api" && (
+                          <Button
+                            variant="ghost"
+                            size="icon-sm"
+                            className="pointer-events-auto -my-1 -mr-1"
+                            aria-label="配置 API Key"
+                            title="配置 API Key"
+                            data-tour="api-edit"
+                            onClick={() => setAPIDetails(true)}
+                          >
+                            <Pencil />
+                          </Button>
+                        )}
+                      </div>
+                      <div className="pointer-events-none relative">
+                        {name === "api" ? (
+                          p?.installed ? (
+                            apiCardStatus()
+                          ) : (
+                            <span className="mt-3 block text-xs text-muted-foreground">
+                              点击右上角配置你的 API Key
+                            </span>
+                          )
+                        ) : (
+                          (pending || p?.installed || capability) &&
+                          checkStatus(name, capability)
+                        )}
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+              {config && (
+                <div className="mt-4 flex flex-col gap-2">
                   <div data-tour="task-models">
                     <TaskModels disabled={saving || testing.size > 0} />
                   </div>
@@ -1117,103 +1202,37 @@ export function Settings({
                   )}
                 </div>
               )}
-              {config && (
-                <WebSearchSettings
-                  value={config.webSearch}
-                  disabled={aiModelSaving || (saving && !searchSaving)}
-                  onSave={async (webSearch) => {
-                    setSearchSaving(true);
-                    try {
-                      return await saveConfig(
-                        (latest) => ({ ...latest, webSearch }),
-                        false,
-                      );
-                    } finally {
-                      setSearchSaving(false);
-                    }
-                  }}
-                />
-              )}
-              <div
-                data-tour="agent-cards"
-                className="mt-5 grid grid-cols-1 items-start gap-3 sm:grid-cols-2"
-              >
-                {(["codex", "claude", "kimi", "api"] as const).map((name) => {
-                  const p = providers.find((p) => p.id === name);
-                  const capability = config?.capabilities[name];
-                  const pending = testing.has(name);
-
-                  if (name === "api")
-                    return (
-                      <Button
-                        key={name}
-                        variant="outline"
-                        className="h-auto min-h-28 min-w-0 flex-col items-stretch justify-start gap-0 rounded-xl border-border bg-transparent p-4 text-left font-normal whitespace-normal hover:bg-muted/50 dark:border-border dark:bg-transparent"
-                        onClick={() => setAPIDetails(true)}
-                        aria-label="配置 API Key"
-                        data-tour="agent-card"
-                        data-agent={name}
-                        data-status={agentStatus(name)}
-                      >
-                        <span className="flex w-full items-center gap-3">
-                          <span className="flex-1 text-base font-medium">
-                            <ProviderIdentity provider={name} size={36} />
-                          </span>
-                          {!loading && !p?.installed && (
-                            <Badge variant="outline">未配置</Badge>
-                          )}
-                        </span>
-                        {p?.installed ? (
-                          apiCardStatus()
-                        ) : (
-                          <span className="mt-3 text-xs text-muted-foreground">
-                            点击卡片配置你的apikey
-                          </span>
-                        )}
-                      </Button>
-                    );
-
-                  return (
-                    <div
-                      key={name}
-                      className="min-h-28 min-w-0 rounded-xl border p-4"
-                      data-tour="agent-card"
-                      data-agent={name}
-                      data-status={agentStatus(name)}
-                    >
-                      <div className="flex items-center gap-3">
-                        <span className="flex-1 text-base font-medium">
-                          <ProviderIdentity provider={name} size={36} />
-                        </span>
-                        {!loading && !p?.installed && (
-                          <Badge variant="outline">未安装</Badge>
-                        )}
-                      </div>
-                      {(pending || p?.installed || capability) &&
-                        checkStatus(name, capability)}
-                    </div>
-                  );
-                })}
-              </div>
               <p className="mt-4 flex gap-2 text-xs leading-5 text-muted-foreground">
                 <CircleHelp className="mt-0.5 size-4 shrink-0" />
-                NeoRead 调用已安装的 CLI，不读取账号凭据。AI 请求使用 CLI
-                当前账户与计费方式；选择订阅登录时无需另填 API Key。API 连接使用
-                OpenAI 兼容接口，Key 保存在本机 NeoRead
-                数据目录。发送的选区或章节会交给对应服务。
+                NeoRead 调用已安装的 CLI，不读取账号凭据。
               </p>
             </section>
+            {config && (
+              <WebSearchSettings
+                value={config.webSearch}
+                disabled={aiModelSaving || (saving && !searchSaving)}
+                onSave={async (webSearch) => {
+                  setSearchSaving(true);
+                  try {
+                    return await saveConfig(
+                      (latest) => ({ ...latest, webSearch }),
+                      false,
+                    );
+                  } finally {
+                    setSearchSaving(false);
+                  }
+                }}
+              />
+            )}
             <CommandLineSettings open={open} />
             {config && (
-              <section className="mt-7 border-t pt-1">
-                <TranslationPromptSettings
-                  value={config.translationPrompt ?? ""}
-                  disabled={saving || aiModelSaving || testing.size > 0}
-                  onSave={(translationPrompt) =>
-                    saveConfig((latest) => ({ ...latest, translationPrompt }))
-                  }
-                />
-              </section>
+              <TranslationPromptSettings
+                value={config.translationPrompt ?? ""}
+                disabled={saving || aiModelSaving || testing.size > 0}
+                onSave={(translationPrompt) =>
+                  saveConfig((latest) => ({ ...latest, translationPrompt }))
+                }
+              />
             )}
           </TabsContent>
         </Tabs>
