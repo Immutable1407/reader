@@ -1043,7 +1043,6 @@ export function Settings({
               </label>
             </section>
             <section>
-              <h3 className="mb-3 text-sm font-medium">高亮颜色</h3>
               <HighlightColorsEditor />
             </section>
           </TabsContent>
