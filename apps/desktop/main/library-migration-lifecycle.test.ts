@@ -431,3 +431,46 @@ it("can select a replacement when the active library directory has disappeared",
   expect(validate).toHaveBeenCalledWith("/destination", expect.any(String));
   expect(saveLocation).not.toHaveBeenCalled();
 });
+
+it.each(["cancelled", "completed"])(
+  "waits for a %s Reader migration child before quitting without opening a library",
+  async (outcome) => {
+    vi.resetModules();
+    app.removeAllListeners("before-quit");
+    serverSpawn.mockClear();
+    libraryDirectory.mockClear();
+    diagnostics.failure.mockClear();
+    diagnostics.record.mockClear();
+    legacyMigrate.mockClear();
+    let finish!: (value: { status: string }) => void;
+    let fail!: (error: Error) => void;
+    legacyMigrate.mockImplementationOnce(
+      () =>
+        new Promise((resolve, reject) => {
+          finish = resolve;
+          fail = reject;
+        }),
+    );
+    await import("./index");
+    await vi.waitFor(() => expect(legacyMigrate).toHaveBeenCalledOnce());
+    const signal = legacyMigrate.mock.calls[0][4] as AbortSignal;
+    expect(signal).toBeInstanceOf(AbortSignal);
+    const quit = vi.spyOn(app, "quit");
+    const preventDefault = vi.fn();
+    app.emit("before-quit", { preventDefault });
+    app.emit("before-quit", { preventDefault });
+    expect(preventDefault).toHaveBeenCalledTimes(2);
+    expect(signal.aborted).toBe(true);
+    expect(quit).not.toHaveBeenCalled();
+    if (outcome === "cancelled") fail(new Error("cancelled"));
+    else finish({ status: "completed" });
+    await vi.waitFor(() => expect(quit).toHaveBeenCalledOnce());
+    expect(libraryDirectory).not.toHaveBeenCalled();
+    expect(serverSpawn).not.toHaveBeenCalled();
+    expect(diagnostics.failure).not.toHaveBeenCalled();
+    expect(diagnostics.record).not.toHaveBeenCalledWith(
+      "desktop.start_failed",
+      expect.anything(),
+    );
+  },
+);

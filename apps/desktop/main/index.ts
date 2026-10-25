@@ -64,6 +64,8 @@ if (isolation.userDataDirectory)
   );
 let updateService: Awaited<ReturnType<typeof startUpdateService>> | undefined;
 let diagnostics: ReturnType<typeof startDiagnosticService> | undefined;
+const migrationController = new AbortController();
+let pendingReaderMigration: Promise<ReaderMigration> | undefined;
 let child: ChildProcess | undefined;
 let serverURL = "";
 let serverToken = "";
@@ -326,13 +328,21 @@ app
       app.isPackaged,
     );
     let migration: ReaderMigration | undefined;
-    if (app.isPackaged)
-      migration = await migrateReaderData(
+    if (app.isPackaged) {
+      pendingReaderMigration = migrateReaderData(
         serverBinary(),
         app.getPath("appData"),
         app.getPath("userData"),
         diagnostics,
+        migrationController.signal,
       );
+      try {
+        migration = await pendingReaderMigration;
+      } finally {
+        pendingReaderMigration = undefined;
+      }
+    }
+    if (quitting) return;
     diagnostics.finishMigration();
     ipcMain.on("neoread:diagnostic-event", (event, value) =>
       diagnostics!.receive(event, value),
@@ -969,6 +979,7 @@ app
     });
   })
   .catch(async (error) => {
+    if (quitting) return;
     diagnostics?.record("desktop.start_failed", error);
     if (diagnostics)
       await diagnostics.failure(
@@ -989,6 +1000,14 @@ app.on("before-quit", (event) => {
     return;
   }
   quitting = true;
+  if (pendingReaderMigration) {
+    event.preventDefault();
+    if (!migrationController.signal.aborted) {
+      migrationController.abort();
+      void pendingReaderMigration.catch(() => {}).then(() => app.quit());
+    }
+    return;
+  }
   if (restartRequested) {
     restartRequested = false;
     app.relaunch();

@@ -1,11 +1,9 @@
 import { execFile } from "node:child_process";
-import { promisify } from "node:util";
 import { join } from "node:path";
 import { dialog, type BrowserWindow } from "electron";
 
 import type { startDiagnosticService } from "./diagnostic-service";
 import { serverSpawnDiagnostics } from "./server-spawn-diagnostics";
-const execute = promisify(execFile);
 export class ReaderMigrationError extends Error {}
 
 export interface ReaderMigration {
@@ -15,11 +13,24 @@ export interface ReaderMigration {
   external?: boolean;
   legacyCleanup?: { status: "pending" | "kept" | "deleted" | "failed" };
 }
-async function run(binary: string, args: string[]): Promise<ReaderMigration> {
+async function run(
+  binary: string,
+  args: string[],
+  signal?: AbortSignal,
+): Promise<ReaderMigration> {
+  let closed: Promise<void> | undefined;
   try {
-    const { stdout } = await execute(binary, args, {
-      windowsHide: true,
-      maxBuffer: 1024 * 1024,
+    const stdout = await new Promise<string>((resolve, reject) => {
+      const child = execFile(
+        binary,
+        args,
+        { windowsHide: true, maxBuffer: 1024 * 1024, signal },
+        (error, stdout, stderr) => {
+          if (error) reject(Object.assign(error, { stderr }));
+          else resolve(stdout);
+        },
+      );
+      closed = new Promise((resolve) => child.once("close", () => resolve()));
     });
     const state = JSON.parse(stdout) as ReaderMigration;
     if (!state || !["completed", "not-needed"].includes(state.status))
@@ -30,6 +41,10 @@ async function run(binary: string, args: string[]): Promise<ReaderMigration> {
     throw new Error(failure.stderr?.trim() || failure.message, {
       cause: error,
     });
+  } finally {
+    // execFile rejects on abort before the process exits. Keep the desktop alive
+    // until close so a relaunch cannot race the child's migration/library locks.
+    if (signal?.aborted) await closed;
   }
 }
 export async function migrateReaderData(
@@ -37,24 +52,29 @@ export async function migrateReaderData(
   appData: string,
   userData: string,
   diagnostics?: ReturnType<typeof startDiagnosticService>,
+  signal?: AbortSignal,
 ) {
   const started = Date.now();
   diagnostics?.record("migration.start");
   try {
-    const state = await run(binary, [
-      "--migrate-reader-data",
-      join(appData, "Reader"),
-      "--data",
-      userData,
-      ...(diagnostics
-        ? [
-            "--logs",
-            diagnostics.directory,
-            "--session",
-            diagnostics.logs.sessionId,
-          ]
-        : []),
-    ]);
+    const state = await run(
+      binary,
+      [
+        "--migrate-reader-data",
+        join(appData, "Reader"),
+        "--data",
+        userData,
+        ...(diagnostics
+          ? [
+              "--logs",
+              diagnostics.directory,
+              "--session",
+              diagnostics.logs.sessionId,
+            ]
+          : []),
+      ],
+      signal,
+    );
     diagnostics?.logs.record("desktop", {
       level: "info",
       event: "migration.finish",
@@ -65,10 +85,12 @@ export async function migrateReaderData(
   } catch (error) {
     const cause = error instanceof Error ? error.cause : error;
     diagnostics?.logs.record("desktop", {
-      level: "error",
-      event: "migration.failed",
+      level: signal?.aborted ? "info" : "error",
+      event: signal?.aborted ? "migration.cancelled" : "migration.failed",
       durationMs: Date.now() - started,
-      ...serverSpawnDiagnostics(binary, cause),
+      ...(signal?.aborted
+        ? { reasonCode: "desktop_quit" }
+        : serverSpawnDiagnostics(binary, cause)),
     });
     throw new ReaderMigrationError((error as Error).message, { cause: error });
   }
