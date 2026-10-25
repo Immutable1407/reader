@@ -1117,23 +1117,6 @@ export function Settings({
                   )}
                 </div>
               )}
-              {config && (
-                <WebSearchSettings
-                  value={config.webSearch}
-                  disabled={aiModelSaving || (saving && !searchSaving)}
-                  onSave={async (webSearch) => {
-                    setSearchSaving(true);
-                    try {
-                      return await saveConfig(
-                        (latest) => ({ ...latest, webSearch }),
-                        false,
-                      );
-                    } finally {
-                      setSearchSaving(false);
-                    }
-                  }}
-                />
-              )}
               <div
                 data-tour="agent-cards"
                 className="mt-5 grid grid-cols-1 items-start gap-3 sm:grid-cols-2"
@@ -1203,6 +1186,23 @@ export function Settings({
                 数据目录。发送的选区或章节会交给对应服务。
               </p>
             </section>
+            {config && (
+              <WebSearchSettings
+                value={config.webSearch}
+                disabled={aiModelSaving || (saving && !searchSaving)}
+                onSave={async (webSearch) => {
+                  setSearchSaving(true);
+                  try {
+                    return await saveConfig(
+                      (latest) => ({ ...latest, webSearch }),
+                      false,
+                    );
+                  } finally {
+                    setSearchSaving(false);
+                  }
+                }}
+              />
+            )}
             <CommandLineSettings open={open} />
             {config && (
               <section className="mt-7 border-t pt-1">
