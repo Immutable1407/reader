@@ -4,7 +4,6 @@ import (
 	"crypto/sha256"
 	"encoding/hex"
 	"errors"
-	"fmt"
 	"io"
 	"os"
 	"path/filepath"
@@ -89,54 +88,4 @@ func checkReaderCleanupDigest(source, target string, state *ReaderMigration, run
 		return migrationErrorf("source_changed", "旧 Reader 数据在迁移后发生变化，请检查后手动删除")
 	}
 	return nil
-}
-
-// Detach the whole old tree before deleting anything. Replace its public path
-// with just the live connection files, so installed Word/WPS clients keep their
-// fixed paths and a Reader launched concurrently never loses newly created data.
-func detachReaderData(source, id string, runtimeFiles map[string][]byte) (string, error) {
-	parent := filepath.Dir(source)
-	tombstone := filepath.Join(parent, ".reader-cleanup-"+id)
-	if pathExists(tombstone) {
-		return "", migrationErrorf("target_conflict", "旧数据清理目录已存在，未覆盖：%s", tombstone)
-	}
-	replacement := ""
-	if len(runtimeFiles) > 0 {
-		var err error
-		replacement, err = os.MkdirTemp(parent, ".reader-runtime-"+id+"-")
-		if err != nil {
-			return "", err
-		}
-		defer func() {
-			if replacement != "" {
-				_ = os.RemoveAll(replacement)
-			}
-		}()
-		for name, data := range runtimeFiles {
-			if err = os.WriteFile(filepath.Join(replacement, name), data, 0600); err != nil {
-				return "", err
-			}
-		}
-		if err = syncMigrationTree(replacement); err != nil {
-			return "", err
-		}
-	}
-	if err := os.Rename(source, tombstone); err != nil {
-		return "", fmt.Errorf("无法移除旧数据目录，请退出 Reader 后手动删除：%w", err)
-	}
-	if replacement != "" {
-		if err := os.Rename(replacement, source); err != nil {
-			if !pathExists(source) {
-				if rollback := os.Rename(tombstone, source); rollback == nil {
-					return "", migrationErrorf("runtime_restore_failed", "无法保留引用插件连接文件，旧数据已恢复：%w", err)
-				}
-			}
-			return "", migrationErrorf("runtime_restore_failed", "无法保留引用插件连接文件，旧数据保留在 %s：%w", tombstone, err)
-		}
-		replacement = ""
-	}
-	if err := syncMigrationDirectory(parent); err != nil {
-		return "", fmt.Errorf("旧数据保留在 %s：%w", tombstone, err)
-	}
-	return tombstone, nil
 }

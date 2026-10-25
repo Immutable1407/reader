@@ -78,7 +78,7 @@ it("recommends cleanup, but records keeping data when postponed", async () => {
     cancelId: 0,
   });
   expect(mocks.dialog.mock.calls[0][1].detail).toContain(
-    "保留引用插件使用的连接文件",
+    "其他未迁移文件会保留",
   );
   expect(mocks.dialog.mock.calls[0][1].detail).toContain("外置自定义书库");
   expect(mocks.exec.mock.calls[0][1]).toContain("keep");

@@ -12,7 +12,7 @@ import (
 
 // This must include normal service initialization between migration and cleanup.
 // Calling the two migration functions back-to-back misses citation's writes.
-func cleanupWithCitation(t *testing.T, previousFiles bool) (string, string, *Server) {
+func cleanupWithCitation(t *testing.T, previousFiles bool, legacy ...bool) (string, string, *Server) {
 	t.Helper()
 	old, current, _ := legacyFixture(t, false)
 	if previousFiles {
@@ -25,6 +25,36 @@ func cleanupWithCitation(t *testing.T, previousFiles bool) (string, string, *Ser
 	state, err := MigrateReaderData(old, current)
 	if err != nil {
 		t.Fatal(err)
+	}
+	if len(legacy) > 0 && legacy[0] {
+		state.DataOnly = false
+		state.SourceHash, _, err = state.treeDigest(old)
+		if err != nil {
+			t.Fatal(err)
+		}
+		for _, name := range readerCitationNames {
+			if !pathExists(filepath.Join(old, name)) {
+				continue
+			}
+			data, err := os.ReadFile(filepath.Join(old, name))
+			if err != nil {
+				t.Fatal(err)
+			}
+			if err = os.WriteFile(filepath.Join(current, name), data, 0600); err != nil {
+				t.Fatal(err)
+			}
+			state.Entries[name], err = digestEntry(filepath.Join(current, name))
+			if err != nil {
+				t.Fatal(err)
+			}
+		}
+		file, _, err := readMigration(current)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if err = saveMigration(current, file, state); err != nil {
+			t.Fatal(err)
+		}
 	}
 	store, err := OpenLibrary(state.Library)
 	if err != nil {
@@ -43,9 +73,9 @@ func cleanupWithCitation(t *testing.T, previousFiles bool) (string, string, *Ser
 }
 
 func TestReaderCleanupPreservesLiveCitationFiles(t *testing.T) {
-	for _, scenario := range []string{"new_files", "rotated_files", "unversioned_record"} {
+	for _, scenario := range []string{"new_files", "rotated_files", "unversioned_record", "legacy_rotated"} {
 		t.Run(scenario, func(t *testing.T) {
-			old, current, server := cleanupWithCitation(t, scenario != "new_files")
+			old, current, server := cleanupWithCitation(t, scenario != "new_files", scenario == "unversioned_record" || scenario == "legacy_rotated")
 			if scenario == "unversioned_record" {
 				file, state, err := readMigration(current)
 				if err != nil {
@@ -74,12 +104,8 @@ func TestReaderCleanupPreservesLiveCitationFiles(t *testing.T) {
 			if state.LegacyCleanup.Status != "deleted" {
 				t.Fatal(state.LegacyCleanup.Status)
 			}
-			entries, err := os.ReadDir(old)
-			if err != nil {
-				t.Fatal(err)
-			}
-			if len(entries) != 2 || entries[0].Name() != "cite-credential" || entries[1].Name() != "cite-wps-key" {
-				t.Fatal("did not remove only the old reading data")
+			if pathExists(filepath.Join(old, "library", "reader.sqlite")) || pathExists(filepath.Join(old, "proxy-settings.json")) {
+				t.Fatal("did not remove migrated reading data")
 			}
 			assertMigrated(t, state.Library)
 			preserved, err := os.ReadFile(filepath.Join(old, "cite-credential"))
@@ -103,13 +129,13 @@ func TestReaderCleanupPreservesLiveCitationFiles(t *testing.T) {
 func TestReaderCleanupStillRejectsOtherChanges(t *testing.T) {
 	for _, scenario := range []string{"document_change", "unexpected_file", "invalid_credential", "credential_symlink", "tampered_snapshot"} {
 		t.Run(scenario, func(t *testing.T) {
-			old, current, _ := cleanupWithCitation(t, scenario == "tampered_snapshot")
+			old, current, _ := cleanupWithCitation(t, scenario == "tampered_snapshot", scenario == "invalid_credential" || scenario == "credential_symlink" || scenario == "tampered_snapshot")
 			var err error
 			switch scenario {
 			case "document_change":
 				err = os.WriteFile(filepath.Join(old, "library", "papers", "paper.pdf"), []byte("PRIVATE_CHANGED_DOCUMENT"), 0600)
 			case "unexpected_file":
-				err = os.WriteFile(filepath.Join(old, "PRIVATE_NEW_NOTE"), []byte("new note"), 0600)
+				err = os.WriteFile(filepath.Join(old, "library", "PRIVATE_NEW_NOTE"), []byte("new note"), 0600)
 			case "invalid_credential":
 				err = os.WriteFile(filepath.Join(old, "cite-credential"), []byte("PRIVATE_NON_CREDENTIAL"), 0600)
 			case "credential_symlink":
@@ -141,7 +167,7 @@ func TestReaderCleanupStillRejectsOtherChanges(t *testing.T) {
 
 func TestReaderCleanupDiagnosticPrivacy(t *testing.T) {
 	old, current, _ := cleanupWithCitation(t, false)
-	if err := os.WriteFile(filepath.Join(old, "PRIVATE_NEW_NOTE"), []byte("PRIVATE_DOCUMENT_SENTINEL"), 0600); err != nil {
+	if err := os.WriteFile(filepath.Join(old, "library", "PRIVATE_NEW_NOTE"), []byte("PRIVATE_DOCUMENT_SENTINEL"), 0600); err != nil {
 		t.Fatal(err)
 	}
 	var output bytes.Buffer
@@ -231,7 +257,7 @@ func TestReaderCleanupRetryIsExplicit(t *testing.T) {
 				if err != nil || result.LegacyCleanup.Status != "deleted" {
 					t.Fatal("explicit retry failed", err)
 				}
-				if pathExists(filepath.Join(old, "library")) || !pathExists(filepath.Join(old, "cite-credential")) {
+				if pathExists(filepath.Join(old, "library", "reader.sqlite")) || !pathExists(filepath.Join(old, "cite-credential")) {
 					t.Fatal("retry removed the wrong data")
 				}
 			}
