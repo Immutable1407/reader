@@ -207,9 +207,10 @@ func (s *Server) parseBookBatch(ctx context.Context, documentID string) (bookLay
 }
 
 // nextBookBatch picks the first unparsed page at or after the chapter being
-// read, wrapping to the start of the book, and extends it through unparsed
-// pages up to the end of its chapter or bookLayoutPages. An unknown page count
-// parses a first batch; the layout worker clamps it to the document.
+// read, wrapping to the start of the book. A batch holds whole chapters up to
+// bookLayoutPages, so short chapters share one worker start, and splits only a
+// longer chapter; it stops before parsed pages. An unknown page count parses a
+// first batch; the layout worker clamps it to the document.
 func nextBookBatch(m *layoutManifest, total int, starts []int, reading int) (from, to int, ok bool) {
 	if total < 1 {
 		if m != nil {
@@ -229,9 +230,12 @@ func nextBookBatch(m *layoutManifest, total int, starts []int, reading int) (fro
 			continue
 		}
 		end := min(total, page+bookLayoutPages-1)
-		for _, start := range starts {
-			if start > page && start-1 < end {
-				end = start - 1
+		if limit := end; end < total {
+			// starts is sorted: end at the last chapter boundary that fits.
+			for _, start := range starts {
+				if start > page && start-1 <= limit {
+					end = start - 1
+				}
 			}
 		}
 		for next := page + 1; next <= end; next++ {

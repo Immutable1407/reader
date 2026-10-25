@@ -23,6 +23,8 @@ func TestNextBookBatchFollowsChaptersFromTheReadingPosition(t *testing.T) {
 	}{
 		{"no outline uses the page bound", nil, 80, nil, 1, 1, 30, true},
 		{"chapter end bounds the batch", nil, 80, []int{1, 12, 50}, 1, 1, 11, true},
+		{"short chapters share a batch", nil, 80, []int{1, 3, 5, 40}, 1, 1, 4, true},
+		{"the rest of the book is one batch", nil, 53, []int{2, 45}, 45, 45, 53, true},
 		{"long chapter is split", nil, 80, []int{1, 12, 50}, 20, 12, 41, true},
 		{"starts at the chapter being read", nil, 80, []int{1, 12, 50}, 60, 50, 79, true},
 		{"skips parsed pages and stops before them", parsed, 80, []int{1, 12, 50}, 12, 16, 45, true},
