@@ -1180,10 +1180,7 @@ export function Settings({
               </div>
               <p className="mt-4 flex gap-2 text-xs leading-5 text-muted-foreground">
                 <CircleHelp className="mt-0.5 size-4 shrink-0" />
-                NeoRead 调用已安装的 CLI，不读取账号凭据。AI 请求使用 CLI
-                当前账户与计费方式；选择订阅登录时无需另填 API Key。API 连接使用
-                OpenAI 兼容接口，Key 保存在本机 NeoRead
-                数据目录。发送的选区或章节会交给对应服务。
+                NeoRead 调用已安装的 CLI，不读取账号凭据。
               </p>
             </section>
             {config && (
