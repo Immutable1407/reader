@@ -62,6 +62,7 @@ type Server struct {
 	translationMu          sync.Mutex
 	translationSubscribers map[string]map[chan TranslationBlock]struct{}
 	processingMu           sync.Mutex
+	bookLayout             bookLayoutState
 	processingControlMu    sync.Mutex
 	activeProcessing       map[string]*documentTask
 	blockedProcessing      map[string]bool

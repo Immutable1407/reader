@@ -640,6 +640,12 @@ export interface Processing {
   detail: string;
   warning?: string;
   updatedAt: string;
+  /** Background layout parsing of a book PDF; absent once every page is parsed. */
+  bookLayout?: {
+    status: "queued" | "running" | "failed";
+    pagesDone: number;
+    pagesTotal: number;
+  };
 }
 export interface PDFBlock {
   id: string;

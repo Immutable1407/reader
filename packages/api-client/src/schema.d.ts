@@ -5087,6 +5087,13 @@ export interface components {
             startedAt?: string;
             completedAt?: string;
             usageTracked?: boolean;
+            /** @description Background layout parsing of a book PDF, independent of translation. Absent once every page is parsed. */
+            readonly bookLayout?: {
+                /** @enum {string} */
+                status: "queued" | "running" | "failed";
+                pagesDone: number;
+                pagesTotal: number;
+            };
         };
         PDFBlock: {
             id: string;

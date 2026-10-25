@@ -6473,6 +6473,23 @@
                   "startedAt": { "type": "string" },
                   "completedAt": { "type": "string" },
                   "usageTracked": { "type": "boolean" },
+                  "bookLayout":
+                    {
+                      "type": "object",
+                      "readOnly": true,
+                      "description": "Background layout parsing of a book PDF, independent of translation. Absent once every page is parsed.",
+                      "required": ["status", "pagesDone", "pagesTotal"],
+                      "properties":
+                        {
+                          "status":
+                            {
+                              "type": "string",
+                              "enum": ["queued", "running", "failed"],
+                            },
+                          "pagesDone": { "type": "integer" },
+                          "pagesTotal": { "type": "integer" },
+                        },
+                    },
                 },
               "required":
                 [

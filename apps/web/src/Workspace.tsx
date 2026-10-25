@@ -532,6 +532,8 @@ export function Workspace({
     processing?.phase,
     processing?.status,
     processing?.layoutRevision,
+    // Book pages parsed in the background add blocks as they arrive.
+    processing?.bookLayout?.pagesDone,
   ]);
   const move = (next: DocumentLocation) => {
     void adapter?.goTo(next).catch((e) => toast.error(e.message));
