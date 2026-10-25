@@ -36,7 +36,7 @@ export function CommandLineSettings({ open }: { open: boolean }) {
     }
   };
   return (
-    <section className="mt-7 border-t pt-5">
+    <section>
       <h3 className="mb-3 text-sm font-medium">命令行工具</h3>
       <p className="mb-4 text-xs leading-5 text-muted-foreground">
         在终端运行 <code>reader</code>，让 Claude Code、Codex

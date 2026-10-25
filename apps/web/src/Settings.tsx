@@ -757,9 +757,7 @@ export function Settings({
             keepMounted
           >
             {window.neoreadDesktop?.proxySettings && (
-              <div className="mb-6">
-                <ProxySettings open={open} />
-              </div>
+              <ProxySettings open={open} />
             )}
             <section>
               <div className="flex items-start justify-between gap-3">
@@ -773,7 +771,7 @@ export function Settings({
             </section>
           </TabsContent>
           <TabsContent value="display" className="settings-panel" keepMounted>
-            <section className="mb-6">
+            <section>
               <h3
                 id="primary-library-label"
                 className="mb-3 text-sm font-medium"
@@ -813,39 +811,43 @@ export function Settings({
               <h3 className="mb-3 text-sm font-medium">界面主题</h3>
               <AppearancePicker theme={theme} setTheme={setTheme} buttons />
             </section>
-            <fieldset className="mt-7 border-t pt-5">
-              <legend className="text-sm font-medium">表格显示列</legend>
-              <p className="mb-3 text-xs text-muted-foreground">
-                标题始终显示。以下选择应用于论文库的表格视图。
-              </p>
-              <div className="grid grid-cols-2 gap-x-4 gap-y-3">
-                {(Object.keys(columnLabels) as PaperColumn[]).map((column) => (
-                  <label
-                    key={column}
-                    htmlFor={`paper-column-${column}`}
-                    className="flex items-center gap-2 text-sm"
-                  >
-                    <Checkbox
-                      id={`paper-column-${column}`}
-                      checked={(
-                        paperPreferences.columns ?? defaultColumns
-                      ).includes(column)}
-                      onCheckedChange={() =>
-                        void savePaperPreferences((prefs) => ({
-                          ...prefs,
-                          columns: toggleColumn(
-                            prefs.columns ?? defaultColumns,
-                            column,
-                          ),
-                        }))
-                      }
-                    />
-                    {columnLabels[column]}
-                  </label>
-                ))}
-              </div>
-            </fieldset>
-            <section className="mt-7 border-t pt-5">
+            <section>
+              <fieldset>
+                <legend className="mb-1 text-sm font-medium">表格显示列</legend>
+                <p className="mb-3 text-xs text-muted-foreground">
+                  标题始终显示。以下选择应用于论文库的表格视图。
+                </p>
+                <div className="grid grid-cols-2 gap-x-4 gap-y-3">
+                  {(Object.keys(columnLabels) as PaperColumn[]).map(
+                    (column) => (
+                      <label
+                        key={column}
+                        htmlFor={`paper-column-${column}`}
+                        className="flex items-center gap-2 text-sm"
+                      >
+                        <Checkbox
+                          id={`paper-column-${column}`}
+                          checked={(
+                            paperPreferences.columns ?? defaultColumns
+                          ).includes(column)}
+                          onCheckedChange={() =>
+                            void savePaperPreferences((prefs) => ({
+                              ...prefs,
+                              columns: toggleColumn(
+                                prefs.columns ?? defaultColumns,
+                                column,
+                              ),
+                            }))
+                          }
+                        />
+                        {columnLabels[column]}
+                      </label>
+                    ),
+                  )}
+                </div>
+              </fieldset>
+            </section>
+            <section>
               <h3 className="mb-3 text-sm font-medium">期刊指标</h3>
               <label className="flex items-start gap-2 text-sm">
                 <Checkbox
@@ -973,39 +975,44 @@ export function Settings({
             </section>
           </TabsContent>
           <TabsContent value="reading" className="settings-panel" keepMounted>
-            <section className="mb-6 space-y-4">
-              <label className="block text-sm">
-                文档上下文上限（可选）
-                <Input
-                  className="mt-2 max-w-48"
-                  type="number"
-                  min={8192}
-                  max={1048576}
-                  step={1024}
-                  defaultValue={theme.documentContextTokens || ""}
-                  placeholder="自动获取"
-                  key={theme.documentContextTokens}
-                  onBlur={(e) => {
-                    const n = Number(e.currentTarget.value);
-                    if (
-                      Number.isInteger(n) &&
-                      (n === 0 || n >= 8192) &&
-                      n <= 1048576
-                    )
-                      setTheme({ documentContextTokens: n });
-                    else
-                      e.currentTarget.value = String(
-                        theme.documentContextTokens || "",
-                      );
-                  }}
-                />
-                <span className="mt-1 block text-xs text-muted-foreground">
-                  优先读取模型信息或 Codex 配置；留空为自动，未知时采用
-                  64K。填写后只限制上限。
-                </span>
-              </label>
+            <section>
+              <h3
+                id="document-context-label"
+                className="mb-3 text-sm font-medium"
+              >
+                文档上下文上限
+              </h3>
+              <Input
+                aria-labelledby="document-context-label"
+                className="max-w-48"
+                type="number"
+                min={8192}
+                max={1048576}
+                step={1024}
+                defaultValue={theme.documentContextTokens || ""}
+                placeholder="自动获取"
+                key={theme.documentContextTokens}
+                onBlur={(e) => {
+                  const n = Number(e.currentTarget.value);
+                  if (
+                    Number.isInteger(n) &&
+                    (n === 0 || n >= 8192) &&
+                    n <= 1048576
+                  )
+                    setTheme({ documentContextTokens: n });
+                  else
+                    e.currentTarget.value = String(
+                      theme.documentContextTokens || "",
+                    );
+                }}
+              />
+              <p className="mt-2 text-xs text-muted-foreground">
+                优先读取模型信息或 Codex 配置；留空为自动，未知时采用
+                64K。填写后只限制上限。
+              </p>
             </section>
-            <section className="mb-6">
+            <section className="space-y-4">
+              <h3 className="text-sm font-medium">阅读交互</h3>
               <label className="flex items-start gap-2 text-sm">
                 <Checkbox
                   checked={theme.autoCopySelection === true}
@@ -1020,8 +1027,6 @@ export function Settings({
                   </span>
                 </span>
               </label>
-            </section>
-            <section className="mb-6">
               <label className="flex items-start gap-2 text-sm">
                 <Checkbox
                   checked={theme.linkTranslationAnnotations !== false}
@@ -1044,9 +1049,7 @@ export function Settings({
           </TabsContent>
           <TabsContent value="papers" className="settings-panel" keepMounted>
             {window.neoreadDesktop?.libraryLocation && (
-              <div className="mb-6">
-                <LibraryLocationSettings open={open} />
-              </div>
+              <LibraryLocationSettings open={open} />
             )}
             <CitePluginSettings open={open} />
             <section>
@@ -1093,7 +1096,7 @@ export function Settings({
               data-tour="agent-section"
               data-detecting={!probed || loading || testing.size > 0}
             >
-              <div className="mb-4 flex items-center justify-between">
+              <div className="mb-3 flex items-center justify-between">
                 <h3 className="text-sm font-medium">Agent 连接</h3>
                 <Button
                   variant="ghost"
@@ -1224,15 +1227,13 @@ export function Settings({
             )}
             <CommandLineSettings open={open} />
             {config && (
-              <section className="mt-7 border-t pt-1">
-                <TranslationPromptSettings
-                  value={config.translationPrompt ?? ""}
-                  disabled={saving || aiModelSaving || testing.size > 0}
-                  onSave={(translationPrompt) =>
-                    saveConfig((latest) => ({ ...latest, translationPrompt }))
-                  }
-                />
-              </section>
+              <TranslationPromptSettings
+                value={config.translationPrompt ?? ""}
+                disabled={saving || aiModelSaving || testing.size > 0}
+                onSave={(translationPrompt) =>
+                  saveConfig((latest) => ({ ...latest, translationPrompt }))
+                }
+              />
             )}
           </TabsContent>
         </Tabs>

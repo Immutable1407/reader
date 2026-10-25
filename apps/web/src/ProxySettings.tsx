@@ -103,8 +103,8 @@ export function ProxySettings({ open }: { open: boolean }) {
     }
   };
   return (
-    <section className="space-y-5">
-      <div>
+    <>
+      <section>
         <h3 id="proxy-mode-label" className="mb-3 text-sm font-medium">
           代理
         </h3>
@@ -203,8 +203,8 @@ export function ProxySettings({ open }: { open: boolean }) {
         {state?.warning && (
           <p className="mt-2 text-xs text-muted-foreground">{state.warning}</p>
         )}
-      </div>
-      <div>
+      </section>
+      <section>
         <div className="flex items-center justify-between gap-3">
           <div className="flex min-w-0 flex-wrap items-baseline gap-x-2 gap-y-1">
             <h3 className="text-sm font-medium">连接检测</h3>
@@ -264,12 +264,12 @@ export function ProxySettings({ open }: { open: boolean }) {
             </div>
           </div>
         )}
-      </div>
-      {error && (
-        <p className="text-sm text-destructive" role="alert">
-          {error}
-        </p>
-      )}
-    </section>
+        {error && (
+          <p className="mt-3 text-sm text-destructive" role="alert">
+            {error}
+          </p>
+        )}
+      </section>
+    </>
   );
 }

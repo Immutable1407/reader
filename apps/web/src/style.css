@@ -3550,6 +3550,12 @@ textarea.paper-note-input {
   padding: 2px 4px 24px;
   scrollbar-width: none;
 }
+/* Every block in a settings tab is a titled section; dividers come from here. */
+.settings-panel > * + * {
+  margin-top: 1.5rem;
+  padding-top: 1.25rem;
+  border-top: 1px solid var(--border);
+}
 .settings-panel::-webkit-scrollbar {
   display: none;
 }

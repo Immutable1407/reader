@@ -15,7 +15,7 @@ export function PaperServiceSettings({ open }: { open: boolean }) {
   }, [open, savedEmail]);
 
   return (
-    <section className="mt-7 border-t pt-5">
+    <section>
       <h3 className="mb-3 text-sm font-medium">论文信息服务</h3>
       <form
         onSubmit={async (event) => {
@@ -51,8 +51,8 @@ export function PaperServiceSettings({ open }: { open: boolean }) {
         >
           Crossref 用于查询 DOI
           和补全论文信息。填写可联系到你的邮箱后，可使用服务商提供的更高请求额度，无需注册。
-          请求额度由 Crossref 限制，NeoRead 不额外设置此项额度。邮箱仅随 Crossref
-          查询发送给该服务商；填写后仍可能触发限流。留空并保存可清除。
+          请求额度由 Crossref 限制，NeoRead 不额外设置此项额度。邮箱仅随
+          Crossref 查询发送给该服务商；填写后仍可能触发限流。留空并保存可清除。
         </p>
         <div className="flex gap-2">
           <Input

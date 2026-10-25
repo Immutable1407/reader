@@ -122,15 +122,11 @@ export function WebSearchSettings({
     });
   };
   return (
-    <section
-      className="mt-5 border-t pt-5"
-      aria-labelledby={`${id}-title`}
-      aria-busy={pending > 0}
-    >
-      <h3 id={`${id}-title`} className="text-sm font-medium">
+    <section aria-labelledby={`${id}-title`} aria-busy={pending > 0}>
+      <h3 id={`${id}-title`} className="mb-3 text-sm font-medium">
         联网搜索
       </h3>
-      <div className="mt-3 space-y-3">
+      <div className="space-y-3">
         <label className="flex items-center gap-2 text-sm">
           <Checkbox
             checked={cliEnabled}
