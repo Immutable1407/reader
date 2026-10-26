@@ -31,7 +31,8 @@ vi.mock("pdfjs-dist", () => ({
 }));
 vi.mock("./diagnostics", () => ({ reportDiagnostic: vi.fn() }));
 
-import { BookDetail, ResizableBookDetail } from "./BookDetail";
+import { BookDetail, saveBookDetailWidth } from "./BookDetail";
+import { DetailSheet } from "./DetailSheet";
 import { BookCoverImage } from "./book-cover";
 import { useReaderStore } from "./store";
 
@@ -205,28 +206,42 @@ it("renders and stores the first page of a PDF without a cover", async () => {
   for (const img of images) expect(img.getAttribute("src")).toBe("/cover/p1?v");
 });
 
-it("resizes the detail panel and keeps the width", async () => {
+it("resizes the detail sheet and keeps the width", async () => {
   const doc = book();
   mocks.savePreferences.mockResolvedValue({});
   useReaderStore.setState({
     documents: [doc],
     libraryPreferences: { books: { detailWidth: 400 } },
   });
-  await act(async () =>
-    root.render(
-      <ResizableBookDetail
-        doc={doc}
-        actions={actions}
-        open={() => {}}
-        favorite={() => {}}
-      />,
-    ),
-  );
+  function Sheet() {
+    const width = useReaderStore(
+      (s) => s.libraryPreferences.books?.detailWidth,
+    );
+    return (
+      <DetailSheet
+        open
+        onClose={() => {}}
+        container={host}
+        label="图书详情"
+        width={width}
+        saveWidth={saveBookDetailWidth}
+      >
+        <BookDetail
+          doc={doc}
+          actions={actions}
+          open={() => {}}
+          favorite={() => {}}
+        />
+      </DetailSheet>
+    );
+  }
+  await act(async () => root.render(<Sheet />));
   const handle = host.querySelector<HTMLElement>('[role="separator"]')!;
-  const panel = host.querySelector<HTMLElement>(".book-detail")!;
+  const sheet = host.querySelector<HTMLElement>(".detail-sheet")!;
+  expect(sheet.querySelector(".book-detail")).not.toBeNull();
   expect(handle.getAttribute("aria-valuenow")).toBe("400");
-  expect(panel.style.getPropertyValue("--paper-detail-width")).toBe("400px");
-  vi.spyOn(panel, "getBoundingClientRect").mockReturnValue({
+  expect(sheet.style.getPropertyValue("--paper-detail-width")).toBe("400px");
+  vi.spyOn(sheet, "getBoundingClientRect").mockReturnValue({
     width: 400,
   } as DOMRect);
   await act(async () =>
@@ -240,5 +255,5 @@ it("resizes the detail panel and keeps the width", async () => {
   expect(mocks.savePreferences).toHaveBeenCalledWith(
     expect.objectContaining({ books: { detailWidth: 416 } }),
   );
-  expect(panel.style.getPropertyValue("--paper-detail-width")).toBe("416px");
+  expect(sheet.style.getPropertyValue("--paper-detail-width")).toBe("416px");
 });

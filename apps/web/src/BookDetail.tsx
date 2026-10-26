@@ -1,9 +1,4 @@
-import {
-  useState,
-  type CSSProperties,
-  type KeyboardEvent as ReactKeyboardEvent,
-  type PointerEvent as ReactPointerEvent,
-} from "react";
+import { useState } from "react";
 import { BookOpen, MoreHorizontal, Pencil, Plus, Star } from "lucide-react";
 import type { Document, PaperMetadataField } from "@neoread/core";
 import { Button } from "@neoread/ui/components/button";
@@ -21,12 +16,6 @@ import { DocumentBadges } from "./DocumentManagement";
 import { BookCoverImage } from "./book-cover";
 import { BookMenuItems, type BookMenuActions } from "./BookMenu";
 import { updateLibraryPreferences, useReaderStore } from "./store";
-import {
-  clampDetailWidth,
-  detailWidthRange,
-  dragHorizontally,
-  resizeStep,
-} from "./papers/resize";
 
 const bookFields: [PaperMetadataField, string, string?][] = [
   ["publisher", "出版社"],
@@ -35,7 +24,7 @@ const bookFields: [PaperMetadataField, string, string?][] = [
   ["language", "语言", "zh-CN"],
 ];
 
-const saveDetailWidth = (detailWidth: number) =>
+export const saveBookDetailWidth = (detailWidth: number) =>
   void updateLibraryPreferences({
     books: {
       ...useReaderStore.getState().libraryPreferences.books,
@@ -43,80 +32,24 @@ const saveDetailWidth = (detailWidth: number) =>
     },
   });
 
-/** The detail panel with the paper library's drag handle for its width. */
-export function ResizableBookDetail(props: Parameters<typeof BookDetail>[0]) {
-  const saved = useReaderStore((s) => s.libraryPreferences.books?.detailWidth);
-  const [draft, setDraft] = useState<number>();
-  const width = draft ?? saved;
-  const resize = (e: ReactPointerEvent<HTMLElement>) => {
-    const start =
-      e.currentTarget.nextElementSibling?.getBoundingClientRect().width ?? 0;
-    let next: number | undefined;
-    dragHorizontally(
-      e,
-      // The panel sits on the right: dragging left widens it.
-      (dx) => setDraft((next = clampDetailWidth(start - dx))),
-      () => {
-        if (next !== undefined) saveDetailWidth(next);
-        setDraft(undefined);
-      },
-    );
-  };
-  const nudge = (e: ReactKeyboardEvent<HTMLElement>) => {
-    const dx = { ArrowLeft: resizeStep, ArrowRight: -resizeStep }[e.key];
-    if (!dx) return;
-    e.preventDefault();
-    const current =
-      e.currentTarget.nextElementSibling?.getBoundingClientRect().width ?? 0;
-    saveDetailWidth(clampDetailWidth(current + dx));
-  };
-  return (
-    <>
-      <div
-        role="separator"
-        aria-orientation="vertical"
-        aria-label="调整图书详情宽度"
-        aria-valuemin={detailWidthRange.min}
-        aria-valuemax={detailWidthRange.max}
-        aria-valuenow={width}
-        tabIndex={0}
-        className="paper-detail-resizer"
-        onPointerDown={resize}
-        onKeyDown={nudge}
-      />
-      <BookDetail {...props} width={width} />
-    </>
-  );
-}
-
 /** The selected book's cover, details and the reader's own rating and notes. */
 export function BookDetail({
   doc,
   actions,
   open,
   favorite,
-  width,
 }: {
   doc: Document;
   actions: BookMenuActions;
   open: (doc: Document) => void;
   favorite: (doc: Document) => void;
-  width?: number;
 }) {
   const [descriptionOpen, setDescriptionOpen] = useState(false);
   const [editingDescription, setEditingDescription] = useState(false);
   const m = doc.metadata;
   const percent = Math.round(doc.percentage * 100);
   return (
-    <aside
-      className="paper-detail book-detail"
-      aria-label="图书详情"
-      style={
-        width
-          ? ({ "--paper-detail-width": `${width}px` } as CSSProperties)
-          : undefined
-      }
-    >
+    <aside className="paper-detail book-detail" aria-label="图书详情">
       <div className="paper-detail-body">
         <div className="book-detail-cover">
           <BookCoverImage doc={doc} />

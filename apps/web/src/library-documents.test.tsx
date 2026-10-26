@@ -6,6 +6,7 @@ import { api } from "@neoread/api";
 import { toast } from "sonner";
 import type { Document } from "@neoread/core";
 import { LibraryDocuments } from "./LibraryDocuments";
+import { doubleClickWindow } from "./DetailSheet";
 import { useReaderStore } from "./store";
 vi.mock("@neoread/api", () => ({
   api: {
@@ -221,6 +222,45 @@ it("opens a document on click without a detail panel", async () => {
   expect(open).toHaveBeenCalledExactlyOnceWith(docs[0]);
 });
 
+const waitOutDoubleClick = () =>
+  act(() => new Promise((done) => setTimeout(done, doubleClickWindow + 20)));
+
+it("opens on double click without showing the details first", async () => {
+  withDetail = true;
+  await act(async () => root.render(<Harness />));
+  const [alpha] = host.querySelectorAll("article");
+  const cover = alpha.querySelector<HTMLButtonElement>(".book-cover")!;
+  await act(async () =>
+    cover.dispatchEvent(new MouseEvent("click", { bubbles: true, detail: 1 })),
+  );
+  await act(async () =>
+    cover.dispatchEvent(new MouseEvent("click", { bubbles: true, detail: 2 })),
+  );
+  await act(async () =>
+    cover.dispatchEvent(new MouseEvent("dblclick", { bubbles: true })),
+  );
+  await waitOutDoubleClick();
+  expect(open).toHaveBeenCalledExactlyOnceWith(docs[0]);
+  expect(alpha.dataset.active).toBe("false");
+});
+
+it("drops a held click once a key press takes over", async () => {
+  withDetail = true;
+  await act(async () => root.render(<Harness />));
+  const [alpha] = host.querySelectorAll("article");
+  await act(async () =>
+    alpha.querySelector<HTMLButtonElement>(".book-cover")!.click(),
+  );
+  expect(alpha.dataset.active).toBe("true");
+  await act(async () =>
+    alpha.dispatchEvent(
+      new KeyboardEvent("keydown", { key: "ArrowDown", bubbles: true }),
+    ),
+  );
+  await waitOutDoubleClick();
+  expect(alpha.dataset.active).toBe("false");
+});
+
 it("shows details on click and opens on double click", async () => {
   withDetail = true;
   await act(async () => root.render(<Harness />));
@@ -228,7 +268,12 @@ it("shows details on click and opens on double click", async () => {
   const cover = alpha.querySelector<HTMLButtonElement>(".book-cover")!;
   await act(async () => cover.click());
   expect(open).not.toHaveBeenCalled();
+  // The card highlights at once; the details follow after the double-click
+  // window.
   expect(alpha.dataset.active).toBe("true");
+  await waitOutDoubleClick();
+  expect(alpha.dataset.active).toBe("true");
+  // With the details showing, another click switches at once.
   await act(async () =>
     beta.querySelector<HTMLButtonElement>(".book-title")!.click(),
   );

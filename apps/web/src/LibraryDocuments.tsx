@@ -26,6 +26,7 @@ import { CoverProcessing } from "./ProcessingStatus";
 import { toggleDocumentSelection, trashWithUndo } from "./library-actions";
 import { BookCoverImage } from "./book-cover";
 import { BookMenuItems } from "./BookMenu";
+import { useClickIntent } from "./DetailSheet";
 
 export function LibraryDocuments({
   documents,
@@ -65,6 +66,7 @@ export function LibraryDocuments({
   const overviewJobs = useOverviewJobs();
   const [selection, setSelection] = useState<Set<string>>(new Set());
   const [mode, setMode] = useState(false);
+  const clickIntent = useClickIntent(activeId);
   const pending = useRef(false);
   const anchor = useRef<string | null>(null);
   const selected = new Set(
@@ -184,7 +186,10 @@ export function LibraryDocuments({
               render={<article />}
               className="book-card"
               data-selected={selecting && selected.has(doc.id)}
-              data-active={!selecting && activeId === doc.id}
+              data-active={
+                !selecting &&
+                (activeId === doc.id || clickIntent.pending === doc.id)
+              }
               tabIndex={0}
               aria-label={doc.title}
               onKeyDown={(e) => {
@@ -208,15 +213,23 @@ export function LibraryDocuments({
                   (e.target as Element).closest("[data-document-action]")
                 )
                   return;
-                onActivate(activeId === doc.id ? null : doc.id);
+                // An open sheet switches books at once; otherwise the click
+                // waits out the double-click window before showing it.
+                if (activeId && activeId !== doc.id) onActivate(doc.id);
+                else
+                  clickIntent.defer(doc.id, () =>
+                    onActivate(activeId === doc.id ? null : doc.id),
+                  );
               }}
               onDoubleClick={(e) => {
                 if (
                   !selecting &&
                   onActivate &&
                   !(e.target as Element).closest("[data-document-action]")
-                )
+                ) {
+                  clickIntent.cancel();
                   openDocument(doc);
+                }
               }}
               onClickCapture={(e) => {
                 if (
