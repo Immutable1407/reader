@@ -1266,6 +1266,11 @@ export function PaperLibrary({
         <CategoryDialog
           kind="tag"
           count={tagging.length}
+          suggestions={tags.filter((tag) =>
+            documents.some(
+              (doc) => tagging.includes(doc.id) && !hasTag(doc, tag),
+            ),
+          )}
           onClose={() => setTagging(null)}
           onSave={async (name) => {
             const tag = name.trim().replace(/^#/, "");

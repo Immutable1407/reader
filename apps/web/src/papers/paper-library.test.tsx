@@ -454,7 +454,17 @@ it("offers existing tags when adding one from the detail panel", async () => {
       .querySelector<HTMLButtonElement>('button[aria-label="添加标签"]')!
       .click(),
   );
-  await act(async () => menuItem("#Transformer").click());
+  const dialog = document.querySelector('[role="dialog"]')!;
+  const suggestion = [
+    ...dialog.querySelectorAll<HTMLButtonElement>("button"),
+  ].find((b) => b.textContent === "#Transformer")!;
+  await act(async () => suggestion.click());
+  expect(api.update).not.toHaveBeenCalled();
+  await act(async () =>
+    dialog
+      .querySelector("form")!
+      .dispatchEvent(new Event("submit", { bubbles: true, cancelable: true })),
+  );
   expect(api.update).toHaveBeenLastCalledWith("b", { tags: ["Transformer"] });
 });
 
@@ -466,15 +476,28 @@ it("tags a paper and collects it in a smart tag category", async () => {
       .querySelector<HTMLButtonElement>('button[aria-label="添加标签"]')!
       .click(),
   );
-  await act(async () => menuItem("新标签…").click());
-  const input = detail.querySelector<HTMLInputElement>(
-    'input[aria-label="添加标签"]',
+  const dialog = document.querySelector('[role="dialog"]')!;
+  const input = dialog.querySelector<HTMLInputElement>(
+    'input[aria-label="标签名"]',
   )!;
-  input.value = "#GNN";
+  await act(async () => {
+    Object.getOwnPropertyDescriptor(
+      HTMLInputElement.prototype,
+      "value",
+    )!.set!.call(input, "#GNN");
+    input.dispatchEvent(new Event("input", { bubbles: true }));
+  });
+  // Moving focus to the explicit submit button must not dismiss or save the editor.
   await act(async () =>
-    input.dispatchEvent(
-      new KeyboardEvent("keydown", { key: "Enter", bubbles: true }),
-    ),
+    dialog.querySelector<HTMLButtonElement>('button[type="submit"]')!.focus(),
+  );
+  expect(document.querySelector('[role="dialog"]')).toBe(dialog);
+  expect(input.value).toBe("#GNN");
+  expect(api.update).not.toHaveBeenCalled();
+  await act(async () =>
+    dialog
+      .querySelector("form")!
+      .dispatchEvent(new Event("submit", { bubbles: true, cancelable: true })),
   );
   expect(api.update).toHaveBeenLastCalledWith("b", { tags: ["GNN"] });
   await act(async () =>
