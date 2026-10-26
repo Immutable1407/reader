@@ -62,6 +62,7 @@ type Server struct {
 	translationMu          sync.Mutex
 	translationSubscribers map[string]map[chan TranslationBlock]struct{}
 	processingMu           sync.Mutex
+	bookLayout             bookLayoutState
 	processingControlMu    sync.Mutex
 	activeProcessing       map[string]*documentTask
 	blockedProcessing      map[string]bool
@@ -812,6 +813,12 @@ func (s *Server) resource(w http.ResponseWriter, r *http.Request) {
 		}
 		w.Header().Set("Content-Type", "application/pdf")
 		http.ServeFile(w, r, s.Store.File(d))
+		return
+	}
+	// EPUB image blocks are served as PNG at the same path as PDF blocks; the
+	// generated ID cannot name a publication's own file.
+	if blockID, ok := strings.CutSuffix(strings.TrimPrefix(name, "assets/"), ".png"); ok && strings.HasPrefix(name, "assets/") && epubBlockIDPattern.MatchString(blockID) {
+		s.blockImage(w, r, d.ID, blockID)
 		return
 	}
 	name, err = safeResource(name)

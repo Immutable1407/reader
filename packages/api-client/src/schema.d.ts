@@ -5087,6 +5087,13 @@ export interface components {
             startedAt?: string;
             completedAt?: string;
             usageTracked?: boolean;
+            /** @description Background layout parsing of a book PDF, independent of translation. A finished job stays as complete with its final page count. */
+            readonly bookLayout?: {
+                /** @enum {string} */
+                status: "queued" | "running" | "failed" | "complete";
+                pagesDone: number;
+                pagesTotal: number;
+            };
         };
         PDFBlock: {
             id: string;

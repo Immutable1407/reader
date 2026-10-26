@@ -459,6 +459,12 @@ export interface ReaderEvents {
   internalLink?: (origin: DocumentLocation) => void;
   epubInteraction?: () => void;
   epubReadingAnchor?: (blockId: string) => void;
+  /** Pointer over an EPUB paragraph, or null when it leaves. */
+  epubBlockHover?: (blockId: string | null) => void;
+  /** A click on an EPUB paragraph; the default centers it in the source. */
+  epubBlockFocus?: (blockId: string) => void;
+  /** The copy, ask-AI or preview button on a hovered EPUB paragraph. */
+  epubBlockAction?: (block: EPUBReadingBlock, action: PDFBlockAction) => void;
   blockHover?: (block: PDFBlock | null) => void;
   annotation?: (target: ReaderAnnotationTarget | null) => void;
   /** Hover preview only; never select or copy annotation text. */
@@ -640,6 +646,12 @@ export interface Processing {
   detail: string;
   warning?: string;
   updatedAt: string;
+  /** Background layout parsing of a book PDF; stays `complete` when done. */
+  bookLayout?: {
+    status: "queued" | "running" | "failed" | "complete";
+    pagesDone: number;
+    pagesTotal: number;
+  };
 }
 export interface PDFBlock {
   id: string;

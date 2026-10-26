@@ -64,6 +64,7 @@ import {
   type Processing,
   type PDFBlock,
   type PDFBlockAction,
+  type EPUBReadingBlock,
   type ImageAttachment,
   type LinkPreview,
   neoreadLink,
@@ -532,6 +533,8 @@ export function Workspace({
     processing?.phase,
     processing?.status,
     processing?.layoutRevision,
+    // Book pages parsed in the background add blocks as they arrive.
+    processing?.bookLayout?.pagesDone,
   ]);
   const move = (next: DocumentLocation) => {
     void adapter?.goTo(next).catch((e) => toast.error(e.message));
@@ -927,6 +930,50 @@ export function Workspace({
     }
     setImages((current) => [...current, image]);
     requestAnimationFrame(() => composeInput.current?.focus());
+  };
+  // EPUB paragraphs offer the PDF block actions; image blocks are served as
+  // PNG under the same block image path.
+  const epubBlockAction = (block: EPUBReadingBlock, action: PDFBlockAction) => {
+    if (action === "copy") {
+      if (block.image)
+        void copyImage(blockImageURL(doc.id, block.id), block.text.trim());
+      else void copyText(block.text.trim(), "已复制");
+      return;
+    }
+    if (!block.image) {
+      if (action === "explain")
+        void send("请解释这段原文的含义，区分原文结论与你的补充说明。", [
+          {
+            text: block.text,
+            location: { ...block.location, quote: block.text },
+          },
+        ]);
+      return;
+    }
+    const image: ImageAttachment = {
+      id: block.id,
+      page: 0,
+      label: block.label,
+      caption: block.text || undefined,
+    };
+    if (action === "preview") {
+      setPreviewImage(image);
+      return;
+    }
+    if (action !== "explain") return;
+    if (sending) {
+      toast.info("请等待当前回答完成");
+      return;
+    }
+    setRight(true);
+    setRightTab("ai");
+    void send(
+      "请详细解释这张插图，说明图中信息及其在书中的含义，区分事实与推断。",
+      [],
+      false,
+      [image],
+      true,
+    );
   };
   const imageAttachments = (items: ImageAttachment[], removable = false) => (
     <div className="image-attachments">
@@ -1409,6 +1456,7 @@ export function Workspace({
                       setReturnLocation(navigationRef.current?.origin);
                     },
                     blockAction,
+                    epubBlockAction,
                   }}
                 />
               );

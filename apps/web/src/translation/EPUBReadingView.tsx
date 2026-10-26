@@ -32,6 +32,7 @@ import {
 } from "./annotations";
 import { installTranslationSelectionHighlight } from "./selection-highlight";
 import { epubBlocksAt } from "./epub-links";
+import { animatePDFScroll } from "../readers/pdf-scroll";
 import { isSelectionToolbar } from "../readers/selection-anchor";
 import { defaultTheme } from "@neoread/core";
 import { translationFont } from "../appearance";
@@ -73,6 +74,12 @@ export function EPUBReadingView({
   const scrollFrame = useRef(0);
   const modeFrame = useRef(0);
   const dragging = useRef(false);
+  const [hoveredBlock, setHoveredBlock] = useState<string>();
+  const [focusedBlock, setFocusedBlock] = useState<string>();
+  const hoverOwner = useRef<"source" | "translation" | undefined>(undefined);
+  const pressedBlock = useRef<{ id: string; x: number; y: number }>(undefined);
+  // An explicit block focus owns both panes until its motion settles.
+  const focusMotion = useRef({ operation: 0, moving: false });
   const live = useRef({
     mode,
     blocks,
@@ -105,6 +112,72 @@ export function EPUBReadingView({
         pendingFollow.current = undefined;
       }
     }
+  };
+  const hover = (origin: "source" | "translation", blockId?: string) => {
+    if (!blockId && hoverOwner.current !== origin) return;
+    hoverOwner.current = blockId ? origin : undefined;
+    setHoveredBlock(blockId);
+    engine.current?.hoverBlock?.(
+      live.current.mode === "parallel" && origin === "translation"
+        ? (blockId ?? null)
+        : null,
+    );
+  };
+  const centerTranslation = (id: string, cancelled: () => boolean) => {
+    const node = targetNode(id),
+      host = pane.current;
+    if (!node || !host) return;
+    const r = node.getBoundingClientRect(),
+      v = host.getBoundingClientRect();
+    return animatePDFScroll(
+      host,
+      host.scrollLeft,
+      host.scrollTop + r.top - v.top - Math.max(0, (v.height - r.height) / 2),
+      () => cancelled() || pane.current !== host,
+      () => {},
+    );
+  };
+  // Clicking a paragraph on either side centers it in every visible pane, as
+  // PDF blocks do; the box fades once both panes arrive.
+  const focusBlock = (id: string, origin: "source" | "translation") => {
+    const block = live.current.blocks.find((b) => b.id === id);
+    if (!block) return;
+    side.current = origin;
+    syncTarget.current = undefined;
+    pendingFollow.current = undefined;
+    const motion = focusMotion.current;
+    const operation = ++motion.operation;
+    motion.moving = true;
+    setFocusedBlock(id);
+    updateLocation(block.location);
+    const current = live.current.mode;
+    const cancelled = () => operation !== motion.operation;
+    void Promise.all([
+      current !== "translation"
+        ? engine.current?.focusBlock?.(
+            id,
+            current === "parallel" ? "parallel" : "source",
+          )
+        : undefined,
+      current !== "source" ? centerTranslation(id, cancelled) : undefined,
+    ])
+      .catch((e) => toast.error((e as Error).message))
+      .finally(() => {
+        if (cancelled()) return;
+        setFocusedBlock(undefined);
+        // Let the last programmatic scroll event pass before syncing resumes.
+        requestAnimationFrame(() => {
+          if (!cancelled()) motion.moving = false;
+        });
+      });
+  };
+  const cancelFocus = () => {
+    const motion = focusMotion.current;
+    if (!motion.moving) return;
+    motion.operation++;
+    motion.moving = false;
+    setFocusedBlock(undefined);
+    engine.current?.cancelBlockFocus?.();
   };
   const updateLocation = (location: EPUBLocation) => {
     position.current = location;
@@ -286,6 +359,7 @@ export function EPUBReadingView({
     cancelAnimationFrame(scrollFrame.current);
     scrollFrame.current = requestAnimationFrame(() => {
       if (
+        focusMotion.current.moving ||
         side.current !== "translation" ||
         dragging.current ||
         selection.current ||
@@ -309,6 +383,9 @@ export function EPUBReadingView({
   };
   const changeMode = (value: Mode) => {
     clear();
+    cancelFocus();
+    hover("source");
+    hover("translation");
     setMode(value);
     side.current = value === "translation" ? "translation" : "source";
     const target = position.current;
@@ -421,8 +498,14 @@ export function EPUBReadingView({
                   setChapter(location.href);
                   live.current.events.location(location, percent);
                 },
+                epubBlockHover: (id) => {
+                  if (live.current.mode === "parallel")
+                    hover("source", id ?? undefined);
+                },
+                epubBlockFocus: (id) => focusBlock(id, "source"),
                 epubReadingAnchor: (id) => {
                   if (
+                    !focusMotion.current.moving &&
                     side.current === "source" &&
                     live.current.mode === "parallel"
                   )
@@ -516,6 +599,7 @@ export function EPUBReadingView({
             onKeyUp={capture}
             onWheel={() => {
               side.current = "translation";
+              cancelFocus();
             }}
             onScroll={scroll}
             onClick={(event) => {
@@ -581,8 +665,57 @@ export function EPUBReadingView({
               <section
                 key={block.id}
                 data-translation-block={block.id}
+                data-block-kind={block.image ? "image" : "text"}
                 data-label={block.label}
                 data-chapter={block.location.href}
+                data-hovered={hoveredBlock === block.id || undefined}
+                data-focused={focusedBlock === block.id || undefined}
+                aria-current={focusedBlock === block.id || undefined}
+                tabIndex={0}
+                onPointerDown={(event) => {
+                  cancelFocus();
+                  pressedBlock.current =
+                    event.button === 0
+                      ? { id: block.id, x: event.clientX, y: event.clientY }
+                      : undefined;
+                }}
+                onClick={(event) => {
+                  const pressed = pressedBlock.current;
+                  pressedBlock.current = undefined;
+                  if (
+                    (event.target as Element).closest(
+                      "a, button, input, textarea, select, [role=button], [contenteditable=true]",
+                    ) ||
+                    window.getSelection()?.toString().trim() ||
+                    (event.detail > 0 &&
+                      (!pressed ||
+                        pressed.id !== block.id ||
+                        Math.hypot(
+                          event.clientX - pressed.x,
+                          event.clientY - pressed.y,
+                        ) > 5))
+                  )
+                    return;
+                  focusBlock(block.id, "translation");
+                }}
+                onKeyDown={(event) => {
+                  if (
+                    event.target === event.currentTarget &&
+                    (event.key === "Enter" || event.key === " ")
+                  ) {
+                    event.preventDefault();
+                    focusBlock(block.id, "translation");
+                  }
+                }}
+                onPointerEnter={(event) => {
+                  if (!event.buttons && !dragging.current)
+                    hover("translation", block.id);
+                }}
+                onPointerMove={(event) => {
+                  if (!event.buttons && !dragging.current)
+                    hover("translation", block.id);
+                }}
+                onPointerLeave={() => hover("translation")}
               >
                 <TranslationText
                   block={block}

@@ -72,6 +72,8 @@ const adapter = {
   focusSentences: vi.fn(async () => {}),
   focusEPUBLocations: vi.fn(async () => {}),
   hoverBlock: vi.fn(),
+  focusBlock: vi.fn(async () => {}),
+  cancelBlockFocus: vi.fn(),
 } as unknown as ReaderAdapter;
 vi.mock("../ReaderView", () => ({
   ReaderView: ({
@@ -404,6 +406,49 @@ it("follows source block anchors and scrolls the source to the translated block 
       quote: undefined,
     }),
   );
+});
+
+it("links block hover and focuses a clicked block in both panes", async () => {
+  await click("原文译文");
+  await act(async () => new Promise((resolve) => setTimeout(resolve, 30)));
+  const pane = host.querySelector<HTMLElement>(".translation-document")!;
+  Object.defineProperty(pane, "clientHeight", { value: 400 });
+  pane.getBoundingClientRect = () => new DOMRect(0, 0, 400, 400);
+  const section = () =>
+    pane.querySelector<HTMLElement>('[data-translation-block="e-b"]')!;
+  section().getBoundingClientRect = () => new DOMRect(0, 600, 400, 100);
+  await act(async () => fixture.events!.epubBlockHover?.("e-b"));
+  expect(section().dataset.hovered).toBe("true");
+  await act(async () => fixture.events!.epubBlockHover?.(null));
+  expect(section().dataset.hovered).toBeUndefined();
+  await act(async () =>
+    section().dispatchEvent(new MouseEvent("pointermove", { bubbles: true })),
+  );
+  expect(adapter.hoverBlock).toHaveBeenLastCalledWith("e-b");
+  vi.mocked(adapter.goTo).mockClear();
+  vi.stubGlobal("matchMedia", () => ({
+    matches: true,
+    addEventListener() {},
+    removeEventListener() {},
+  }));
+  await act(async () => fixture.events!.epubBlockFocus?.("e-b"));
+  expect(adapter.focusBlock).toHaveBeenCalledWith("e-b", "parallel");
+  // Centered: 600 - (400 - 100) / 2.
+  expect(pane.scrollTop).toBe(450);
+  expect(events.location).toHaveBeenLastCalledWith(
+    expect.objectContaining({ href: "b.xhtml" }),
+    expect.any(Number),
+  );
+  await act(async () => new Promise((resolve) => setTimeout(resolve, 30)));
+  expect(section().dataset.focused).toBeUndefined();
+  // Programmatic centering never drives the source back.
+  expect(adapter.goTo).not.toHaveBeenCalled();
+  await act(async () =>
+    section().dispatchEvent(
+      new MouseEvent("click", { bubbles: true, detail: 0 }),
+    ),
+  );
+  expect(adapter.focusBlock).toHaveBeenCalledTimes(2);
 });
 
 it("initializes chapter context in memory without saving progress on open", async () => {
