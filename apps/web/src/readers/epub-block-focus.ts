@@ -1,8 +1,15 @@
+import { createElement } from "react";
+import { createRoot, type Root } from "react-dom/client";
+import type { EPUBReadingBlock, PDFBlockAction } from "@neoread/core";
+import { BlockActions } from "../BlockActions";
+
 // EPUB paragraphs are already DOM blocks: hover, counterpart and focus boxes
 // follow the rendered element (or the text runs of a mixed container) instead
 // of a parsed page layout, matching the PDF block interaction.
 
 const blockSelector = "[data-epub-run], [data-epub-block]";
+// Includes the toolbar's padding, which bridges the gap above the block.
+const blockActionTarget = "[data-block-action], .block-actions";
 // Breathing room around the text, like the margin of a parsed PDF block.
 const padX = 8,
   padY = 4;
@@ -49,6 +56,8 @@ export class EPUBBlockOverlay {
   private linked = this.box("neoread-block-hover neoread-block-counterpart");
   private focusBox = this.box("neoread-block-hover neoread-block-focus");
   private hovered?: string;
+  private actions: Root;
+  private actionsFor?: string;
   private linkedId: string | null = null;
   private focusId: string | null = null;
   private pressed?: { id: string; x: number; y: number };
@@ -59,7 +68,13 @@ export class EPUBBlockOverlay {
     private container: HTMLElement,
     private onHover: (id: string | null) => void,
     private onFocus: (id: string) => void,
+    private blocks: () => EPUBReadingBlock[] = () => [],
+    private onAction: (
+      block: EPUBReadingBlock,
+      action: PDFBlockAction,
+    ) => void = () => {},
   ) {
+    this.actions = createRoot(this.hover);
     this.focusBox.addEventListener("animationend", () => {
       if (!this.focusId) this.focusBox.remove();
     });
@@ -113,6 +128,7 @@ export class EPUBBlockOverlay {
 
   private move = (event: PointerEvent) => {
     const target = event.target instanceof Element ? event.target : null;
+    if (target?.closest(blockActionTarget)) return;
     if (
       event.buttons ||
       window.getSelection()?.toString().trim() ||
@@ -126,13 +142,29 @@ export class EPUBBlockOverlay {
       this.leave();
       return;
     }
-    if (id !== this.focusId) this.place(this.hover, id);
-    else this.hover.remove();
+    if (id !== this.focusId) {
+      this.place(this.hover, id);
+      this.showActions(id);
+    } else this.hover.remove();
     if (this.hovered !== id) {
       this.hovered = id;
       this.onHover(id);
     }
   };
+
+  private showActions(id: string) {
+    if (this.actionsFor === id) return;
+    const block = this.blocks().find((b) => b.id === id);
+    this.actionsFor = block?.id;
+    this.actions.render(
+      block
+        ? createElement(BlockActions<EPUBReadingBlock>, {
+            block,
+            onAction: this.onAction,
+          })
+        : null,
+    );
+  }
 
   private leave = () => {
     this.hover.remove();
@@ -145,6 +177,7 @@ export class EPUBBlockOverlay {
   private press = (event: PointerEvent) => {
     this.cancel();
     this.pressed = undefined;
+    if ((event.target as Element | null)?.closest(blockActionTarget)) return;
     const id = event.button === 0 ? epubBlockId(event.target) : undefined;
     if (id) this.pressed = { id, x: event.clientX, y: event.clientY };
   };
@@ -250,6 +283,7 @@ export class EPUBBlockOverlay {
   destroy() {
     this.operation++;
     this.abort.abort();
+    this.actions.unmount();
     this.hover.remove();
     this.linked.remove();
     this.focusBox.remove();

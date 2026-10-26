@@ -463,6 +463,8 @@ export interface ReaderEvents {
   epubBlockHover?: (blockId: string | null) => void;
   /** A click on an EPUB paragraph; the default centers it in the source. */
   epubBlockFocus?: (blockId: string) => void;
+  /** The copy, ask-AI or preview button on a hovered EPUB paragraph. */
+  epubBlockAction?: (block: EPUBReadingBlock, action: PDFBlockAction) => void;
   blockHover?: (block: PDFBlock | null) => void;
   annotation?: (target: ReaderAnnotationTarget | null) => void;
   /** Hover preview only; never select or copy annotation text. */

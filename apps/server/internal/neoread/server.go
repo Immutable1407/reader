@@ -815,6 +815,12 @@ func (s *Server) resource(w http.ResponseWriter, r *http.Request) {
 		http.ServeFile(w, r, s.Store.File(d))
 		return
 	}
+	// EPUB image blocks are served as PNG at the same path as PDF blocks; the
+	// generated ID cannot name a publication's own file.
+	if blockID, ok := strings.CutSuffix(strings.TrimPrefix(name, "assets/"), ".png"); ok && strings.HasPrefix(name, "assets/") && epubBlockIDPattern.MatchString(blockID) {
+		s.blockImage(w, r, d.ID, blockID)
+		return
+	}
 	name, err = safeResource(name)
 	if err != nil {
 		fail(w, 400, "无效资源路径")

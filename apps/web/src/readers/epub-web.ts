@@ -83,6 +83,8 @@ export class EPUBReaderAdapter implements ReaderAdapter {
         if (this.events.epubBlockFocus) this.events.epubBlockFocus(id);
         else void this.focusBlock(id);
       },
+      () => this.blocks,
+      (block, action) => this.events.epubBlockAction?.(block, action),
     );
     const signal = this.abort.signal;
     container.addEventListener("scroll", this.onScroll, {

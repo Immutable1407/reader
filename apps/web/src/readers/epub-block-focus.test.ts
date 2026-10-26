@@ -1,5 +1,7 @@
 // @vitest-environment jsdom
+import { act } from "react";
 import { afterEach, beforeEach, expect, it, vi } from "vitest";
+import type { EPUBReadingBlock } from "@neoread/core";
 import {
   EPUBBlockOverlay,
   epubBlockId,
@@ -9,12 +11,21 @@ import {
 let container: HTMLDivElement;
 let overlay: EPUBBlockOverlay;
 const onHover = vi.fn(),
-  onFocus = vi.fn();
+  onFocus = vi.fn(),
+  onAction = vi.fn();
+const block = (id: string, image?: string): EPUBReadingBlock => ({
+  id,
+  label: image ? "image" : "text",
+  text: id,
+  image,
+  location: { type: "epub", href: "a.xhtml" },
+});
 const rect = (element: Element, top: number, left = 40, height = 40) =>
   ((element as HTMLElement).getBoundingClientRect = () =>
     new DOMRect(left, top, 200, height));
 
 beforeEach(() => {
+  vi.stubGlobal("IS_REACT_ACT_ENVIRONMENT", true);
   vi.stubGlobal("matchMedia", () => ({ matches: true }));
   container = document.createElement("div");
   container.innerHTML = `<section>
@@ -22,6 +33,7 @@ beforeEach(() => {
     <div><span data-epub-run="m" data-epub-block="m">Mixed one</span><br>
     <span data-epub-run="m">mixed two</span></div>
     <p data-epub-block="tall">Tall</p>
+    <img data-epub-block="pic" alt="Chart">
   </section>`;
   document.body.append(container);
   Object.defineProperty(container, "clientHeight", { value: 400 });
@@ -32,10 +44,17 @@ beforeEach(() => {
   rect(first, 100, 60, 20);
   rect(second, 130, 40, 20);
   rect(container.querySelector('[data-epub-block="tall"]')!, 800, 40, 900);
-  overlay = new EPUBBlockOverlay(container, onHover, onFocus);
+  rect(container.querySelector('[data-epub-block="pic"]')!, 1800);
+  overlay = new EPUBBlockOverlay(
+    container,
+    onHover,
+    onFocus,
+    () => [block("p"), block("m"), block("tall"), block("pic", "img/a.png")],
+    onAction,
+  );
 });
 afterEach(() => {
-  overlay.destroy();
+  act(() => overlay.destroy());
   container.remove();
   window.getSelection()?.removeAllRanges();
   vi.clearAllMocks();
@@ -102,4 +121,40 @@ it("centers a block, top-aligns a tall one, and removes the box", async () => {
   await overlay.focus("tall");
   expect(container.scrollTop).toBe(796 - 16);
   expect(await overlay.focus("missing")).toBe(false);
+});
+
+it("offers copy and ask-AI on paragraphs and preview on images", () => {
+  const hover = (selector: string) =>
+    act(() =>
+      container
+        .querySelector(selector)!
+        .dispatchEvent(new MouseEvent("pointermove", { bubbles: true })),
+    );
+  const actions = () =>
+    Array.from(
+      container.querySelectorAll<HTMLElement>(
+        ".neoread-block-hover [data-block-action]",
+      ),
+      (button) => button.dataset.blockAction,
+    );
+  hover('[data-epub-block="p"]');
+  expect(actions()).toEqual(["copy", "explain"]);
+  hover('[data-epub-block="pic"]');
+  expect(actions()).toEqual(["preview", "copy", "explain"]);
+  const button = container.querySelector<HTMLElement>(
+    '[data-block-action="preview"]',
+  )!;
+  // Reaching the buttons keeps the box and never focuses the block.
+  button.dispatchEvent(new MouseEvent("pointermove", { bubbles: true }));
+  button.dispatchEvent(
+    new MouseEvent("pointerdown", { bubbles: true, button: 0 }),
+  );
+  act(() => button.click());
+  expect(onAction).toHaveBeenCalledWith(
+    expect.objectContaining({ id: "pic" }),
+    "preview",
+  );
+  expect(container.querySelector(".neoread-block-hover")).toBeTruthy();
+  overlay.click(new MouseEvent("click"));
+  expect(onFocus).not.toHaveBeenCalled();
 });
