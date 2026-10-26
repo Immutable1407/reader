@@ -71,8 +71,10 @@ func (s *Store) prioritizeBookLayout(id string) error {
 	return err
 }
 
+// bookLayoutJobs keeps finished jobs with their final page count, so a poll
+// that missed the whole run still sees the count change and refreshes blocks.
 func (s *Store) bookLayoutJobs() (map[string]bookLayoutProgress, error) {
-	rows, err := s.DB.Query("SELECT document_id,status,pages_done,pages_total FROM book_layout_jobs WHERE status!='complete'")
+	rows, err := s.DB.Query("SELECT document_id,status,pages_done,pages_total FROM book_layout_jobs")
 	if err != nil {
 		return nil, err
 	}
@@ -281,12 +283,26 @@ func (s *Server) bookChapterStarts(ctx context.Context, d Document) []int {
 		return starts
 	}
 	starts = []int{}
+	// Without chapters, batches fall back to the page bound; the reason tells
+	// a missing outline apart from a failed extraction.
+	started, outcome, reason, entries := time.Now(), "failed", "", 0
+	defer func() {
+		level := slog.LevelInfo
+		if outcome == "failed" {
+			level = slog.LevelWarn
+		}
+		s.diagnosticEvent(level, "book.layout.outline", "documentId", d.ID, "outcome", outcome,
+			"reason", reason, "entries", entries, "chapters", len(starts),
+			"durationMs", time.Since(started).Milliseconds())
+	}()
 	worker, node := corpusProcessor(), os.Getenv("NEOREAD_NODE")
 	if worker == "" || node == "" {
+		reason = "processor_unavailable"
 		return starts
 	}
 	work, err := os.MkdirTemp(filepath.Join(s.Store.Root, "ai-work"), "outline-")
 	if err != nil {
+		reason = "workdir_failed"
 		return starts
 	}
 	defer os.RemoveAll(work)
@@ -297,19 +313,35 @@ func (s *Server) bookChapterStarts(ctx context.Context, d Document) []int {
 	cmd.Dir = work
 	cmd.Env = append(os.Environ(), "ELECTRON_RUN_AS_NODE=1")
 	cmd.WaitDelay = 3 * time.Second
-	if cmd.Run() != nil {
+	if err := cmd.Run(); err != nil {
 		// Retry after a cancellation; a broken outline stays unbounded.
 		if ctx.Err() != nil {
+			outcome, reason = "canceled", "canceled"
 			return starts
 		}
-	} else if data, err := os.ReadFile(out); err == nil {
+		switch {
+		case child.Err() == context.DeadlineExceeded:
+			reason = "timeout"
+		case cmd.ProcessState == nil:
+			reason = "start_failed"
+		default:
+			reason = "exit_failed"
+		}
+	} else if data, err := os.ReadFile(out); err != nil {
+		reason = "output_missing"
+	} else {
 		var extracted struct {
 			Outline []struct {
 				Page  int `json:"page"`
 				Depth int `json:"depth"`
 			} `json:"outline"`
 		}
-		if json.Unmarshal(data, &extracted) == nil && len(extracted.Outline) > 0 {
+		if json.Unmarshal(data, &extracted) != nil {
+			reason = "output_invalid"
+		} else if entries = len(extracted.Outline); entries == 0 {
+			outcome, reason = "complete", "no_outline"
+		} else {
+			outcome = "complete"
 			// A title bookmark without a destination is dropped, leaving its
 			// children as the shallowest entries.
 			depth := extracted.Outline[0].Depth

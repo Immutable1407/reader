@@ -6477,14 +6477,15 @@
                     {
                       "type": "object",
                       "readOnly": true,
-                      "description": "Background layout parsing of a book PDF, independent of translation. Absent once every page is parsed.",
+                      "description": "Background layout parsing of a book PDF, independent of translation. A finished job stays as complete with its final page count.",
                       "required": ["status", "pagesDone", "pagesTotal"],
                       "properties":
                         {
                           "status":
                             {
                               "type": "string",
-                              "enum": ["queued", "running", "failed"],
+                              "enum":
+                                ["queued", "running", "failed", "complete"],
                             },
                           "pagesDone": { "type": "integer" },
                           "pagesTotal": { "type": "integer" },

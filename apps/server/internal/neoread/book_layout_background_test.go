@@ -8,6 +8,8 @@ import (
 	"path/filepath"
 	"strings"
 	"testing"
+
+	"neoread.local/server/internal/diagnostics"
 )
 
 func TestNextBookBatchFollowsChaptersFromTheReadingPosition(t *testing.T) {
@@ -78,7 +80,7 @@ func TestBookImportParsesChaptersInTheBackgroundWithoutTranslating(t *testing.T)
 		if err != nil {
 			t.Fatal(err)
 		}
-		if _, ok := jobs[d.ID]; !ok {
+		if jobs[d.ID].Status == "complete" {
 			break
 		}
 	}
@@ -147,6 +149,70 @@ func TestBookLayoutProgressAndChapterRequestShareParsedPages(t *testing.T) {
 	calls, _ = os.ReadFile(log)
 	if !strings.HasSuffix(string(calls), "66-80\n") {
 		t.Fatalf("background parsing did not continue after the chapter: %q", calls)
+	}
+}
+
+// A short book can finish between two polls; the list must still change.
+func TestFinishedBookLayoutStaysVisibleWithItsPageCount(t *testing.T) {
+	s := testServer(t)
+	s.Token = "test-secret"
+	fakeLayout(t)
+	fakeOutline(t, `[{"title":"One","page":1,"depth":0},{"title":"Two","page":31,"depth":0},{"title":"Three","page":61,"depth":0}]`)
+	d := uploadBook(t, s)
+	for range 5 {
+		s.runBookLayoutBatch(context.Background(), d.ID)
+	}
+	w := request(t, s, "GET", "/api/processing", nil)
+	var jobs []struct {
+		DocumentID string              `json:"documentId"`
+		BookLayout *bookLayoutProgress `json:"bookLayout"`
+	}
+	if err := json.Unmarshal(w.Body.Bytes(), &jobs); err != nil || len(jobs) != 1 || jobs[0].BookLayout == nil ||
+		*jobs[0].BookLayout != (bookLayoutProgress{Status: "complete", PagesDone: 80, PagesTotal: 80}) {
+		t.Fatalf("processing list: %s", w.Body.String())
+	}
+}
+
+func TestBookOutlineOutcomeIsDiagnosed(t *testing.T) {
+	s := testServer(t)
+	s.Token = "test-secret"
+	directory := filepath.Join(s.Store.Root, "logs")
+	logs, err := diagnostics.New(directory, "outline-test")
+	if err != nil {
+		t.Fatal(err)
+	}
+	s.SetDiagnostics(logs)
+	fakeLayout(t)
+	failing := filepath.Join(t.TempDir(), "corpus.sh")
+	if err := os.WriteFile(failing, []byte("echo PRIVATE >&2; exit 3\n"), 0700); err != nil {
+		t.Fatal(err)
+	}
+	t.Setenv("NEOREAD_CORPUS_PROCESSOR", failing)
+	d := uploadBook(t, s)
+	if starts := s.bookChapterStarts(context.Background(), d); len(starts) != 0 {
+		t.Fatalf("failed outline produced chapters %v", starts)
+	}
+	fakeOutline(t, `[]`)
+	other := uploadTo(t, s, "books", "other.pdf", testPDF(12))
+	var second Document
+	if other.Code != 201 || json.Unmarshal(other.Body.Bytes(), &second) != nil {
+		t.Fatal(other.Body.String())
+	}
+	s.bookChapterStarts(context.Background(), second)
+	files, _ := filepath.Glob(filepath.Join(directory, "*.jsonl"))
+	var all strings.Builder
+	for _, file := range files {
+		b, _ := os.ReadFile(file)
+		all.Write(b)
+	}
+	output := all.String()
+	for _, want := range []string{`"event":"book.layout.outline"`, `"outcome":"failed"`, `"reason":"exit_failed"`, `"outcome":"complete"`, `"reason":"no_outline"`, `"durationMs"`} {
+		if !strings.Contains(output, want) {
+			t.Errorf("missing %s in %s", want, output)
+		}
+	}
+	if strings.Contains(output, "PRIVATE") {
+		t.Fatal("outline stderr leaked into diagnostics")
 	}
 }
 

@@ -646,9 +646,9 @@ export interface Processing {
   detail: string;
   warning?: string;
   updatedAt: string;
-  /** Background layout parsing of a book PDF; absent once every page is parsed. */
+  /** Background layout parsing of a book PDF; stays `complete` when done. */
   bookLayout?: {
-    status: "queued" | "running" | "failed";
+    status: "queued" | "running" | "failed" | "complete";
     pagesDone: number;
     pagesTotal: number;
   };
