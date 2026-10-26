@@ -195,6 +195,9 @@ func (s *Server) parseBookBatch(ctx context.Context, documentID string) (bookLay
 			return progress, errors.New("后台解析未返回请求的页面")
 		}
 		known = &m
+		if err = s.publishParsedTranslations(d.ID, m, from, to); err != nil {
+			return progress, err
+		}
 	}
 	if known == nil {
 		return progress, errors.New("无法读取 PDF 页数")
@@ -206,6 +209,29 @@ func (s *Server) parseBookBatch(ctx context.Context, documentID string) (bookLay
 		}
 	}
 	return progress, nil
+}
+
+// publishParsedTranslations tells open readers about the blocks of newly
+// parsed pages. Their records stay synthesized idle states: nothing is saved
+// or queued, so parsing never starts translation.
+func (s *Server) publishParsedTranslations(id string, m layoutManifest, from, to int) error {
+	pages := m
+	pages.Blocks = nil
+	for _, b := range m.Blocks {
+		if b.Page >= from && b.Page <= to {
+			pages.Blocks = append(pages.Blocks, b)
+		}
+	}
+	s.translationMu.Lock()
+	defer s.translationMu.Unlock()
+	items, err := s.visibleTranslations(id, pages)
+	if err != nil {
+		return err
+	}
+	for _, item := range items {
+		s.publishTranslation(id, item)
+	}
+	return nil
 }
 
 // nextBookBatch picks the first unparsed page at or after the chapter being

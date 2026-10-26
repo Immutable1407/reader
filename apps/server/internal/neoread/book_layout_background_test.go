@@ -152,6 +152,32 @@ func TestBookLayoutProgressAndChapterRequestShareParsedPages(t *testing.T) {
 	}
 }
 
+// An open reader's translation stream learns the idle state of new blocks.
+func TestBackgroundParsingPublishesIdleBlocksToOpenReaders(t *testing.T) {
+	s := testServer(t)
+	s.Token = "test-secret"
+	fakeLayout(t)
+	fakeOutline(t, `[]`)
+	d := uploadBook(t, s)
+	ch := make(chan TranslationBlock, 64)
+	s.translationMu.Lock()
+	s.translationSubscribers = map[string]map[chan TranslationBlock]struct{}{d.ID: {ch: {}}}
+	s.translationMu.Unlock()
+	s.runBookLayoutBatch(context.Background(), d.ID)
+	if len(ch) != 30 {
+		t.Fatalf("published %d blocks, want the 30 new ones", len(ch))
+	}
+	for range 30 {
+		if item := <-ch; item.Status != "idle" {
+			t.Fatalf("new block published as %s", item.Status)
+		}
+	}
+	var saved int
+	if err := s.Store.DB.QueryRow("SELECT COUNT(*) FROM translations WHERE document_id=?", d.ID).Scan(&saved); err != nil || saved != 0 {
+		t.Fatalf("publishing saved %d translation records: %v", saved, err)
+	}
+}
+
 // A short book can finish between two polls; the list must still change.
 func TestFinishedBookLayoutStaysVisibleWithItsPageCount(t *testing.T) {
 	s := testServer(t)
