@@ -568,7 +568,7 @@ function FolderChips({
   const inside = (name: string) =>
     doc.folders.some((f) => f.toLowerCase() === name.toLowerCase());
   return (
-    <div className="paper-chips" aria-label="分类">
+    <div className="paper-chips paper-folder-chips" aria-label="分类">
       {doc.folders.map((folder) => (
         <Chip
           key={folder}

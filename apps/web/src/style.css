@@ -3182,13 +3182,17 @@ textarea.paper-title-input {
 .paper-chip:focus-within > [data-slot="button"]:last-child {
   opacity: 1;
 }
-.paper-tag-chips .paper-chip {
+:is(.paper-tag-chips, .paper-folder-chips) .paper-chip {
   position: relative;
 }
-.paper-tag-chips .paper-chip > [data-slot="button"]:first-child {
+:is(.paper-tag-chips, .paper-folder-chips)
+  .paper-chip
+  > [data-slot="button"]:first-child {
   padding-inline: 9px;
 }
-.paper-tag-chips .paper-chip > [data-slot="button"]:last-child {
+:is(.paper-tag-chips, .paper-folder-chips)
+  .paper-chip
+  > [data-slot="button"]:last-child {
   position: absolute;
   inset-block-start: -4px;
   inset-inline-end: -4px;
@@ -3199,7 +3203,10 @@ textarea.paper-title-input {
   background: var(--background);
   box-shadow: 0 0 0 1px var(--border);
 }
-.paper-tag-chips .paper-chip > [data-slot="button"]:last-child svg {
+:is(.paper-tag-chips, .paper-folder-chips)
+  .paper-chip
+  > [data-slot="button"]:last-child
+  svg {
   width: 12px;
   height: 12px;
 }
