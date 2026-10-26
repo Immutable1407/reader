@@ -26,8 +26,9 @@ export const doubleClickWindow = 300;
  * Holds a click's detail change until it cannot become a double click, like
  * Finder and Drive: the item highlights at once, the sheet follows only for a
  * single click, so double-clicking opens without the sheet flashing first.
+ * A later key press or selection change (`current`) overrides the held click.
  */
-export function useClickIntent() {
+export function useClickIntent(current: string | null | undefined) {
   const [pending, setPending] = useState<string | null>(null);
   const timer = useRef<number | undefined>(undefined);
   useEffect(() => () => window.clearTimeout(timer.current), []);
@@ -35,6 +36,12 @@ export function useClickIntent() {
     window.clearTimeout(timer.current);
     setPending(null);
   }, []);
+  useEffect(cancel, [current, cancel]);
+  useEffect(() => {
+    if (!pending) return;
+    window.addEventListener("keydown", cancel, true);
+    return () => window.removeEventListener("keydown", cancel, true);
+  }, [pending, cancel]);
   const defer = useCallback((id: string, run: () => void) => {
     window.clearTimeout(timer.current);
     setPending(id);

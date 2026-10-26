@@ -244,6 +244,23 @@ it("opens on double click without showing the details first", async () => {
   expect(alpha.dataset.active).toBe("false");
 });
 
+it("drops a held click once a key press takes over", async () => {
+  withDetail = true;
+  await act(async () => root.render(<Harness />));
+  const [alpha] = host.querySelectorAll("article");
+  await act(async () =>
+    alpha.querySelector<HTMLButtonElement>(".book-cover")!.click(),
+  );
+  expect(alpha.dataset.active).toBe("true");
+  await act(async () =>
+    alpha.dispatchEvent(
+      new KeyboardEvent("keydown", { key: "ArrowDown", bubbles: true }),
+    ),
+  );
+  await waitOutDoubleClick();
+  expect(alpha.dataset.active).toBe("false");
+});
+
 it("shows details on click and opens on double click", async () => {
   withDetail = true;
   await act(async () => root.render(<Harness />));

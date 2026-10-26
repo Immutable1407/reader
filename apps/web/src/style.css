@@ -1167,6 +1167,7 @@ kbd {
   }
 }
 @media (prefers-reduced-motion: reduce) {
+  .detail-sheet,
   .paper-column-resizer::after,
   .paper-detail-resizer::after,
   .chat-message-actions,

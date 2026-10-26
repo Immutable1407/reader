@@ -66,7 +66,7 @@ export function LibraryDocuments({
   const overviewJobs = useOverviewJobs();
   const [selection, setSelection] = useState<Set<string>>(new Set());
   const [mode, setMode] = useState(false);
-  const clickIntent = useClickIntent();
+  const clickIntent = useClickIntent(activeId);
   const pending = useRef(false);
   const anchor = useRef<string | null>(null);
   const selected = new Set(

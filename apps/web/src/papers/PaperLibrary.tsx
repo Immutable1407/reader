@@ -366,7 +366,7 @@ export function PaperLibrary({
   }, [selectedId, selected, ui]);
   const mainRef = useRef<HTMLElement>(null);
   const [libraryBody, setLibraryBody] = useState<HTMLDivElement | null>(null);
-  const clickIntent = useClickIntent();
+  const clickIntent = useClickIntent(selectedId);
   useEffect(() => {
     // Pressing on empty library space closes the detail panel.
     const main = mainRef.current;

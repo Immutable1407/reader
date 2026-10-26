@@ -37,9 +37,10 @@ export function AttachmentRows({
   const items = useAttachments((s) => s.items[doc.id]);
   const error = useAttachments((s) => s.errors[doc.id]);
   const selected = useAttachments((s) => s.selected);
+  const selectedPaper = usePaperUI((s) => s.selectedId);
   const batch = useAttachments((s) => s.uploads[doc.id]);
   const { armed, ...dropHandlers } = useAttachmentDrop(doc, true);
-  const clickIntent = useClickIntent();
+  const clickIntent = useClickIntent(`${selectedPaper}:${selected?.id}`);
   if (items?.length === 0 && !batch && !error) return null;
   const select = (item: PaperAttachment | null) => {
     usePaperUI.getState().select(doc.id);
