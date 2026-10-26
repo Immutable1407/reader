@@ -49,7 +49,8 @@ vi.mock("./LibraryDocuments", () => ({
   ),
 }));
 vi.mock("./BookDetail", () => ({
-  ResizableBookDetail: () => (
+  saveBookDetailWidth: vi.fn(),
+  BookDetail: () => (
     <aside className="book-detail">
       <p>详情</p>
     </aside>

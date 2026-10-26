@@ -66,7 +66,8 @@ import { useResolvedTheme } from "./appearance";
 import { DocumentEditor, LibraryFilterBar } from "./DocumentManagement";
 import { TagBoards } from "./TagBoards";
 import { LibraryDocuments } from "./LibraryDocuments";
-import { ResizableBookDetail } from "./BookDetail";
+import { BookDetail, saveBookDetailWidth } from "./BookDetail";
+import { DetailSheet } from "./DetailSheet";
 import type { BookMenuActions } from "./BookMenu";
 import { DocumentOverviewDialog } from "./DocumentOverview";
 import { ProcessingUsageDialog } from "./ProcessingUsage";
@@ -78,7 +79,7 @@ const currentMode = () =>
 /** Whether a press landed on library space rather than a book or control. */
 const onEmptyLibrary = (target: EventTarget) =>
   !(target as Element).closest(
-    '.book-card, .book-detail, button, a, input, textarea, select, label, [role="button"], [role="separator"], [role="menu"], [role="dialog"]',
+    '.book-card, .detail-sheet, button, a, input, textarea, select, label, [role="button"], [role="separator"], [role="menu"], [role="dialog"]',
   );
 export function App() {
   const {
@@ -110,6 +111,7 @@ export function App() {
   const [editingLibrary, setEditingLibrary] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [detailId, setDetailId] = useState<string | null>(null);
+  const [libraryBody, setLibraryBody] = useState<HTMLDivElement | null>(null);
   const pressedEmpty = useRef(false);
   const [overviewDocument, setOverviewDocument] = useState<Document | null>(
     null,
@@ -687,7 +689,7 @@ export function App() {
                     </Button>
                   )}
                 </header>
-                <div className="book-library-body">
+                <div className="book-library-body" ref={setLibraryBody}>
                   <div className="book-list-pane">
                     <div className="library-content">
                       {filter === "favorites" && (
@@ -814,15 +816,24 @@ export function App() {
                       )}
                     </div>
                   </div>
-                  {detail && (
-                    <ResizableBookDetail
-                      key={detail.id}
-                      doc={detail}
-                      actions={bookActions}
-                      open={openDocument}
-                      favorite={(doc) => void favorite(doc)}
-                    />
-                  )}
+                  <DetailSheet
+                    open={!!detail}
+                    onClose={() => setDetailId(null)}
+                    container={libraryBody}
+                    label="图书详情"
+                    width={libraryPreferences.books?.detailWidth}
+                    saveWidth={saveBookDetailWidth}
+                  >
+                    {detail && (
+                      <BookDetail
+                        key={detail.id}
+                        doc={detail}
+                        actions={bookActions}
+                        open={openDocument}
+                        favorite={(doc) => void favorite(doc)}
+                      />
+                    )}
+                  </DetailSheet>
                 </div>
               </main>
             )}
