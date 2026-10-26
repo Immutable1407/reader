@@ -158,3 +158,26 @@ it("offers copy and ask-AI on paragraphs and preview on images", () => {
   overlay.click(new MouseEvent("click"));
   expect(onFocus).not.toHaveBeenCalled();
 });
+
+it("keeps the toolbar reachable across the box margin above the block", () => {
+  const section = container.querySelector("section")!;
+  const at = (target: Element, clientX: number, clientY: number) =>
+    act(() =>
+      target.dispatchEvent(
+        new MouseEvent("pointermove", { bubbles: true, clientX, clientY }),
+      ),
+    );
+  // The paragraph's text starts at y=600; its box starts 4px higher.
+  at(container.querySelector('[data-epub-block="p"]')!, 100, 610);
+  at(section, 230, 597);
+  const box = () =>
+    container.querySelector<HTMLElement>(".neoread-block-hover");
+  expect(box()?.dataset.blockId).toBe("p");
+  at(container.querySelector('[data-block-action="copy"]')!, 230, 590);
+  expect(box()?.dataset.blockId).toBe("p");
+  expect(onHover).not.toHaveBeenLastCalledWith(null);
+  // Outside the box the hover ends.
+  at(section, 230, 580);
+  expect(box()).toBeNull();
+  expect(onHover).toHaveBeenLastCalledWith(null);
+});

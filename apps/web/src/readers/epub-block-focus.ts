@@ -63,6 +63,7 @@ export class EPUBBlockOverlay {
   private pressed?: { id: string; x: number; y: number };
   private operation = 0;
   private abort = new AbortController();
+  private fade?: Animation;
 
   constructor(
     private container: HTMLElement,
@@ -82,7 +83,7 @@ export class EPUBBlockOverlay {
     container.addEventListener("pointermove", this.move, { signal });
     container.addEventListener("pointerleave", this.leave, { signal });
     container.addEventListener("pointerdown", this.press, { signal });
-    container.addEventListener("scroll", this.leave, {
+    container.addEventListener("scroll", this.clear, {
       passive: true,
       signal,
     });
@@ -121,23 +122,44 @@ export class EPUBBlockOverlay {
     )
       ? "image"
       : "text";
+    if (element === this.hover) {
+      this.fade?.cancel();
+      this.fade = undefined;
+      element.inert = false;
+    }
     if (element.parentElement !== this.container)
       this.container.append(element);
     return true;
   }
 
+  /**
+   * The block under the pointer. As with PDF block bounds, the padded box
+   * around the hovered block still counts, so the pointer can cross its margin
+   * to the toolbar above it.
+   */
+  private blockAt(event: MouseEvent) {
+    const id = epubBlockId(event.target);
+    if (id) return id;
+    const current = this.hovered ?? this.pressed?.id;
+    const rect = current && epubBlockRect(this.container, current);
+    if (
+      rect &&
+      event.clientX >= rect.left &&
+      event.clientX <= rect.left + rect.width &&
+      event.clientY >= rect.top &&
+      event.clientY <= rect.top + rect.height
+    )
+      return current;
+  }
+
   private move = (event: PointerEvent) => {
     const target = event.target instanceof Element ? event.target : null;
     if (target?.closest(blockActionTarget)) return;
-    if (
-      event.buttons ||
-      window.getSelection()?.toString().trim() ||
-      target?.closest("a,button,input,textarea")
-    ) {
-      this.leave();
+    if (event.buttons || window.getSelection()?.toString().trim()) {
+      this.clear();
       return;
     }
-    const id = epubBlockId(target);
+    const id = this.blockAt(event);
     if (!id) {
       this.leave();
       return;
@@ -166,19 +188,45 @@ export class EPUBBlockOverlay {
     );
   }
 
-  private leave = () => {
-    this.hover.remove();
+  // Fade out like the PDF hover box; scrolling removes it at once.
+  private hideHover(immediate: boolean) {
+    const box = this.hover;
+    if (!box.parentElement || this.fade) return;
+    if (immediate || !box.animate || reducedMotion()) {
+      box.remove();
+      return;
+    }
+    box.inert = true;
+    const fade = box.animate(
+      [{ opacity: getComputedStyle(box).opacity }, { opacity: 0 }],
+      { duration: 160, easing: "ease-out", fill: "forwards" },
+    );
+    this.fade = fade;
+    void fade.finished
+      .then(() => {
+        if (this.fade !== fade) return;
+        box.remove();
+        this.fade = undefined;
+        fade.cancel();
+      })
+      .catch(() => {});
+  }
+
+  private leave = () => this.dismiss(false);
+  private clear = () => this.dismiss(true);
+  private dismiss(immediate: boolean) {
+    this.hideHover(immediate);
     if (this.hovered) {
       this.hovered = undefined;
       this.onHover(null);
     }
-  };
+  }
 
   private press = (event: PointerEvent) => {
     this.cancel();
     this.pressed = undefined;
     if ((event.target as Element | null)?.closest(blockActionTarget)) return;
-    const id = event.button === 0 ? epubBlockId(event.target) : undefined;
+    const id = event.button === 0 ? this.blockAt(event) : undefined;
     if (id) this.pressed = { id, x: event.clientX, y: event.clientY };
   };
 
@@ -191,10 +239,10 @@ export class EPUBBlockOverlay {
       Math.hypot(event.clientX - pressed.x, event.clientY - pressed.y) > 5 ||
       window.getSelection()?.toString().trim() ||
       (event.target as Element | null)?.closest("a,button,input,textarea") ||
-      epubBlockId(event.target) !== pressed.id
+      this.blockAt(event) !== pressed.id
     )
       return;
-    this.leave();
+    this.clear();
     this.onFocus(pressed.id);
   }
 
@@ -284,6 +332,7 @@ export class EPUBBlockOverlay {
     this.operation++;
     this.abort.abort();
     this.actions.unmount();
+    this.fade?.cancel();
     this.hover.remove();
     this.linked.remove();
     this.focusBox.remove();
