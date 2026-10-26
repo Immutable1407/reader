@@ -55,6 +55,15 @@ export function ReaderView({
         epubReadingAnchor: (id) => {
           if (!disposed) latest.current.events.epubReadingAnchor?.(id);
         },
+        epubBlockHover: (id) => {
+          if (!disposed) latest.current.events.epubBlockHover?.(id);
+        },
+        epubBlockFocus: (id) => {
+          if (!disposed) latest.current.events.epubBlockFocus?.(id);
+        },
+        epubBlockAction: (block, action) => {
+          if (!disposed) latest.current.events.epubBlockAction?.(block, action);
+        },
         readingAnchor: (anchor) => {
           if (!disposed) latest.current.events.readingAnchor?.(anchor);
         },
